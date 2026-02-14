@@ -1,5 +1,6 @@
-﻿using System.Web;
+using System.Web;
 using System.Web.Mvc;
+using Vidly.Filters;
 
 namespace Vidly
 {
@@ -8,6 +9,7 @@ namespace Vidly
         public static void RegisterGlobalFilters(GlobalFilterCollection filters)
         {
             filters.Add(new HandleErrorAttribute());
+            filters.Add(new SecurityHeadersAttribute());
         }
     }
 }
