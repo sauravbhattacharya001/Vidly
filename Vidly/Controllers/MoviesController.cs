@@ -28,6 +28,9 @@ namespace Vidly.Controllers
             Movie movie;
             lock (_moviesLock)
             {
+                if (!_movies.Any())
+                    return HttpNotFound("No movies available.");
+
                 movie = _movies[_random.Next(_movies.Count)];
             }
 
