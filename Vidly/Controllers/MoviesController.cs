@@ -46,6 +46,29 @@ namespace Vidly.Controllers
             return View(viewModel);
         }
 
+        // GET: Movies/Create
+        public ActionResult Create()
+        {
+            return View("Edit", new Movie());
+        }
+
+        // POST: Movies/Create
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult Create(Movie movie)
+        {
+            if (!ModelState.IsValid)
+                return View("Edit", movie);
+
+            lock (_moviesLock)
+            {
+                movie.Id = _movies.Any() ? _movies.Max(m => m.Id) + 1 : 1;
+                _movies.Add(movie);
+            }
+
+            return RedirectToAction("Index");
+        }
+
         // GET: Movies/Edit/5
         public ActionResult Edit(int id)
         {
