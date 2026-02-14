@@ -1,0 +1,35 @@
+# Build artifacts
+**/bin/
+**/obj/
+**/packages/
+
+# IDE files
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Test results
+**/TestResults/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation (not needed in image)
+docs/
+*.md
+!README.md
+LICENSE
+ARCHITECTURE.md
+SECURITY.md
+
+# GitHub config
+.github/
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore

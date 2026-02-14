@@ -129,6 +129,22 @@ Coverage reports are generated in Cobertura format and uploaded as CI artifacts 
 | **Testing** | MSTest + Coverlet |
 | **CI/CD** | GitHub Actions |
 
+## 🐳 Docker
+
+Run Vidly in a Windows container with IIS:
+
+```powershell
+# Build the image
+docker build -t vidly .
+
+# Run the container
+docker run -d -p 8080:80 --name vidly vidly
+
+# Access at http://localhost:8080
+```
+
+> **Note:** Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/) with **Windows containers** enabled. The image uses `mcr.microsoft.com/dotnet/framework/aspnet:4.8` which requires Windows Server Core.
+
 ## 📚 Documentation
 
 - **[Architecture Guide](ARCHITECTURE.md)** — Deep dive into the codebase: request lifecycle, layer responsibilities, threading model, and extension points
