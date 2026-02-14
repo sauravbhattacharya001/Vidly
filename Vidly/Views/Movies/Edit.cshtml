@@ -1,10 +1,11 @@
 @model Vidly.Models.Movie
 @{
-    ViewBag.Title = "Edit " + Model.Name;
+    var isNew = Model.Id == 0;
+    ViewBag.Title = isNew ? "Create Movie" : "Edit " + Model.Name;
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<h2>Edit Movie</h2>
+<h2>@(isNew ? "Create Movie" : "Edit Movie")</h2>
 
 @using (Html.BeginForm())
 {
