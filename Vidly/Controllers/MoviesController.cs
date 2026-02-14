@@ -18,10 +18,12 @@ namespace Vidly.Controllers
             new Movie { Id = 3, Name = "Toy Story" }
         };
 
+        private static readonly Random _random = new Random();
+
         // GET: Movies/Random
         public ActionResult Random()
         {
-            var movie = _movies.First();
+            var movie = _movies[_random.Next(_movies.Count)];
             var customers = new List<Customer>
             {
                 new Customer {Name = "Customer 1"},
