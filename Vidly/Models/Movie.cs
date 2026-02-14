@@ -13,5 +13,9 @@ namespace Vidly.Models
         [Required(ErrorMessage = "Movie name is required.")]
         [StringLength(255, ErrorMessage = "Movie name cannot exceed 255 characters.")]
         public string Name { get; set; }
+
+        [Display(Name = "Release Date")]
+        [DataType(DataType.Date)]
+        public DateTime? ReleaseDate { get; set; }
     }
 }

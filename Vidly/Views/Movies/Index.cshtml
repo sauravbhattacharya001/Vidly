@@ -22,6 +22,7 @@ else
             <tr>
                 <th>@Html.ActionLink("Id", "Index", new { sortBy = "Id" })</th>
                 <th>@Html.ActionLink("Name", "Index", new { sortBy = "Name" })</th>
+                <th>Release Date</th>
                 <th>Actions</th>
             </tr>
         </thead>
@@ -31,6 +32,7 @@ else
                 <tr>
                     <td>@movie.Id</td>
                     <td>@movie.Name</td>
+                    <td>@(movie.ReleaseDate.HasValue ? movie.ReleaseDate.Value.ToString("MMM dd, yyyy") : "—")</td>
                     <td>
                         @Html.ActionLink("Edit", "Edit", new { id = movie.Id }, new { @class = "btn btn-sm btn-info" })
                     </td>

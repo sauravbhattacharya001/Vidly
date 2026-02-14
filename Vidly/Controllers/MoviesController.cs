@@ -14,9 +14,9 @@ namespace Vidly.Controllers
         // Guarded by _moviesLock for thread-safe concurrent access. (fixes #4)
         private static readonly List<Movie> _movies = new List<Movie>
         {
-            new Movie { Id = 1, Name = "Shrek!" },
-            new Movie { Id = 2, Name = "The Godfather" },
-            new Movie { Id = 3, Name = "Toy Story" }
+            new Movie { Id = 1, Name = "Shrek!", ReleaseDate = new DateTime(2001, 5, 18) },
+            new Movie { Id = 2, Name = "The Godfather", ReleaseDate = new DateTime(1972, 3, 24) },
+            new Movie { Id = 3, Name = "Toy Story", ReleaseDate = new DateTime(1995, 11, 22) }
         };
 
         private static readonly object _moviesLock = new object();
@@ -100,6 +100,7 @@ namespace Vidly.Controllers
                     return HttpNotFound();
 
                 movieInStore.Name = movie.Name;
+                movieInStore.ReleaseDate = movie.ReleaseDate;
             }
 
             return RedirectToAction("Index");
@@ -108,7 +109,21 @@ namespace Vidly.Controllers
         [Route("movies/released/{year:range(1888,2100)}/{month:regex(\\d{2}):range(1,12)}")]
         public ActionResult ByReleaseDate(int year, int month)
         {
-            return Content(year + "/" + month);
+            List<Movie> matches;
+            lock (_moviesLock)
+            {
+                matches = _movies
+                    .Where(m => m.ReleaseDate.HasValue
+                             && m.ReleaseDate.Value.Year == year
+                             && m.ReleaseDate.Value.Month == month)
+                    .OrderBy(m => m.ReleaseDate)
+                    .ToList();
+            }
+
+            ViewBag.Year = year;
+            ViewBag.Month = month;
+
+            return View(matches);
         }
 
         // GET: Movies

@@ -1,0 +1,36 @@
+@model IEnumerable<Vidly.Models.Movie>
+@{
+    ViewBag.Title = "Movies Released " + ViewBag.Year + "/" + ViewBag.Month;
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>Movies Released in @ViewBag.Month/@ViewBag.Year</h2>
+
+<p>
+    @Html.ActionLink("Back to All Movies", "Index", null, new { @class = "btn btn-default" })
+</p>
+
+@if (!Model.Any())
+{
+    <p class="text-muted">No movies found for this release period.</p>
+}
+else
+{
+    <table class="table table-bordered table-hover">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Release Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var movie in Model)
+            {
+                <tr>
+                    <td>@movie.Name</td>
+                    <td>@(movie.ReleaseDate.HasValue ? movie.ReleaseDate.Value.ToString("MMM dd, yyyy") : "N/A")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
