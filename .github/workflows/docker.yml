@@ -1,0 +1,129 @@
+name: Docker — Build & Push
+
+on:
+  push:
+    branches: [master, main]
+    tags: ["v*"]
+  pull_request:
+    branches: [master, main]
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  docker:
+    name: Build & Push Docker Image
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Extract metadata
+        id: meta
+        shell: pwsh
+        run: |
+          $repo = "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}".ToLower()
+          $tags = @()
+
+          if ("${{ github.ref }}" -match "^refs/tags/v(.+)$") {
+            $version = $Matches[1]
+            $tags += "${repo}:${version}"
+            # Add major.minor tag (e.g., 1.0)
+            if ($version -match "^(\d+\.\d+)") {
+              $tags += "${repo}:$($Matches[1])"
+            }
+            # Add major tag (e.g., 1)
+            if ($version -match "^(\d+)") {
+              $tags += "${repo}:$($Matches[1])"
+            }
+            $tags += "${repo}:latest"
+          } elseif ("${{ github.ref }}" -eq "refs/heads/master" -or "${{ github.ref }}" -eq "refs/heads/main") {
+            $sha = "${{ github.sha }}".Substring(0, 7)
+            $tags += "${repo}:edge"
+            $tags += "${repo}:sha-${sha}"
+          } else {
+            $sha = "${{ github.sha }}".Substring(0, 7)
+            $tags += "${repo}:pr-${{ github.event.number }}"
+            $tags += "${repo}:sha-${sha}"
+          }
+
+          $tagList = $tags -join ","
+          echo "tags=$tagList" >> $env:GITHUB_OUTPUT
+          echo "repo=$repo" >> $env:GITHUB_OUTPUT
+          Write-Host "Tags: $tagList"
+
+      - name: Build Docker image
+        run: |
+          $tags = "${{ steps.meta.outputs.tags }}".Split(",")
+          $tagArgs = $tags | ForEach-Object { "-t", $_.Trim() }
+          docker build @tagArgs .
+
+      - name: Verify container health
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        run: |
+          $repo = "${{ steps.meta.outputs.repo }}"
+          $tag = if ("${{ github.ref }}" -match "^refs/tags/") { "latest" } else { "edge" }
+          $image = "${repo}:${tag}"
+
+          Write-Host "Starting container from $image..."
+          docker run -d --name vidly-test -p 8080:80 $image
+
+          # Wait for IIS to initialize (Windows containers are slower to start)
+          Start-Sleep -Seconds 30
+
+          # Check container is running
+          $status = docker inspect --format='{{.State.Status}}' vidly-test
+          if ($status -ne "running") {
+            Write-Host "::error::Container is not running. Status: $status"
+            docker logs vidly-test
+            exit 1
+          }
+
+          Write-Host "Container is running. Health check passed."
+          docker stop vidly-test
+          docker rm vidly-test
+
+      - name: Push to GHCR
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        run: |
+          $tags = "${{ steps.meta.outputs.tags }}".Split(",")
+          foreach ($tag in $tags) {
+            $t = $tag.Trim()
+            Write-Host "Pushing $t..."
+            docker push $t
+          }
+
+      - name: Summary
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        run: |
+          $tags = "${{ steps.meta.outputs.tags }}".Split(",") | ForEach-Object { "- ``$($_.Trim())``" }
+          $summary = @"
+          ## 🐳 Docker Image Published
+
+          **Registry:** GitHub Container Registry (ghcr.io)
+
+          **Tags:**
+          $($tags -join "`n")
+
+          **Pull command:**
+          ``````
+          docker pull $($tags[0].Replace("- ``", "").Replace("``", "").Trim())
+          ``````
+
+          > ⚠️ This is a **Windows container** image. Requires Docker Desktop with Windows containers enabled.
+          "@
+          $summary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8
