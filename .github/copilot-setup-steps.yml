@@ -1,0 +1,32 @@
+name: Copilot Setup Steps
+description: Install dependencies and build for GitHub Copilot coding agents
+
+on:
+  workflow_dispatch:
+
+jobs:
+  setup:
+    name: Build & Verify
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore test project dependencies
+        run: dotnet restore Vidly.Tests/Vidly.Tests.csproj
+
+      - name: Build test project (includes main project source)
+        run: dotnet build Vidly.Tests/Vidly.Tests.csproj --configuration Release --no-restore
+
+      - name: Run tests
+        run: |
+          dotnet test Vidly.Tests/Vidly.Tests.csproj `
+            --configuration Release `
+            --no-build `
+            --logger "trx;LogFileName=test-results.trx"
