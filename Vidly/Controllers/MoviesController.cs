@@ -87,8 +87,11 @@ namespace Vidly.Controllers
         // POST: Movies/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Edit(Movie movie)
+        public ActionResult Edit(int id, Movie movie)
         {
+            if (movie.Id != id)
+                return new HttpStatusCodeResult(400, "Movie ID mismatch.");
+
             if (!ModelState.IsValid)
                 return View(movie);
 

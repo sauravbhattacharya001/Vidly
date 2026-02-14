@@ -7,7 +7,7 @@
 
 <h2>@(isNew ? "Create Movie" : "Edit Movie")</h2>
 
-@using (Html.BeginForm())
+@using (Html.BeginForm("Edit", "Movies", new { id = Model.Id }, FormMethod.Post))
 {
     @Html.AntiForgeryToken()
 

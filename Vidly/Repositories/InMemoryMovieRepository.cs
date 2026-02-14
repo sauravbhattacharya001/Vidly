@@ -26,7 +26,8 @@ namespace Vidly.Repositories
         {
             lock (_lock)
             {
-                return _movies.SingleOrDefault(m => m.Id == id);
+                var movie = _movies.SingleOrDefault(m => m.Id == id);
+                return movie == null ? null : Clone(movie);
             }
         }
 
@@ -34,7 +35,7 @@ namespace Vidly.Repositories
         {
             lock (_lock)
             {
-                return _movies.ToList().AsReadOnly();
+                return _movies.Select(Clone).ToList().AsReadOnly();
             }
         }
 
@@ -89,6 +90,7 @@ namespace Vidly.Repositories
                              && m.ReleaseDate.Value.Year == year
                              && m.ReleaseDate.Value.Month == month)
                     .OrderBy(m => m.ReleaseDate)
+                    .Select(Clone)
                     .ToList()
                     .AsReadOnly();
             }
@@ -101,8 +103,22 @@ namespace Vidly.Repositories
                 if (!_movies.Any())
                     return null;
 
-                return _movies[_random.Next(_movies.Count)];
+                return Clone(_movies[_random.Next(_movies.Count)]);
             }
+        }
+
+        /// <summary>
+        /// Creates a defensive copy of a Movie to prevent callers from
+        /// mutating the internal store outside the lock.
+        /// </summary>
+        private static Movie Clone(Movie source)
+        {
+            return new Movie
+            {
+                Id = source.Id,
+                Name = source.Name,
+                ReleaseDate = source.ReleaseDate
+            };
         }
     }
 }
