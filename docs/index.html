@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vidly Documentation</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
+    <style>
+        :root {
+            --bg: #fafafa;
+            --surface: #ffffff;
+            --sidebar-bg: #1e293b;
+            --sidebar-text: #cbd5e1;
+            --sidebar-active: #38bdf8;
+            --text: #1e293b;
+            --muted: #64748b;
+            --accent: #6366f1;
+            --accent-light: #e0e7ff;
+            --border: #e2e8f0;
+            --code-bg: #f1f5f9;
+            --green: #10b981;
+            --purple: #8b5cf6;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: var(--text);
+            line-height: 1.7;
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: var(--sidebar-bg);
+            color: var(--sidebar-text);
+            padding: 1.5rem;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            overflow-y: auto;
+            z-index: 10;
+        }
+
+        .sidebar h1 {
+            font-size: 1.3rem;
+            color: #fff;
+            margin-bottom: 0.25rem;
+        }
+
+        .sidebar .version {
+            font-size: 0.75rem;
+            color: var(--sidebar-active);
+            margin-bottom: 1.5rem;
+        }
+
+        .sidebar nav a {
+            display: block;
+            color: var(--sidebar-text);
+            text-decoration: none;
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            margin-bottom: 2px;
+            transition: all 0.15s;
+        }
+
+        .sidebar nav a:hover,
+        .sidebar nav a.active {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+        }
+
+        .sidebar nav .section-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--muted);
+            margin-top: 1rem;
+            margin-bottom: 0.3rem;
+            padding-left: 0.8rem;
+        }
+
+        /* Main content */
+        .main {
+            margin-left: 260px;
+            flex: 1;
+            padding: 3rem;
+            max-width: 900px;
+        }
+
+        .main h2 {
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .main h3 {
+            font-size: 1.2rem;
+            margin-top: 2rem;
+            margin-bottom: 0.5rem;
+            color: var(--accent);
+        }
+
+        .main p { margin-bottom: 1rem; }
+
+        .main ul, .main ol {
+            margin-bottom: 1rem;
+            padding-left: 1.5rem;
+        }
+
+        .main li { margin-bottom: 0.3rem; }
+
+        code {
+            background: var(--code-bg);
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.88em;
+            font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+        }
+
+        pre {
+            background: var(--sidebar-bg);
+            color: #e2e8f0;
+            padding: 1.2rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin-bottom: 1.5rem;
+            line-height: 1.5;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1.5rem;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 0.6rem 0.8rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th { font-weight: 600; color: var(--muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; }
+
+        .badge {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-get { background: #dbeafe; color: #1d4ed8; }
+        .badge-post { background: #dcfce7; color: #16a34a; }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .card h4 { margin-bottom: 0.5rem; }
+
+        .section { display: none; }
+        .section.active { display: block; }
+
+        .diagram {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            font-family: 'Cascadia Code', monospace;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            overflow-x: auto;
+            margin-bottom: 1.5rem;
+        }
+
+        .highlight { color: var(--accent); font-weight: 600; }
+
+        /* Mobile */
+        .menu-toggle {
+            display: none;
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            z-index: 20;
+            background: var(--sidebar-bg);
+            color: #fff;
+            border: none;
+            padding: 0.5rem 0.8rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); transition: transform 0.3s; }
+            .sidebar.open { transform: translateX(0); }
+            .main { margin-left: 0; padding: 1.5rem; padding-top: 4rem; }
+            .menu-toggle { display: block; }
+        }
+    </style>
+</head>
+<body>
+    <button class="menu-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open')">☰</button>
+
+    <aside class="sidebar">
+        <h1>🎬 Vidly</h1>
+        <div class="version">ASP.NET MVC 5</div>
+
+        <nav>
+            <a href="#overview" class="active" onclick="showSection('overview', this)">Overview</a>
+
+            <div class="section-label">Getting Started</div>
+            <a href="#installation" onclick="showSection('installation', this)">Installation</a>
+            <a href="#quickstart" onclick="showSection('quickstart', this)">Quick Start</a>
+
+            <div class="section-label">Architecture</div>
+            <a href="#architecture" onclick="showSection('architecture', this)">Project Structure</a>
+            <a href="#patterns" onclick="showSection('patterns', this)">Design Patterns</a>
+            <a href="#models" onclick="showSection('models', this)">Models</a>
+
+            <div class="section-label">API</div>
+            <a href="#routes" onclick="showSection('routes', this)">Routes</a>
+            <a href="#controllers" onclick="showSection('controllers', this)">Controllers</a>
+            <a href="#repositories" onclick="showSection('repositories', this)">Repositories</a>
+
+            <div class="section-label">Development</div>
+            <a href="#testing" onclick="showSection('testing', this)">Testing</a>
+            <a href="#ci" onclick="showSection('ci', this)">CI/CD</a>
+            <a href="#contributing" onclick="showSection('contributing', this)">Contributing</a>
+        </nav>
+    </aside>
+
+    <main class="main">
+        <!-- Overview -->
+        <div id="overview" class="section active">
+            <h2>Overview</h2>
+            <p>Vidly is a video rental store web application built with <strong>ASP.NET MVC 5</strong> that demonstrates core MVC architectural patterns including routing, controllers, models, view models, and Razor views.</p>
+
+            <h3>Key Features</h3>
+            <ul>
+                <li><strong>Full CRUD Operations</strong> — Create, read, update, and delete movies</li>
+                <li><strong>Custom Attribute Routing</strong> — Filter movies by release date with constraint validation</li>
+                <li><strong>View Models</strong> — Composed data objects for strongly-typed view rendering</li>
+                <li><strong>Data Validation</strong> — Data annotation-based model validation</li>
+                <li><strong>Thread-Safe Data Store</strong> — Concurrent access via lock-based synchronization</li>
+                <li><strong>Repository Pattern</strong> — Decoupled data access with interface-based design</li>
+                <li><strong>Dependency Injection Ready</strong> — Constructor injection in controllers</li>
+                <li><strong>22 Unit Tests</strong> — Models, view models, and controllers fully tested</li>
+            </ul>
+
+            <h3>Tech Stack</h3>
+            <table>
+                <tr><th>Component</th><th>Technology</th></tr>
+                <tr><td>Framework</td><td>ASP.NET MVC 5.2.3</td></tr>
+                <tr><td>Runtime</td><td>.NET Framework 4.5.2</td></tr>
+                <tr><td>View Engine</td><td>Razor</td></tr>
+                <tr><td>CSS</td><td>Bootstrap 3 (Lumen theme)</td></tr>
+                <tr><td>JavaScript</td><td>jQuery 1.10.2</td></tr>
+                <tr><td>Testing</td><td>MSTest + Coverlet</td></tr>
+                <tr><td>CI/CD</td><td>GitHub Actions</td></tr>
+            </table>
+        </div>
+
+        <!-- Installation -->
+        <div id="installation" class="section">
+            <h2>Installation</h2>
+
+            <h3>Prerequisites</h3>
+            <ul>
+                <li><strong>Visual Studio 2017+</strong> (or VS Code with C# extension)</li>
+                <li><strong>.NET Framework 4.5.2+</strong> runtime and targeting pack</li>
+                <li><strong>NuGet</strong> package manager</li>
+            </ul>
+
+            <h3>Clone & Setup</h3>
+            <pre><code>git clone https://github.com/sauravbhattacharya001/Vidly.git
+cd Vidly</code></pre>
+
+            <h3>Restore Dependencies</h3>
+            <p>In Visual Studio:</p>
+            <pre><code>Build → Restore NuGet Packages</code></pre>
+            <p>Or via CLI:</p>
+            <pre><code>nuget restore Vidly.sln</code></pre>
+
+            <h3>Run</h3>
+            <p>Press <strong>F5</strong> in Visual Studio to launch with IIS Express. The application starts at <code>http://localhost:51355/</code>.</p>
+        </div>
+
+        <!-- Quick Start -->
+        <div id="quickstart" class="section">
+            <h2>Quick Start</h2>
+            <p>After launching the application:</p>
+            <ol>
+                <li>Navigate to <code>/movies</code> to see the movie catalog</li>
+                <li>Click <strong>Create New</strong> to add a movie (name + optional release date)</li>
+                <li>Edit or delete movies from the listing page</li>
+                <li>Visit <code>/movies/random</code> for a random movie recommendation</li>
+                <li>Try <code>/movies/released/2024/01</code> to filter by release date</li>
+            </ol>
+        </div>
+
+        <!-- Architecture -->
+        <div id="architecture" class="section">
+            <h2>Project Structure</h2>
+            <div class="diagram">Vidly.sln
+├── Vidly/                          <span class="highlight">← Main web application</span>
+│   ├── Controllers/
+│   │   ├── HomeController.cs       Landing, About, Contact
+│   │   └── MoviesController.cs     Movie CRUD + filtering
+│   ├── Models/
+│   │   ├── Movie.cs                Movie entity + validation
+│   │   └── Customer.cs             Customer entity + validation
+│   ├── Repositories/
+│   │   ├── IRepository.cs          Generic CRUD interface
+│   │   ├── IMovieRepository.cs     Movie-specific queries
+│   │   └── InMemoryMovieRepository Thread-safe in-memory store
+│   ├── ViewModels/
+│   │   └── RandomMovieViewModel    Composed view model
+│   ├── Views/                      Razor views
+│   ├── App_Start/                  Config (routes, bundles, filters)
+│   ├── Content/                    CSS assets
+│   └── Scripts/                    JavaScript assets
+│
+└── Vidly.Tests/                    <span class="highlight">← Unit test project</span>
+    ├── Models/                     Model validation tests
+    ├── ViewModels/                 ViewModel tests
+    └── Controllers/                Controller tests</div>
+        </div>
+
+        <!-- Design Patterns -->
+        <div id="patterns" class="section">
+            <h2>Design Patterns</h2>
+
+            <div class="card">
+                <h4>🏗️ Repository Pattern</h4>
+                <p>Data access is abstracted behind <code>IRepository&lt;T&gt;</code> and <code>IMovieRepository</code> interfaces. The <code>InMemoryMovieRepository</code> provides a thread-safe implementation using <code>ConcurrentDictionary</code> with additional locking for atomic operations.</p>
+            </div>
+
+            <div class="card">
+                <h4>💉 Dependency Injection</h4>
+                <p><code>MoviesController</code> uses constructor injection, accepting an <code>IMovieRepository</code>. The parameterless constructor provides a default in-memory implementation, while tests inject mocks/fakes for isolation.</p>
+            </div>
+
+            <div class="card">
+                <h4>📦 View Model Pattern</h4>
+                <p><code>RandomMovieViewModel</code> composes a <code>Movie</code> with a list of <code>Customer</code> objects, enabling the view to render data from multiple domain entities without coupling to the models directly.</p>
+            </div>
+
+            <div class="card">
+                <h4>🔒 Thread Safety</h4>
+                <p>The in-memory repository uses <code>lock</code> statements for operations like <code>Add</code>, <code>Update</code>, and <code>Remove</code> that need atomicity (e.g., incrementing the ID counter). Read operations are lock-free via <code>ConcurrentDictionary</code>.</p>
+            </div>
+        </div>
+
+        <!-- Models -->
+        <div id="models" class="section">
+            <h2>Models</h2>
+
+            <h3>Movie</h3>
+            <table>
+                <tr><th>Property</th><th>Type</th><th>Validation</th></tr>
+                <tr><td>Id</td><td><code>int</code></td><td>Auto-assigned</td></tr>
+                <tr><td>Name</td><td><code>string</code></td><td>Required, max 255 chars</td></tr>
+                <tr><td>ReleaseDate</td><td><code>DateTime?</code></td><td>Optional</td></tr>
+            </table>
+
+            <h3>Customer</h3>
+            <table>
+                <tr><th>Property</th><th>Type</th><th>Validation</th></tr>
+                <tr><td>Id</td><td><code>int</code></td><td>Auto-assigned</td></tr>
+                <tr><td>Name</td><td><code>string</code></td><td>Required, max 255 chars</td></tr>
+            </table>
+
+            <h3>RandomMovieViewModel</h3>
+            <table>
+                <tr><th>Property</th><th>Type</th><th>Description</th></tr>
+                <tr><td>Movie</td><td><code>Movie</code></td><td>The randomly selected movie</td></tr>
+                <tr><td>Customers</td><td><code>List&lt;Customer&gt;</code></td><td>Associated customers</td></tr>
+            </table>
+        </div>
+
+        <!-- Routes -->
+        <div id="routes" class="section">
+            <h2>Routes</h2>
+
+            <table>
+                <tr><th>Method</th><th>Route</th><th>Description</th></tr>
+                <tr><td><span class="badge badge-get">GET</span></td><td><code>/</code></td><td>Home page</td></tr>
+                <tr><td><span class="badge badge-get">GET</span></td><td><code>/movies</code></td><td>Movie listing (pagination + sorting)</td></tr>
+                <tr><td><span class="badge badge-get">GET</span></td><td><code>/movies/random</code></td><td>Random movie showcase</td></tr>
+                <tr><td><span class="badge badge-get">GET</span></td><td><code>/movies/create</code></td><td>New movie form</td></tr>
+                <tr><td><span class="badge badge-post">POST</span></td><td><code>/movies/create</code></td><td>Submit new movie</td></tr>
+                <tr><td><span class="badge badge-get">GET</span></td><td><code>/movies/edit/{id}</code></td><td>Edit movie form</td></tr>
+                <tr><td><span class="badge badge-post">POST</span></td><td><code>/movies/edit/{id}</code></td><td>Submit movie edits</td></tr>
+                <tr><td><span class="badge badge-post">POST</span></td><td><code>/movies/delete/{id}</code></td><td>Delete a movie</td></tr>
+                <tr><td><span class="badge badge-get">GET</span></td><td><code>/movies/released/{year}/{month}</code></td><td>Filter by release date</td></tr>
+            </table>
+
+            <h3>URL Parameters</h3>
+            <table>
+                <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
+                <tr><td><code>pageIndex</code></td><td>int</td><td>Page number (default: 1)</td></tr>
+                <tr><td><code>sortBy</code></td><td>string</td><td><code>Name</code> (default) or <code>Id</code></td></tr>
+                <tr><td><code>year</code></td><td>int</td><td>Release year (1888–2100)</td></tr>
+                <tr><td><code>month</code></td><td>int</td><td>Release month (01–12)</td></tr>
+            </table>
+        </div>
+
+        <!-- Controllers -->
+        <div id="controllers" class="section">
+            <h2>Controllers</h2>
+
+            <h3>MoviesController</h3>
+            <p>Handles all movie CRUD operations. Uses constructor injection with <code>IMovieRepository</code>.</p>
+
+            <pre><code>public class MoviesController : Controller
+{
+    private readonly IMovieRepository _movieRepository;
+
+    // Default: uses InMemoryMovieRepository
+    public MoviesController() : this(new InMemoryMovieRepository()) { }
+
+    // DI-ready: accepts any IMovieRepository
+    public MoviesController(IMovieRepository movieRepository)
+    {
+        _movieRepository = movieRepository
+            ?? throw new ArgumentNullException(nameof(movieRepository));
+    }
+}</code></pre>
+
+            <h3>HomeController</h3>
+            <p>Serves the landing page, About, and Contact views. Standard MVC controller with no custom logic.</p>
+        </div>
+
+        <!-- Repositories -->
+        <div id="repositories" class="section">
+            <h2>Repositories</h2>
+
+            <h3>Interface Hierarchy</h3>
+            <div class="diagram">IRepository&lt;T&gt;           <span class="highlight">← Generic CRUD interface</span>
+│   GetAll()
+│   GetById(id)
+│   Add(entity)
+│   Update(entity)
+│   Remove(id)
+│
+└── IMovieRepository       <span class="highlight">← Movie-specific queries</span>
+    │   GetByReleaseDate(year, month)
+    │   GetRandom()
+    │
+    └── InMemoryMovieRepository  <span class="highlight">← Thread-safe implementation</span>
+        Uses ConcurrentDictionary + lock</div>
+
+            <h3>Thread Safety</h3>
+            <p>The <code>InMemoryMovieRepository</code> uses a two-layer approach:</p>
+            <ul>
+                <li><code>ConcurrentDictionary&lt;int, Movie&gt;</code> for lock-free reads</li>
+                <li><code>lock(_lock)</code> for write operations requiring atomicity (ID generation, add, update, remove)</li>
+            </ul>
+        </div>
+
+        <!-- Testing -->
+        <div id="testing" class="section">
+            <h2>Testing</h2>
+
+            <h3>Running Tests</h3>
+            <pre><code># Restore and run
+dotnet restore Vidly.Tests/Vidly.Tests.csproj
+dotnet test Vidly.Tests/Vidly.Tests.csproj
+
+# With coverage
+dotnet test Vidly.Tests/Vidly.Tests.csproj --collect:"XPlat Code Coverage"</code></pre>
+
+            <h3>Test Suite (22 Tests)</h3>
+            <table>
+                <tr><th>Class</th><th>Tests</th><th>Coverage</th></tr>
+                <tr><td>MovieModelTests</td><td>7</td><td>Validation, required fields, string length, defaults</td></tr>
+                <tr><td>CustomerModelTests</td><td>5</td><td>Validation, required fields, string length, defaults</td></tr>
+                <tr><td>ViewModelTests</td><td>3</td><td>Default init, population, composition</td></tr>
+                <tr><td>MoviesControllerTests</td><td>7</td><td>Index sorting, Random, Edit, Create, ByReleaseDate, 404s</td></tr>
+            </table>
+
+            <h3>Coverage Reports</h3>
+            <p>Coverage reports are generated in Cobertura XML format and uploaded as CI artifacts on every push to <code>master</code>.</p>
+        </div>
+
+        <!-- CI/CD -->
+        <div id="ci" class="section">
+            <h2>CI/CD Pipeline</h2>
+            <p>The project uses GitHub Actions for continuous integration:</p>
+
+            <div class="card">
+                <h4>⚙️ Build & Test Workflow</h4>
+                <p>Triggered on every push to <code>master</code> and on pull requests.</p>
+                <ul>
+                    <li>Runs on <code>windows-latest</code> with .NET SDK 8.0</li>
+                    <li>Restores NuGet packages</li>
+                    <li>Builds in Release configuration</li>
+                    <li>Runs all 22 tests with code coverage</li>
+                    <li>Uploads test results (TRX) and coverage (Cobertura) as artifacts</li>
+                    <li>Outputs coverage summary in the workflow logs</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Contributing -->
+        <div id="contributing" class="section">
+            <h2>Contributing</h2>
+            <ol>
+                <li><strong>Fork</strong> the repository</li>
+                <li><strong>Create</strong> a feature branch: <code>git checkout -b feature/your-feature</code></li>
+                <li><strong>Write tests</strong> for new functionality</li>
+                <li><strong>Commit</strong> your changes: <code>git commit -m "Add your feature"</code></li>
+                <li><strong>Push</strong>: <code>git push origin feature/your-feature</code></li>
+                <li><strong>Open</strong> a Pull Request</li>
+            </ol>
+
+            <h3>Code Style</h3>
+            <ul>
+                <li>Follow existing C# naming conventions (PascalCase for public members)</li>
+                <li>Add XML doc comments to public interfaces and complex methods</li>
+                <li>Include unit tests for all new logic</li>
+                <li>Keep controllers thin — business logic belongs in repositories/services</li>
+            </ul>
+        </div>
+    </main>
+
+    <script>
+    function showSection(id, link) {
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.sidebar nav a').forEach(a => a.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        if (link) link.classList.add('active');
+        // Close mobile menu
+        document.querySelector('.sidebar').classList.remove('open');
+        window.scrollTo(0, 0);
+    }
+
+    // Handle hash navigation
+    if (window.location.hash) {
+        const id = window.location.hash.substring(1);
+        const section = document.getElementById(id);
+        const link = document.querySelector(`a[href="#${id}"]`);
+        if (section) showSection(id, link);
+    }
+    </script>
+</body>
+</html>
