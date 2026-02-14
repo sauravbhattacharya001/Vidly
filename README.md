@@ -129,15 +129,23 @@ Coverage reports are generated in Cobertura format and uploaded as CI artifacts 
 | **Testing** | MSTest + Coverlet |
 | **CI/CD** | GitHub Actions |
 
+## 📚 Documentation
+
+- **[Architecture Guide](ARCHITECTURE.md)** — Deep dive into the codebase: request lifecycle, layer responsibilities, threading model, and extension points
+- **[Security Policy](SECURITY.md)** — Security measures, known limitations, and vulnerability reporting
+- **[API Docs](docs/index.html)** — Interactive documentation site with routes, models, and design patterns
+
 ## 🤝 Contributing
 
 Contributions are welcome! Here's how:
 
 1. **Fork** the repository
 2. **Create** a feature branch: `git checkout -b feature/your-feature`
-3. **Commit** your changes: `git commit -m "Add your feature"`
-4. **Push** to the branch: `git push origin feature/your-feature`
-5. **Open** a Pull Request
+3. **Read** the [Architecture Guide](ARCHITECTURE.md) to understand the codebase
+4. **Write tests** for new functionality
+5. **Commit** your changes: `git commit -m "Add your feature"`
+6. **Push** to the branch: `git push origin feature/your-feature`
+7. **Open** a Pull Request
 
 Please ensure your code follows the existing style and includes appropriate tests.
 
