@@ -126,6 +126,24 @@ namespace Vidly.Controllers
             return View(matches);
         }
 
+        // POST: Movies/Delete/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult Delete(int id)
+        {
+            lock (_moviesLock)
+            {
+                var movie = _movies.SingleOrDefault(m => m.Id == id);
+
+                if (movie == null)
+                    return HttpNotFound();
+
+                _movies.Remove(movie);
+            }
+
+            return RedirectToAction("Index");
+        }
+
         // GET: Movies
         public ActionResult Index(int? pageIndex, string sortBy)
         {

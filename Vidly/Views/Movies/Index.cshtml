@@ -35,6 +35,12 @@ else
                     <td>@(movie.ReleaseDate.HasValue ? movie.ReleaseDate.Value.ToString("MMM dd, yyyy") : "—")</td>
                     <td>
                         @Html.ActionLink("Edit", "Edit", new { id = movie.Id }, new { @class = "btn btn-sm btn-info" })
+                        @using (Html.BeginForm("Delete", "Movies", new { id = movie.Id }, FormMethod.Post, new { style = "display:inline" }))
+                        {
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-sm btn-danger"
+                                    onclick="return confirm('Delete this movie?');">Delete</button>
+                        }
                     </td>
                 </tr>
             }
