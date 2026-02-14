@@ -1,0 +1,63 @@
+@model Vidly.Models.Movie
+@{
+    ViewBag.Title = Model.Name;
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="row">
+    <div class="col-md-8 col-md-offset-2">
+        <h2>@Model.Name</h2>
+
+        <div class="panel panel-default">
+            <div class="panel-body">
+                <dl class="dl-horizontal">
+                    <dt>ID</dt>
+                    <dd>@Model.Id</dd>
+
+                    <dt>Release Date</dt>
+                    <dd>@(Model.ReleaseDate.HasValue ? Model.ReleaseDate.Value.ToString("MMMM dd, yyyy") : "Unknown")</dd>
+
+                    <dt>Genre</dt>
+                    <dd>
+                        @if (Model.Genre.HasValue)
+                        {
+                            <span class="label label-info">@Model.Genre</span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">Not categorized</span>
+                        }
+                    </dd>
+
+                    <dt>Rating</dt>
+                    <dd>
+                        @if (Model.Rating.HasValue)
+                        {
+                            for (int i = 1; i <= 5; i++)
+                            {
+                                if (i <= Model.Rating.Value)
+                                {
+                                    <span class="glyphicon glyphicon-star text-warning" title="@Model.Rating / 5"></span>
+                                }
+                                else
+                                {
+                                    <span class="glyphicon glyphicon-star-empty text-muted"></span>
+                                }
+                            }
+                            <span class="text-muted" style="margin-left: 8px;">(@Model.Rating / 5)</span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">Not rated</span>
+                        }
+                    </dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="btn-group">
+            @Html.ActionLink("Edit", "Edit", new { id = Model.Id }, new { @class = "btn btn-primary" })
+            @Html.ActionLink("Back to List", "Index", null, new { @class = "btn btn-default" })
+        </div>
+    </div>
+</div>

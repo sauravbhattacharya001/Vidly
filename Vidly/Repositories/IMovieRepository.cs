@@ -17,5 +17,12 @@ namespace Vidly.Repositories
         /// Returns a random movie from the store, or null if no movies exist.
         /// </summary>
         Movie GetRandom();
+
+        /// <summary>
+        /// Searches movies by name (case-insensitive substring match),
+        /// optionally filtered by genre and minimum rating.
+        /// Results are ordered by name.
+        /// </summary>
+        IReadOnlyList<Movie> Search(string query, Genre? genre, int? minRating);
     }
 }

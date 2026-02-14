@@ -98,7 +98,7 @@ namespace Vidly.Tests
         }
 
         /// <summary>
-        /// Ensures default values are sensible (Id = 0, Name = null, ReleaseDate = null).
+        /// Ensures default values are sensible (Id = 0, Name = null, ReleaseDate = null, Genre = null, Rating = null).
         /// </summary>
         [TestMethod]
         public void Movie_Defaults_AreNull()
@@ -108,6 +108,136 @@ namespace Vidly.Tests
             Assert.AreEqual(0, movie.Id);
             Assert.IsNull(movie.Name);
             Assert.IsNull(movie.ReleaseDate);
+            Assert.IsNull(movie.Genre);
+            Assert.IsNull(movie.Rating);
+        }
+
+        /// <summary>
+        /// Verifies that Genre is optional.
+        /// </summary>
+        [TestMethod]
+        public void Movie_GenreIsOptional()
+        {
+            var movie = new Movie { Id = 1, Name = "Test", Genre = null };
+            var results = ValidateModel(movie);
+
+            Assert.IsFalse(
+                results.Any(r => r.MemberNames.Contains("Genre")),
+                "Genre should be optional.");
+        }
+
+        /// <summary>
+        /// Verifies that a movie with a valid genre passes validation.
+        /// </summary>
+        [TestMethod]
+        public void Movie_WithGenre_PassesValidation()
+        {
+            var movie = new Movie { Id = 1, Name = "Test", Genre = Genre.Action };
+            var results = ValidateModel(movie);
+
+            Assert.AreEqual(0, results.Count,
+                "Movie with valid genre should pass validation.");
+        }
+
+        /// <summary>
+        /// Verifies that Rating is optional.
+        /// </summary>
+        [TestMethod]
+        public void Movie_RatingIsOptional()
+        {
+            var movie = new Movie { Id = 1, Name = "Test", Rating = null };
+            var results = ValidateModel(movie);
+
+            Assert.IsFalse(
+                results.Any(r => r.MemberNames.Contains("Rating")),
+                "Rating should be optional.");
+        }
+
+        /// <summary>
+        /// Verifies that valid rating passes validation.
+        /// </summary>
+        [TestMethod]
+        public void Movie_ValidRating_PassesValidation()
+        {
+            var movie = new Movie { Id = 1, Name = "Test", Rating = 3 };
+            var results = ValidateModel(movie);
+
+            Assert.AreEqual(0, results.Count,
+                "Movie with valid rating (3) should pass validation.");
+        }
+
+        /// <summary>
+        /// Verifies that rating below 1 fails validation.
+        /// </summary>
+        [TestMethod]
+        public void Movie_RatingBelowRange_FailsValidation()
+        {
+            var movie = new Movie { Id = 1, Name = "Test", Rating = 0 };
+            var results = ValidateModel(movie);
+
+            Assert.IsTrue(
+                results.Any(r => r.MemberNames.Contains("Rating")),
+                "Rating of 0 should fail validation (min is 1).");
+        }
+
+        /// <summary>
+        /// Verifies that rating above 5 fails validation.
+        /// </summary>
+        [TestMethod]
+        public void Movie_RatingAboveRange_FailsValidation()
+        {
+            var movie = new Movie { Id = 1, Name = "Test", Rating = 6 };
+            var results = ValidateModel(movie);
+
+            Assert.IsTrue(
+                results.Any(r => r.MemberNames.Contains("Rating")),
+                "Rating of 6 should fail validation (max is 5).");
+        }
+
+        /// <summary>
+        /// Verifies boundary: rating of 1 passes.
+        /// </summary>
+        [TestMethod]
+        public void Movie_RatingAtMin_PassesValidation()
+        {
+            var movie = new Movie { Id = 1, Name = "Test", Rating = 1 };
+            var results = ValidateModel(movie);
+
+            Assert.AreEqual(0, results.Count,
+                "Rating of 1 should pass validation.");
+        }
+
+        /// <summary>
+        /// Verifies boundary: rating of 5 passes.
+        /// </summary>
+        [TestMethod]
+        public void Movie_RatingAtMax_PassesValidation()
+        {
+            var movie = new Movie { Id = 1, Name = "Test", Rating = 5 };
+            var results = ValidateModel(movie);
+
+            Assert.AreEqual(0, results.Count,
+                "Rating of 5 should pass validation.");
+        }
+
+        /// <summary>
+        /// Verifies fully populated movie with all fields passes validation.
+        /// </summary>
+        [TestMethod]
+        public void Movie_FullyPopulated_PassesValidation()
+        {
+            var movie = new Movie
+            {
+                Id = 1,
+                Name = "Inception",
+                ReleaseDate = new DateTime(2010, 7, 16),
+                Genre = Genre.SciFi,
+                Rating = 5
+            };
+            var results = ValidateModel(movie);
+
+            Assert.AreEqual(0, results.Count,
+                "A fully populated movie should pass validation.");
         }
 
         private static IList<ValidationResult> ValidateModel(object model)

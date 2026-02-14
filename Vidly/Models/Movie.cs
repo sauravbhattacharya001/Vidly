@@ -17,5 +17,12 @@ namespace Vidly.Models
         [Display(Name = "Release Date")]
         [DataType(DataType.Date)]
         public DateTime? ReleaseDate { get; set; }
+
+        [Display(Name = "Genre")]
+        public Genre? Genre { get; set; }
+
+        [Display(Name = "Rating")]
+        [Range(1, 5, ErrorMessage = "Rating must be between 1 and 5.")]
+        public int? Rating { get; set; }
     }
 }

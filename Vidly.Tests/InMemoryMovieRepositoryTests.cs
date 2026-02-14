@@ -293,6 +293,126 @@ namespace Vidly.Tests
                 "All concurrently added movies should be present in the store.");
         }
 
+        // ---------- Search ----------
+
+        [TestMethod]
+        public void Search_ByName_ReturnsCaseInsensitiveMatches()
+        {
+            var results = _repo.Search("shrek", null, null);
+
+            Assert.AreEqual(1, results.Count);
+            Assert.AreEqual("Shrek!", results[0].Name);
+        }
+
+        [TestMethod]
+        public void Search_ByName_SubstringMatch()
+        {
+            var results = _repo.Search("the", null, null);
+
+            Assert.IsTrue(results.Count >= 1,
+                "Should match 'The Godfather' via substring.");
+            Assert.IsTrue(results.Any(m => m.Name == "The Godfather"));
+        }
+
+        [TestMethod]
+        public void Search_ByGenre_ReturnsMatchingMovies()
+        {
+            var results = _repo.Search(null, Genre.Animation, null);
+
+            Assert.IsTrue(results.Count >= 2,
+                "Should find at least Shrek! and Toy Story as Animation.");
+            Assert.IsTrue(results.All(m => m.Genre == Genre.Animation));
+        }
+
+        [TestMethod]
+        public void Search_ByMinRating_ReturnsHighRated()
+        {
+            var results = _repo.Search(null, null, 5);
+
+            Assert.IsTrue(results.Count >= 2,
+                "Should find at least The Godfather and Toy Story with 5 stars.");
+            Assert.IsTrue(results.All(m => m.Rating.HasValue && m.Rating.Value >= 5));
+        }
+
+        [TestMethod]
+        public void Search_CombinedFilters_NarrowsResults()
+        {
+            // Animation movies with rating >= 5
+            var results = _repo.Search(null, Genre.Animation, 5);
+
+            Assert.IsTrue(results.Count >= 1,
+                "Should find Toy Story (Animation, 5 stars).");
+            Assert.IsTrue(results.All(m =>
+                m.Genre == Genre.Animation && m.Rating >= 5));
+        }
+
+        [TestMethod]
+        public void Search_NoFilters_ReturnsAllSortedByName()
+        {
+            var results = _repo.Search(null, null, null);
+
+            Assert.IsTrue(results.Count >= 3);
+            for (int i = 1; i < results.Count; i++)
+            {
+                Assert.IsTrue(
+                    string.Compare(results[i - 1].Name, results[i].Name, StringComparison.Ordinal) <= 0,
+                    "Search with no filters should return all movies sorted by name.");
+            }
+        }
+
+        [TestMethod]
+        public void Search_NoMatches_ReturnsEmptyList()
+        {
+            var results = _repo.Search("zzz_nonexistent", null, null);
+
+            Assert.AreEqual(0, results.Count);
+        }
+
+        [TestMethod]
+        public void Search_EmptyQuery_TreatedAsNoFilter()
+        {
+            var all = _repo.Search(null, null, null);
+            var withEmpty = _repo.Search("", null, null);
+            var withWhitespace = _repo.Search("   ", null, null);
+
+            Assert.AreEqual(all.Count, withEmpty.Count);
+            Assert.AreEqual(all.Count, withWhitespace.Count);
+        }
+
+        // ---------- Genre and Rating cloning ----------
+
+        [TestMethod]
+        public void GetById_ClonesGenreAndRating()
+        {
+            var movie = _repo.GetById(1);
+
+            Assert.IsNotNull(movie.Genre, "Pre-seeded Shrek! should have a genre.");
+            Assert.IsNotNull(movie.Rating, "Pre-seeded Shrek! should have a rating.");
+            Assert.AreEqual(Genre.Animation, movie.Genre);
+            Assert.AreEqual(4, movie.Rating);
+        }
+
+        [TestMethod]
+        public void Update_UpdatesGenreAndRating()
+        {
+            var movie = _repo.GetById(1);
+            movie.Genre = Genre.Comedy;
+            movie.Rating = 3;
+
+            _repo.Update(movie);
+
+            var updated = _repo.GetById(1);
+            Assert.AreEqual(Genre.Comedy, updated.Genre);
+            Assert.AreEqual(3, updated.Rating);
+
+            // Restore original values
+            updated.Genre = Genre.Animation;
+            updated.Rating = 4;
+            _repo.Update(updated);
+        }
+
+        // ---------- Concurrent access ----------
+
         [TestMethod]
         public void ConcurrentAdds_GenerateUniqueIds()
         {

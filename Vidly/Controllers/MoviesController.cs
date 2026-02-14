@@ -54,6 +54,17 @@ namespace Vidly.Controllers
             return View(viewModel);
         }
 
+        // GET: Movies/Details/5
+        public ActionResult Details(int id)
+        {
+            var movie = _movieRepository.GetById(id);
+
+            if (movie == null)
+                return HttpNotFound();
+
+            return View(movie);
+        }
+
         // GET: Movies/Create
         public ActionResult Create()
         {
@@ -136,18 +147,55 @@ namespace Vidly.Controllers
         }
 
         // GET: Movies
-        public ActionResult Index(int? pageIndex, string sortBy)
+        public ActionResult Index(string query, Genre? genre, int? minRating, string sortBy)
         {
-            var sort = string.IsNullOrWhiteSpace(sortBy) ? "Name" : sortBy;
-            var movies = _movieRepository.GetAll();
+            var allMovies = _movieRepository.GetAll();
+            var totalCount = allMovies.Count;
 
-            IEnumerable<Movie> sorted;
-            if (string.Equals(sort, "Name", StringComparison.OrdinalIgnoreCase))
-                sorted = movies.OrderBy(m => m.Name);
+            // Use Search if any filter is active, otherwise return all
+            IReadOnlyList<Movie> movies;
+            if (!string.IsNullOrWhiteSpace(query) || genre.HasValue || minRating.HasValue)
+            {
+                movies = _movieRepository.Search(query, genre, minRating);
+            }
             else
-                sorted = movies.OrderBy(m => m.Id);
+            {
+                movies = allMovies;
+            }
 
-            return View(sorted.ToList());
+            // Apply sorting
+            var sort = string.IsNullOrWhiteSpace(sortBy) ? "Name" : sortBy;
+            IEnumerable<Movie> sorted;
+            switch (sort.ToLowerInvariant())
+            {
+                case "rating":
+                    sorted = movies.OrderByDescending(m => m.Rating ?? 0).ThenBy(m => m.Name);
+                    break;
+                case "releasedate":
+                    sorted = movies.OrderByDescending(m => m.ReleaseDate ?? DateTime.MinValue).ThenBy(m => m.Name);
+                    break;
+                case "genre":
+                    sorted = movies.OrderBy(m => m.Genre?.ToString() ?? "").ThenBy(m => m.Name);
+                    break;
+                case "id":
+                    sorted = movies.OrderBy(m => m.Id);
+                    break;
+                default:
+                    sorted = movies.OrderBy(m => m.Name);
+                    break;
+            }
+
+            var viewModel = new MovieSearchViewModel
+            {
+                Movies = sorted.ToList(),
+                Query = query,
+                Genre = genre,
+                MinRating = minRating,
+                SortBy = sort,
+                TotalCount = totalCount
+            };
+
+            return View(viewModel);
         }
     }
 }

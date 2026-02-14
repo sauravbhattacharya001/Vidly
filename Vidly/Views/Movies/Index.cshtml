@@ -1,4 +1,4 @@
-@model IEnumerable<Vidly.Models.Movie>
+@model Vidly.ViewModels.MovieSearchViewModel
 @{
     ViewBag.Title = "Movies";
     Layout = "~/Views/Shared/_Layout.cshtml";
@@ -7,33 +7,115 @@
 <h2>Movies</h2>
 
 <p>
-    @Html.ActionLink("Add New Movie", "Create", null, new { @class = "btn btn-primary" })
-    @Html.ActionLink("Random Movie", "Random", null, new { @class = "btn btn-default" })
+    @Html.ActionLink("Add New Movie", "Create", "Movies", null, new { @class = "btn btn-primary" })
+    @Html.ActionLink("Random Movie", "Random", "Movies", null, new { @class = "btn btn-default" })
 </p>
 
-@if (!Model.Any())
+@* Search and filter panel *@
+<div class="panel panel-default">
+    <div class="panel-body">
+        @using (Html.BeginForm("Index", "Movies", FormMethod.Get, new { @class = "form-inline" }))
+        {
+            <div class="form-group" style="margin-right: 10px;">
+                <label for="query" class="sr-only">Search</label>
+                <input type="text" name="query" id="query" class="form-control"
+                       placeholder="Search by name..." value="@Model.Query" />
+            </div>
+            <div class="form-group" style="margin-right: 10px;">
+                <label for="genre" class="sr-only">Genre</label>
+                @Html.DropDownList("genre",
+                    new SelectList(Enum.GetValues(typeof(Vidly.Models.Genre)), Model.Genre),
+                    "All Genres",
+                    new { @class = "form-control" })
+            </div>
+            <div class="form-group" style="margin-right: 10px;">
+                <label for="minRating" class="sr-only">Min Rating</label>
+                @Html.DropDownList("minRating",
+                    new SelectList(
+                        new[] {
+                            new { Value = "", Text = "Any Rating" },
+                            new { Value = "1", Text = "★ and up" },
+                            new { Value = "2", Text = "★★ and up" },
+                            new { Value = "3", Text = "★★★ and up" },
+                            new { Value = "4", Text = "★★★★ and up" },
+                            new { Value = "5", Text = "★★★★★ only" }
+                        }, "Value", "Text", Model.MinRating?.ToString() ?? ""),
+                    new { @class = "form-control" })
+            </div>
+            <button type="submit" class="btn btn-info">
+                <span class="glyphicon glyphicon-search"></span> Search
+            </button>
+            if (!string.IsNullOrWhiteSpace(Model.Query) || Model.Genre.HasValue || Model.MinRating.HasValue)
+            {
+                @Html.ActionLink("Clear", "Index", null, new { @class = "btn btn-default", style = "margin-left: 5px;" })
+            }
+        }
+    </div>
+</div>
+
+@if (Model.Movies.Count < Model.TotalCount)
 {
-    <p class="text-muted">No movies available.</p>
+    <p class="text-muted">
+        Showing @Model.Movies.Count of @Model.TotalCount movies
+    </p>
+}
+
+@if (!Model.Movies.Any())
+{
+    <p class="text-muted">No movies match your search criteria.</p>
 }
 else
 {
     <table class="table table-bordered table-hover">
         <thead>
             <tr>
-                <th>@Html.ActionLink("Id", "Index", new { sortBy = "Id" })</th>
-                <th>@Html.ActionLink("Name", "Index", new { sortBy = "Name" })</th>
-                <th>Release Date</th>
+                <th>@Html.ActionLink("Name", "Index", new { query = Model.Query, genre = Model.Genre, minRating = Model.MinRating, sortBy = "Name" })</th>
+                <th>@Html.ActionLink("Genre", "Index", new { query = Model.Query, genre = Model.Genre, minRating = Model.MinRating, sortBy = "Genre" })</th>
+                <th>@Html.ActionLink("Rating", "Index", new { query = Model.Query, genre = Model.Genre, minRating = Model.MinRating, sortBy = "Rating" })</th>
+                <th>@Html.ActionLink("Release Date", "Index", new { query = Model.Query, genre = Model.Genre, minRating = Model.MinRating, sortBy = "ReleaseDate" })</th>
                 <th>Actions</th>
             </tr>
         </thead>
         <tbody>
-            @foreach (var movie in Model)
+            @foreach (var movie in Model.Movies)
             {
                 <tr>
-                    <td>@movie.Id</td>
-                    <td>@movie.Name</td>
+                    <td>
+                        @Html.ActionLink(movie.Name, "Details", new { id = movie.Id })
+                    </td>
+                    <td>
+                        @if (movie.Genre.HasValue)
+                        {
+                            <span class="label label-info">@movie.Genre</span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">—</span>
+                        }
+                    </td>
+                    <td>
+                        @if (movie.Rating.HasValue)
+                        {
+                            for (int i = 1; i <= 5; i++)
+                            {
+                                if (i <= movie.Rating.Value)
+                                {
+                                    <span class="glyphicon glyphicon-star text-warning"></span>
+                                }
+                                else
+                                {
+                                    <span class="glyphicon glyphicon-star-empty text-muted"></span>
+                                }
+                            }
+                        }
+                        else
+                        {
+                            <span class="text-muted">—</span>
+                        }
+                    </td>
                     <td>@(movie.ReleaseDate.HasValue ? movie.ReleaseDate.Value.ToString("MMM dd, yyyy") : "—")</td>
                     <td>
+                        @Html.ActionLink("Details", "Details", new { id = movie.Id }, new { @class = "btn btn-sm btn-default" })
                         @Html.ActionLink("Edit", "Edit", new { id = movie.Id }, new { @class = "btn btn-sm btn-info" })
                         @using (Html.BeginForm("Delete", "Movies", new { id = movie.Id }, FormMethod.Post, new { style = "display:inline" }))
                         {

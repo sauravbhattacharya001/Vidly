@@ -14,9 +14,9 @@ namespace Vidly.Repositories
     {
         private static readonly List<Movie> _movies = new List<Movie>
         {
-            new Movie { Id = 1, Name = "Shrek!", ReleaseDate = new DateTime(2001, 5, 18) },
-            new Movie { Id = 2, Name = "The Godfather", ReleaseDate = new DateTime(1972, 3, 24) },
-            new Movie { Id = 3, Name = "Toy Story", ReleaseDate = new DateTime(1995, 11, 22) }
+            new Movie { Id = 1, Name = "Shrek!", ReleaseDate = new DateTime(2001, 5, 18), Genre = Genre.Animation, Rating = 4 },
+            new Movie { Id = 2, Name = "The Godfather", ReleaseDate = new DateTime(1972, 3, 24), Genre = Genre.Drama, Rating = 5 },
+            new Movie { Id = 3, Name = "Toy Story", ReleaseDate = new DateTime(1995, 11, 22), Genre = Genre.Animation, Rating = 5 }
         };
 
         private static readonly object _lock = new object();
@@ -65,6 +65,8 @@ namespace Vidly.Repositories
 
                 existing.Name = movie.Name;
                 existing.ReleaseDate = movie.ReleaseDate;
+                existing.Genre = movie.Genre;
+                existing.Rating = movie.Rating;
             }
         }
 
@@ -96,6 +98,38 @@ namespace Vidly.Repositories
             }
         }
 
+        public IReadOnlyList<Movie> Search(string query, Genre? genre, int? minRating)
+        {
+            lock (_lock)
+            {
+                IEnumerable<Movie> results = _movies;
+
+                if (!string.IsNullOrWhiteSpace(query))
+                {
+                    results = results.Where(m =>
+                        m.Name != null &&
+                        m.Name.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0);
+                }
+
+                if (genre.HasValue)
+                {
+                    results = results.Where(m => m.Genre == genre.Value);
+                }
+
+                if (minRating.HasValue)
+                {
+                    results = results.Where(m =>
+                        m.Rating.HasValue && m.Rating.Value >= minRating.Value);
+                }
+
+                return results
+                    .OrderBy(m => m.Name)
+                    .Select(Clone)
+                    .ToList()
+                    .AsReadOnly();
+            }
+        }
+
         public Movie GetRandom()
         {
             lock (_lock)
@@ -117,7 +151,9 @@ namespace Vidly.Repositories
             {
                 Id = source.Id,
                 Name = source.Name,
-                ReleaseDate = source.ReleaseDate
+                ReleaseDate = source.ReleaseDate,
+                Genre = source.Genre,
+                Rating = source.Rating
             };
         }
     }
