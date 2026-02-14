@@ -1,0 +1,67 @@
+name: CI — Build & Test with Coverage
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Build & Test (.NET Framework)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore test project
+        run: dotnet restore Vidly.Tests/Vidly.Tests.csproj
+
+      - name: Build test project
+        run: dotnet build Vidly.Tests/Vidly.Tests.csproj --configuration Release --no-restore
+
+      - name: Run tests with coverage
+        run: |
+          dotnet test Vidly.Tests/Vidly.Tests.csproj `
+            --configuration Release `
+            --no-build `
+            --logger "trx;LogFileName=test-results.trx" `
+            --collect:"XPlat Code Coverage" `
+            --results-directory ./TestResults
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: ./TestResults/**/*.trx
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: ./TestResults/**/coverage.cobertura.xml
+
+      - name: Coverage summary
+        if: always()
+        run: |
+          $coverageFile = Get-ChildItem -Path ./TestResults -Recurse -Filter "coverage.cobertura.xml" | Select-Object -First 1
+          if ($coverageFile) {
+            Write-Host "Coverage report generated: $($coverageFile.FullName)"
+            [xml]$xml = Get-Content $coverageFile.FullName
+            $lineRate = [math]::Round([double]$xml.coverage.'line-rate' * 100, 1)
+            $branchRate = [math]::Round([double]$xml.coverage.'branch-rate' * 100, 1)
+            Write-Host "::notice::Line Coverage: $lineRate% | Branch Coverage: $branchRate%"
+          } else {
+            Write-Host "::warning::No coverage report found."
+          }

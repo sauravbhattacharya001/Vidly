@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>Vidly.Tests</RootNamespace>
+    <AssemblyName>Vidly.Tests</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="MSTest.TestAdapter" Version="3.1.1" />
+    <PackageReference Include="MSTest.TestFramework" Version="3.1.1" />
+    <PackageReference Include="coverlet.collector" Version="6.0.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="coverlet.msbuild" Version="6.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.AspNet.Mvc" Version="5.2.9" />
+    <PackageReference Include="Microsoft.AspNet.Web.Optimization" Version="1.1.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Web" />
+    <Reference Include="System.ComponentModel.DataAnnotations" />
+  </ItemGroup>
+
+  <!--
+    Compile source files from the main project directly into the test assembly.
+    This avoids the complexity of cross-referencing an old-style .csproj from
+    an SDK-style project while still getting accurate code coverage metrics.
+  -->
+  <ItemGroup>
+    <Compile Include="..\Vidly\Models\*.cs" Link="Source\Models\%(Filename)%(Extension)" />
+    <Compile Include="..\Vidly\ViewModels\*.cs" Link="Source\ViewModels\%(Filename)%(Extension)" />
+    <Compile Include="..\Vidly\Controllers\*.cs" Link="Source\Controllers\%(Filename)%(Extension)" />
+    <Compile Include="..\Vidly\App_Start\RouteConfig.cs" Link="Source\App_Start\RouteConfig.cs" />
+    <Compile Include="..\Vidly\App_Start\FilterConfig.cs" Link="Source\App_Start\FilterConfig.cs" />
+    <Compile Include="..\Vidly\App_Start\BundleConfig.cs" Link="Source\App_Start\BundleConfig.cs" />
+    <Compile Include="..\Vidly\Global.asax.cs" Link="Source\Global.asax.cs" />
+  </ItemGroup>
+
+</Project>
