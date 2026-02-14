@@ -37,6 +37,7 @@
     <Compile Include="..\Vidly\Models\*.cs" Link="Source\Models\%(Filename)%(Extension)" />
     <Compile Include="..\Vidly\ViewModels\*.cs" Link="Source\ViewModels\%(Filename)%(Extension)" />
     <Compile Include="..\Vidly\Controllers\*.cs" Link="Source\Controllers\%(Filename)%(Extension)" />
+    <Compile Include="..\Vidly\Repositories\*.cs" Link="Source\Repositories\%(Filename)%(Extension)" />
     <Compile Include="..\Vidly\App_Start\RouteConfig.cs" Link="Source\App_Start\RouteConfig.cs" />
     <Compile Include="..\Vidly\App_Start\FilterConfig.cs" Link="Source\App_Start\FilterConfig.cs" />
     <Compile Include="..\Vidly\App_Start\BundleConfig.cs" Link="Source\App_Start\BundleConfig.cs" />
