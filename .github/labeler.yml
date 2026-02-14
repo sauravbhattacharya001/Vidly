@@ -1,0 +1,60 @@
+# Configuration for actions/labeler — labels PRs based on changed file paths
+
+controllers:
+  - changed-files:
+      - any-glob-to-any-file: 'Vidly/Controllers/**'
+
+models:
+  - changed-files:
+      - any-glob-to-any-file: 'Vidly/Models/**'
+
+views:
+  - changed-files:
+      - any-glob-to-any-file: 'Vidly/Views/**'
+
+repositories:
+  - changed-files:
+      - any-glob-to-any-file: 'Vidly/Repositories/**'
+
+view-models:
+  - changed-files:
+      - any-glob-to-any-file: 'Vidly/ViewModels/**'
+
+config:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'Vidly/App_Start/**'
+          - 'Vidly/Web.config'
+          - 'Vidly/Web.*.config'
+          - 'Vidly/Global.asax*'
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file: 'Vidly.Tests/**'
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/workflows/**'
+          - '.github/dependabot.yml'
+          - '.github/labeler.yml'
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '*.md'
+          - 'docs/**'
+          - 'ARCHITECTURE.md'
+
+frontend:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'Vidly/Content/**'
+          - 'Vidly/Scripts/**'
+          - 'Vidly/fonts/**'
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'Vidly/packages.config'
+          - '.github/dependabot.yml'
