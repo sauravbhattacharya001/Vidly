@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>Vidly</id>
+    <version>1.0.0</version>
+    <title>Vidly — ASP.NET MVC Video Rental</title>
+    <authors>sauravbhattacharya001</authors>
+    <owners>sauravbhattacharya001</owners>
+    <license type="expression">MIT</license>
+    <projectUrl>https://github.com/sauravbhattacharya001/Vidly</projectUrl>
+    <repository type="git" url="https://github.com/sauravbhattacharya001/Vidly.git" />
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>ASP.NET MVC 5 video rental application with repository pattern, thread-safe data store, security headers, search/filter, and full CRUD support. Built on .NET Framework 4.5.2.</description>
+    <releaseNotes>
+      Initial NuGet package release.
+      - Repository pattern (IRepository, IMovieRepository, InMemoryMovieRepository)
+      - Security headers action filter (CSP, X-Frame-Options, HSTS)
+      - Movie/Customer models with validation
+      - Genre enum with 10 categories
+      - Search with genre and rating filters
+    </releaseNotes>
+    <copyright>Copyright 2017-2026 Saurav Bhattacharya</copyright>
+    <tags>aspnet mvc dotnet-framework video-rental repository-pattern crud</tags>
+    <dependencies>
+      <group targetFramework=".NETFramework4.5.2">
+        <dependency id="Microsoft.AspNet.Mvc" version="5.2.3" />
+        <dependency id="Newtonsoft.Json" version="6.0.4" />
+      </group>
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="Vidly\bin\Vidly.dll" target="lib\net452\" />
+    <file src="README.md" target="" />
+    <file src="LICENSE" target="" />
+  </files>
+</package>

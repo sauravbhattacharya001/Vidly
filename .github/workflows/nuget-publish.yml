@@ -1,0 +1,104 @@
+name: NuGet — Publish to GitHub Packages
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Package version override (e.g. 1.1.0)"
+        required: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    name: Build & Publish NuGet Package
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Determine version
+        id: version
+        shell: pwsh
+        run: |
+          if ("${{ github.event.inputs.version }}" -ne "") {
+            $ver = "${{ github.event.inputs.version }}"
+          } elseif ("${{ github.ref }}" -match "^refs/tags/v(.+)$") {
+            $ver = $Matches[1]
+          } else {
+            $ver = "1.0.0"
+          }
+          echo "version=$ver" >> $env:GITHUB_OUTPUT
+          Write-Host "Package version: $ver"
+
+      - name: Setup NuGet
+        uses: nuget/setup-nuget@v2
+        with:
+          nuget-version: "latest"
+
+      - name: Add GitHub Packages source
+        run: |
+          nuget sources add -Name "github" `
+            -Source "https://nuget.pkg.github.com/sauravbhattacharya001/index.json" `
+            -UserName ${{ github.actor }} `
+            -Password ${{ secrets.GITHUB_TOKEN }} `
+            -StorePasswordInClearText
+
+      - name: Restore NuGet packages
+        run: nuget restore Vidly.sln
+
+      - name: Build Release
+        shell: pwsh
+        run: |
+          # Find MSBuild
+          $msbuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
+            -latest -requires Microsoft.Component.MSBuild -find MSBuild\**\Bin\MSBuild.exe | Select-Object -First 1
+
+          if (-not $msbuild) {
+            Write-Host "::error::MSBuild not found"
+            exit 1
+          }
+
+          Write-Host "Using MSBuild: $msbuild"
+          & $msbuild Vidly\Vidly.csproj /p:Configuration=Release /verbosity:minimal
+
+      - name: Pack NuGet package
+        run: |
+          nuget pack Vidly.nuspec -Version ${{ steps.version.outputs.version }} -Properties Configuration=Release -OutputDirectory ./nupkg
+
+      - name: Verify package
+        shell: pwsh
+        run: |
+          $pkg = Get-ChildItem ./nupkg -Filter "*.nupkg" | Select-Object -First 1
+          if (-not $pkg) {
+            Write-Host "::error::No .nupkg file found in ./nupkg"
+            exit 1
+          }
+          Write-Host "Package: $($pkg.Name) ($([math]::Round($pkg.Length / 1KB, 1)) KB)"
+
+      - name: Push to GitHub Packages
+        run: |
+          nuget push ./nupkg/*.nupkg -Source "github" -ApiKey ${{ secrets.GITHUB_TOKEN }} -SkipDuplicate
+
+      - name: Summary
+        shell: pwsh
+        run: |
+          $pkg = Get-ChildItem ./nupkg -Filter "*.nupkg" | Select-Object -First 1
+          $summary = @"
+          ## 📦 NuGet Package Published
+
+          **Package:** Vidly v${{ steps.version.outputs.version }}
+          **Registry:** [GitHub Packages](https://github.com/sauravbhattacharya001/Vidly/packages)
+          **Size:** $([math]::Round($pkg.Length / 1KB, 1)) KB
+
+          **Install:**
+          ``````
+          dotnet add package Vidly --version ${{ steps.version.outputs.version }} --source "https://nuget.pkg.github.com/sauravbhattacharya001/index.json"
+          ``````
+          "@
+          $summary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8

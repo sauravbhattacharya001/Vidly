@@ -1,6 +1,7 @@
 # 🎬 Vidly
 
 [![CI — Build & Test](https://github.com/sauravbhattacharya001/Vidly/actions/workflows/ci.yml/badge.svg)](https://github.com/sauravbhattacharya001/Vidly/actions/workflows/ci.yml)
+[![Docker](https://github.com/sauravbhattacharya001/Vidly/actions/workflows/docker.yml/badge.svg)](https://github.com/sauravbhattacharya001/Vidly/actions/workflows/docker.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![.NET Framework](https://img.shields.io/badge/.NET%20Framework-4.5.2-purple.svg)](https://dotnet.microsoft.com/en-us/download/dotnet-framework)
 [![ASP.NET MVC](https://img.shields.io/badge/ASP.NET%20MVC-5.2-green.svg)](https://www.asp.net/mvc)
@@ -134,7 +135,10 @@ Coverage reports are generated in Cobertura format and uploaded as CI artifacts 
 Run Vidly in a Windows container with IIS:
 
 ```powershell
-# Build the image
+# Pull from GitHub Container Registry
+docker pull ghcr.io/sauravbhattacharya001/vidly:latest
+
+# Or build locally
 docker build -t vidly .
 
 # Run the container
@@ -143,7 +147,23 @@ docker run -d -p 8080:80 --name vidly vidly
 # Access at http://localhost:8080
 ```
 
+Docker images are automatically built and pushed to [GitHub Container Registry](https://github.com/sauravbhattacharya001/Vidly/pkgs/container/vidly) on every push to `master` and on version tags.
+
 > **Note:** Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/) with **Windows containers** enabled. The image uses `mcr.microsoft.com/dotnet/framework/aspnet:4.8` which requires Windows Server Core.
+
+## 📦 Packages
+
+Vidly is available as a NuGet package on [GitHub Packages](https://github.com/sauravbhattacharya001/Vidly/packages):
+
+```powershell
+# Add GitHub Packages source (one-time setup)
+dotnet nuget add source "https://nuget.pkg.github.com/sauravbhattacharya001/index.json" --name github --username YOUR_USERNAME --password YOUR_PAT
+
+# Install the package
+dotnet add package Vidly --source github
+```
+
+NuGet packages are automatically published on version tags (e.g., `v1.0.0`).
 
 ## 📚 Documentation
 
