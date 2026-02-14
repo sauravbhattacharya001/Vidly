@@ -74,20 +74,19 @@ namespace Vidly.Controllers
             return Content(year + "/" + month);
         }
 
-        //movies
+        // GET: Movies
         public ActionResult Index(int? pageIndex, string sortBy)
         {
-            if (!pageIndex.HasValue)
-            {
-                pageIndex = 1;
-            }
+            var page = pageIndex ?? 1;
+            var sort = string.IsNullOrWhiteSpace(sortBy) ? "Name" : sortBy;
 
-            if (string.IsNullOrWhiteSpace((sortBy)))
-            {
-                sortBy = "Name";
-            }
+            IEnumerable<Movie> sorted;
+            if (string.Equals(sort, "Name", StringComparison.OrdinalIgnoreCase))
+                sorted = _movies.OrderBy(m => m.Name);
+            else
+                sorted = _movies.OrderBy(m => m.Id);
 
-            return Content(String.Format("pageIndex={0}&sortBy={1}", pageIndex, sortBy));
+            return View(sorted.ToList());
         }
     }
 }
