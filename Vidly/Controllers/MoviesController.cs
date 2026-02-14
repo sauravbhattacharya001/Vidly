@@ -10,7 +10,8 @@ namespace Vidly.Controllers
 {
     public class MoviesController : Controller
     {
-        // In-memory movie store (replace with DbContext for production use)
+        // In-memory movie store (replace with DbContext for production use).
+        // Guarded by _moviesLock for thread-safe concurrent access. (fixes #4)
         private static readonly List<Movie> _movies = new List<Movie>
         {
             new Movie { Id = 1, Name = "Shrek!" },
@@ -18,12 +19,18 @@ namespace Vidly.Controllers
             new Movie { Id = 3, Name = "Toy Story" }
         };
 
+        private static readonly object _moviesLock = new object();
         private static readonly Random _random = new Random();
 
         // GET: Movies/Random
         public ActionResult Random()
         {
-            var movie = _movies[_random.Next(_movies.Count)];
+            Movie movie;
+            lock (_moviesLock)
+            {
+                movie = _movies[_random.Next(_movies.Count)];
+            }
+
             var customers = new List<Customer>
             {
                 new Customer {Name = "Customer 1"},
@@ -42,7 +49,11 @@ namespace Vidly.Controllers
         // GET: Movies/Edit/5
         public ActionResult Edit(int id)
         {
-            var movie = _movies.SingleOrDefault(m => m.Id == id);
+            Movie movie;
+            lock (_moviesLock)
+            {
+                movie = _movies.SingleOrDefault(m => m.Id == id);
+            }
 
             if (movie == null)
                 return HttpNotFound();
@@ -58,12 +69,15 @@ namespace Vidly.Controllers
             if (!ModelState.IsValid)
                 return View(movie);
 
-            var movieInStore = _movies.SingleOrDefault(m => m.Id == movie.Id);
+            lock (_moviesLock)
+            {
+                var movieInStore = _movies.SingleOrDefault(m => m.Id == movie.Id);
 
-            if (movieInStore == null)
-                return HttpNotFound();
+                if (movieInStore == null)
+                    return HttpNotFound();
 
-            movieInStore.Name = movie.Name;
+                movieInStore.Name = movie.Name;
+            }
 
             return RedirectToAction("Index");
         }
@@ -80,11 +94,17 @@ namespace Vidly.Controllers
             var page = pageIndex ?? 1;
             var sort = string.IsNullOrWhiteSpace(sortBy) ? "Name" : sortBy;
 
+            List<Movie> snapshot;
+            lock (_moviesLock)
+            {
+                snapshot = _movies.ToList(); // snapshot under lock
+            }
+
             IEnumerable<Movie> sorted;
             if (string.Equals(sort, "Name", StringComparison.OrdinalIgnoreCase))
-                sorted = _movies.OrderBy(m => m.Name);
+                sorted = snapshot.OrderBy(m => m.Name);
             else
-                sorted = _movies.OrderBy(m => m.Id);
+                sorted = snapshot.OrderBy(m => m.Id);
 
             return View(sorted.ToList());
         }
