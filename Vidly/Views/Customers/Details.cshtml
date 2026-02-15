@@ -1,0 +1,66 @@
+@model Vidly.Models.Customer
+@{
+    ViewBag.Title = Model.Name;
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="row">
+    <div class="col-md-8 col-md-offset-2">
+        <h2>@Model.Name</h2>
+
+        <div class="panel panel-default">
+            <div class="panel-body">
+                <dl class="dl-horizontal">
+                    <dt>ID</dt>
+                    <dd>@Model.Id</dd>
+
+                    <dt>Email</dt>
+                    <dd>
+                        @if (!string.IsNullOrWhiteSpace(Model.Email))
+                        {
+                            <a href="mailto:@Model.Email">@Model.Email</a>
+                        }
+                        else
+                        {
+                            <span class="text-muted">Not provided</span>
+                        }
+                    </dd>
+
+                    <dt>Phone</dt>
+                    <dd>@(!string.IsNullOrWhiteSpace(Model.Phone) ? Model.Phone : "Not provided")</dd>
+
+                    <dt>Membership</dt>
+                    <dd>
+                        @{
+                            string badgeClass;
+                            switch (Model.MembershipType)
+                            {
+                                case Vidly.Models.MembershipType.Platinum:
+                                    badgeClass = "label-default";
+                                    break;
+                                case Vidly.Models.MembershipType.Gold:
+                                    badgeClass = "label-warning";
+                                    break;
+                                case Vidly.Models.MembershipType.Silver:
+                                    badgeClass = "label-info";
+                                    break;
+                                default:
+                                    badgeClass = "label-primary";
+                                    break;
+                            }
+                        }
+                        <span class="label @badgeClass">@Model.MembershipType</span>
+                    </dd>
+
+                    <dt>Member Since</dt>
+                    <dd>@(Model.MemberSince.HasValue ? Model.MemberSince.Value.ToString("MMMM dd, yyyy") : "Unknown")</dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="btn-group">
+            @Html.ActionLink("Edit", "Edit", new { id = Model.Id }, new { @class = "btn btn-primary" })
+            @Html.ActionLink("Back to List", "Index", null, new { @class = "btn btn-default" })
+        </div>
+    </div>
+</div>

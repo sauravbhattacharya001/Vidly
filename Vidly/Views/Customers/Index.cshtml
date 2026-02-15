@@ -1,0 +1,158 @@
+@model Vidly.ViewModels.CustomerSearchViewModel
+@{
+    ViewBag.Title = "Customers";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>Customers</h2>
+
+@* Membership stats summary *@
+@if (Model.Stats != null)
+{
+    <div class="row" style="margin-bottom: 15px;">
+        <div class="col-xs-6 col-sm-3">
+            <div class="panel panel-default text-center">
+                <div class="panel-body">
+                    <h3 style="margin: 0;">@Model.Stats.TotalCustomers</h3>
+                    <small class="text-muted">Total</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-xs-6 col-sm-3">
+            <div class="panel panel-default text-center">
+                <div class="panel-body">
+                    <h3 style="margin: 0; color: #cd7f32;">@Model.Stats.GoldCount</h3>
+                    <small class="text-muted">Gold</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-xs-6 col-sm-3">
+            <div class="panel panel-default text-center">
+                <div class="panel-body">
+                    <h3 style="margin: 0; color: #c0c0c0;">@Model.Stats.SilverCount</h3>
+                    <small class="text-muted">Silver</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-xs-6 col-sm-3">
+            <div class="panel panel-default text-center">
+                <div class="panel-body">
+                    <h3 style="margin: 0; color: #e5e4e2;">@Model.Stats.PlatinumCount</h3>
+                    <small class="text-muted">Platinum</small>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<p>
+    @Html.ActionLink("Add New Customer", "Create", "Customers", null, new { @class = "btn btn-primary" })
+</p>
+
+@* Search and filter panel *@
+<div class="panel panel-default">
+    <div class="panel-body">
+        @using (Html.BeginForm("Index", "Customers", FormMethod.Get, new { @class = "form-inline" }))
+        {
+            <div class="form-group" style="margin-right: 10px;">
+                <label for="query" class="sr-only">Search</label>
+                <input type="text" name="query" id="query" class="form-control"
+                       placeholder="Search by name or email..." value="@Model.Query" />
+            </div>
+            <div class="form-group" style="margin-right: 10px;">
+                <label for="membershipType" class="sr-only">Membership</label>
+                @Html.DropDownList("membershipType",
+                    new SelectList(Enum.GetValues(typeof(Vidly.Models.MembershipType)), Model.MembershipType),
+                    "All Memberships",
+                    new { @class = "form-control" })
+            </div>
+            <button type="submit" class="btn btn-info">
+                <span class="glyphicon glyphicon-search"></span> Search
+            </button>
+            if (!string.IsNullOrWhiteSpace(Model.Query) || Model.MembershipType.HasValue)
+            {
+                @Html.ActionLink("Clear", "Index", null, new { @class = "btn btn-default", style = "margin-left: 5px;" })
+            }
+        }
+    </div>
+</div>
+
+@if (Model.Customers.Count < Model.TotalCount)
+{
+    <p class="text-muted">
+        Showing @Model.Customers.Count of @Model.TotalCount customers
+    </p>
+}
+
+@if (!Model.Customers.Any())
+{
+    <p class="text-muted">No customers match your search criteria.</p>
+}
+else
+{
+    <table class="table table-bordered table-hover">
+        <thead>
+            <tr>
+                <th>@Html.ActionLink("Name", "Index", new { query = Model.Query, membershipType = Model.MembershipType, sortBy = "Name" })</th>
+                <th>@Html.ActionLink("Email", "Index", new { query = Model.Query, membershipType = Model.MembershipType, sortBy = "Email" })</th>
+                <th>Phone</th>
+                <th>@Html.ActionLink("Membership", "Index", new { query = Model.Query, membershipType = Model.MembershipType, sortBy = "Membership" })</th>
+                <th>@Html.ActionLink("Member Since", "Index", new { query = Model.Query, membershipType = Model.MembershipType, sortBy = "MemberSince" })</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var customer in Model.Customers)
+            {
+                <tr>
+                    <td>
+                        @Html.ActionLink(customer.Name, "Details", new { id = customer.Id })
+                    </td>
+                    <td>
+                        @if (!string.IsNullOrWhiteSpace(customer.Email))
+                        {
+                            <a href="mailto:@customer.Email">@customer.Email</a>
+                        }
+                        else
+                        {
+                            <span class="text-muted">—</span>
+                        }
+                    </td>
+                    <td>@(!string.IsNullOrWhiteSpace(customer.Phone) ? customer.Phone : "—")</td>
+                    <td>
+                        @{
+                            string badgeClass;
+                            switch (customer.MembershipType)
+                            {
+                                case Vidly.Models.MembershipType.Platinum:
+                                    badgeClass = "label-default";
+                                    break;
+                                case Vidly.Models.MembershipType.Gold:
+                                    badgeClass = "label-warning";
+                                    break;
+                                case Vidly.Models.MembershipType.Silver:
+                                    badgeClass = "label-info";
+                                    break;
+                                default:
+                                    badgeClass = "label-primary";
+                                    break;
+                            }
+                        }
+                        <span class="label @badgeClass">@customer.MembershipType</span>
+                    </td>
+                    <td>@(customer.MemberSince.HasValue ? customer.MemberSince.Value.ToString("MMM dd, yyyy") : "—")</td>
+                    <td>
+                        @Html.ActionLink("Details", "Details", new { id = customer.Id }, new { @class = "btn btn-sm btn-default" })
+                        @Html.ActionLink("Edit", "Edit", new { id = customer.Id }, new { @class = "btn btn-sm btn-info" })
+                        @using (Html.BeginForm("Delete", "Customers", new { id = customer.Id }, FormMethod.Post, new { style = "display:inline" }))
+                        {
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-sm btn-danger"
+                                    onclick="return confirm('Delete this customer?');">Delete</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
