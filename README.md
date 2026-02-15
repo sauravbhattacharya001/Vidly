@@ -182,9 +182,9 @@ NuGet packages are automatically published on version tags (e.g., `v1.0.0`).
 
 ## 📚 Documentation
 
+- **[📖 Live Docs Site](https://sauravbhattacharya001.github.io/Vidly/)** — Interactive documentation deployed via GitHub Pages
 - **[Architecture Guide](ARCHITECTURE.md)** — Deep dive into the codebase: request lifecycle, layer responsibilities, threading model, and extension points
 - **[Security Policy](SECURITY.md)** — Security measures, known limitations, and vulnerability reporting
-- **[API Docs](docs/index.html)** — Interactive documentation site with routes, models, and design patterns
 
 ## 🤝 Contributing
 
