@@ -7,12 +7,14 @@ namespace Vidly.Repositories
 {
     /// <summary>
     /// Thread-safe in-memory customer repository.
+    /// Uses Dictionary for O(1) lookups by ID, counter-based ID generation,
+    /// and single-pass statistics computation.
     /// </summary>
     public class InMemoryCustomerRepository : ICustomerRepository
     {
-        private static readonly List<Customer> _customers = new List<Customer>
+        private static readonly Dictionary<int, Customer> _customers = new Dictionary<int, Customer>
         {
-            new Customer
+            [1] = new Customer
             {
                 Id = 1,
                 Name = "John Smith",
@@ -21,7 +23,7 @@ namespace Vidly.Repositories
                 MemberSince = new DateTime(2024, 1, 15),
                 MembershipType = MembershipType.Gold
             },
-            new Customer
+            [2] = new Customer
             {
                 Id = 2,
                 Name = "Jane Doe",
@@ -30,7 +32,7 @@ namespace Vidly.Repositories
                 MemberSince = new DateTime(2024, 6, 20),
                 MembershipType = MembershipType.Silver
             },
-            new Customer
+            [3] = new Customer
             {
                 Id = 3,
                 Name = "Bob Wilson",
@@ -39,7 +41,7 @@ namespace Vidly.Repositories
                 MemberSince = new DateTime(2025, 3, 10),
                 MembershipType = MembershipType.Basic
             },
-            new Customer
+            [4] = new Customer
             {
                 Id = 4,
                 Name = "Alice Johnson",
@@ -48,7 +50,7 @@ namespace Vidly.Repositories
                 MemberSince = new DateTime(2023, 11, 5),
                 MembershipType = MembershipType.Platinum
             },
-            new Customer
+            [5] = new Customer
             {
                 Id = 5,
                 Name = "Charlie Brown",
@@ -60,13 +62,13 @@ namespace Vidly.Repositories
         };
 
         private static readonly object _lock = new object();
+        private static int _nextId = 6;
 
         public Customer GetById(int id)
         {
             lock (_lock)
             {
-                var customer = _customers.SingleOrDefault(c => c.Id == id);
-                return customer == null ? null : Clone(customer);
+                return _customers.TryGetValue(id, out var customer) ? Clone(customer) : null;
             }
         }
 
@@ -74,7 +76,7 @@ namespace Vidly.Repositories
         {
             lock (_lock)
             {
-                return _customers.Select(Clone).ToList().AsReadOnly();
+                return _customers.Values.Select(Clone).ToList().AsReadOnly();
             }
         }
 
@@ -85,8 +87,8 @@ namespace Vidly.Repositories
 
             lock (_lock)
             {
-                customer.Id = _customers.Any() ? _customers.Max(c => c.Id) + 1 : 1;
-                _customers.Add(customer);
+                customer.Id = _nextId++;
+                _customers[customer.Id] = customer;
             }
         }
 
@@ -97,8 +99,7 @@ namespace Vidly.Repositories
 
             lock (_lock)
             {
-                var existing = _customers.SingleOrDefault(c => c.Id == customer.Id);
-                if (existing == null)
+                if (!_customers.TryGetValue(customer.Id, out var existing))
                     throw new KeyNotFoundException(
                         $"Customer with Id {customer.Id} not found.");
 
@@ -114,12 +115,9 @@ namespace Vidly.Repositories
         {
             lock (_lock)
             {
-                var customer = _customers.SingleOrDefault(c => c.Id == id);
-                if (customer == null)
+                if (!_customers.Remove(id))
                     throw new KeyNotFoundException(
                         $"Customer with Id {id} not found.");
-
-                _customers.Remove(customer);
             }
         }
 
@@ -127,7 +125,7 @@ namespace Vidly.Repositories
         {
             lock (_lock)
             {
-                IEnumerable<Customer> results = _customers;
+                IEnumerable<Customer> results = _customers.Values;
 
                 if (!string.IsNullOrWhiteSpace(query))
                 {
@@ -155,7 +153,7 @@ namespace Vidly.Repositories
         {
             lock (_lock)
             {
-                return _customers
+                return _customers.Values
                     .Where(c => c.MemberSince.HasValue
                              && c.MemberSince.Value.Year == year
                              && c.MemberSince.Value.Month == month)
@@ -166,17 +164,34 @@ namespace Vidly.Repositories
             }
         }
 
+        /// <summary>
+        /// Computes membership statistics in a single pass over the collection,
+        /// avoiding multiple separate Count() enumerations.
+        /// </summary>
         public CustomerStats GetStats()
         {
             lock (_lock)
             {
+                int basic = 0, silver = 0, gold = 0, platinum = 0;
+
+                foreach (var c in _customers.Values)
+                {
+                    switch (c.MembershipType)
+                    {
+                        case MembershipType.Basic:    basic++;    break;
+                        case MembershipType.Silver:   silver++;   break;
+                        case MembershipType.Gold:     gold++;     break;
+                        case MembershipType.Platinum: platinum++; break;
+                    }
+                }
+
                 return new CustomerStats
                 {
                     TotalCustomers = _customers.Count,
-                    BasicCount = _customers.Count(c => c.MembershipType == MembershipType.Basic),
-                    SilverCount = _customers.Count(c => c.MembershipType == MembershipType.Silver),
-                    GoldCount = _customers.Count(c => c.MembershipType == MembershipType.Gold),
-                    PlatinumCount = _customers.Count(c => c.MembershipType == MembershipType.Platinum)
+                    BasicCount = basic,
+                    SilverCount = silver,
+                    GoldCount = gold,
+                    PlatinumCount = platinum
                 };
             }
         }

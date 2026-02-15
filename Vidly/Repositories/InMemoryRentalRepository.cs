@@ -7,6 +7,8 @@ namespace Vidly.Repositories
 {
     /// <summary>
     /// Thread-safe in-memory rental repository with business logic.
+    /// Uses Dictionary for O(1) lookups by ID, counter-based ID generation,
+    /// single-pass statistics, and a HashSet for O(1) rented-movie checks.
     /// Late fee: $1.50 per day overdue.
     /// Default rental period: 7 days.
     /// Default daily rate: $3.99.
@@ -22,56 +24,81 @@ namespace Vidly.Repositories
         /// <summary>Default daily rental rate.</summary>
         public const decimal DefaultDailyRate = 3.99m;
 
-        private static readonly List<Rental> _rentals = new List<Rental>
-        {
-            new Rental
-            {
-                Id = 1,
-                CustomerId = 1,
-                CustomerName = "John Smith",
-                MovieId = 1,
-                MovieName = "Shrek!",
-                RentalDate = DateTime.Today.AddDays(-3),
-                DueDate = DateTime.Today.AddDays(4),
-                DailyRate = 3.99m,
-                Status = RentalStatus.Active
-            },
-            new Rental
-            {
-                Id = 2,
-                CustomerId = 2,
-                CustomerName = "Jane Doe",
-                MovieId = 2,
-                MovieName = "The Godfather",
-                RentalDate = DateTime.Today.AddDays(-10),
-                DueDate = DateTime.Today.AddDays(-3),
-                DailyRate = 3.99m,
-                Status = RentalStatus.Active
-            },
-            new Rental
-            {
-                Id = 3,
-                CustomerId = 4,
-                CustomerName = "Alice Johnson",
-                MovieId = 3,
-                MovieName = "Toy Story",
-                RentalDate = DateTime.Today.AddDays(-14),
-                DueDate = DateTime.Today.AddDays(-7),
-                ReturnDate = DateTime.Today.AddDays(-6),
-                DailyRate = 3.99m,
-                LateFee = 0m,
-                Status = RentalStatus.Returned
-            }
-        };
+        private static readonly Dictionary<int, Rental> _rentals;
+
+        /// <summary>
+        /// Tracks movie IDs that are currently rented out (not returned).
+        /// Provides O(1) availability checks instead of scanning the full list.
+        /// </summary>
+        private static readonly HashSet<int> _rentedMovieIds;
 
         private static readonly object _lock = new object();
+        private static int _nextId;
+
+        static InMemoryRentalRepository()
+        {
+            var seedData = new[]
+            {
+                new Rental
+                {
+                    Id = 1,
+                    CustomerId = 1,
+                    CustomerName = "John Smith",
+                    MovieId = 1,
+                    MovieName = "Shrek!",
+                    RentalDate = DateTime.Today.AddDays(-3),
+                    DueDate = DateTime.Today.AddDays(4),
+                    DailyRate = 3.99m,
+                    Status = RentalStatus.Active
+                },
+                new Rental
+                {
+                    Id = 2,
+                    CustomerId = 2,
+                    CustomerName = "Jane Doe",
+                    MovieId = 2,
+                    MovieName = "The Godfather",
+                    RentalDate = DateTime.Today.AddDays(-10),
+                    DueDate = DateTime.Today.AddDays(-3),
+                    DailyRate = 3.99m,
+                    Status = RentalStatus.Active
+                },
+                new Rental
+                {
+                    Id = 3,
+                    CustomerId = 4,
+                    CustomerName = "Alice Johnson",
+                    MovieId = 3,
+                    MovieName = "Toy Story",
+                    RentalDate = DateTime.Today.AddDays(-14),
+                    DueDate = DateTime.Today.AddDays(-7),
+                    ReturnDate = DateTime.Today.AddDays(-6),
+                    DailyRate = 3.99m,
+                    LateFee = 0m,
+                    Status = RentalStatus.Returned
+                }
+            };
+
+            _rentals = new Dictionary<int, Rental>();
+            _rentedMovieIds = new HashSet<int>();
+
+            foreach (var r in seedData)
+            {
+                _rentals[r.Id] = r;
+                if (r.Status != RentalStatus.Returned)
+                    _rentedMovieIds.Add(r.MovieId);
+            }
+
+            _nextId = 4;
+        }
 
         public Rental GetById(int id)
         {
             lock (_lock)
             {
-                var rental = _rentals.SingleOrDefault(r => r.Id == id);
-                if (rental == null) return null;
+                if (!_rentals.TryGetValue(id, out var rental))
+                    return null;
+
                 RefreshStatus(rental);
                 return Clone(rental);
             }
@@ -81,8 +108,13 @@ namespace Vidly.Repositories
         {
             lock (_lock)
             {
-                foreach (var r in _rentals) RefreshStatus(r);
-                return _rentals.Select(Clone).ToList().AsReadOnly();
+                var result = new List<Rental>(_rentals.Count);
+                foreach (var r in _rentals.Values)
+                {
+                    RefreshStatus(r);
+                    result.Add(Clone(r));
+                }
+                return result.AsReadOnly();
             }
         }
 
@@ -93,7 +125,7 @@ namespace Vidly.Repositories
 
             lock (_lock)
             {
-                rental.Id = _rentals.Any() ? _rentals.Max(r => r.Id) + 1 : 1;
+                rental.Id = _nextId++;
 
                 if (rental.DailyRate <= 0)
                     rental.DailyRate = DefaultDailyRate;
@@ -108,7 +140,8 @@ namespace Vidly.Repositories
                 rental.ReturnDate = null;
                 rental.LateFee = 0;
 
-                _rentals.Add(rental);
+                _rentals[rental.Id] = rental;
+                _rentedMovieIds.Add(rental.MovieId);
             }
         }
 
@@ -119,10 +152,13 @@ namespace Vidly.Repositories
 
             lock (_lock)
             {
-                var existing = _rentals.SingleOrDefault(r => r.Id == rental.Id);
-                if (existing == null)
+                if (!_rentals.TryGetValue(rental.Id, out var existing))
                     throw new KeyNotFoundException(
                         $"Rental with Id {rental.Id} not found.");
+
+                // If the movie changed or status changed, update the rented set
+                if (existing.Status != RentalStatus.Returned)
+                    _rentedMovieIds.Remove(existing.MovieId);
 
                 existing.CustomerId = rental.CustomerId;
                 existing.CustomerName = rental.CustomerName;
@@ -134,6 +170,9 @@ namespace Vidly.Repositories
                 existing.DailyRate = rental.DailyRate;
                 existing.LateFee = rental.LateFee;
                 existing.Status = rental.Status;
+
+                if (existing.Status != RentalStatus.Returned)
+                    _rentedMovieIds.Add(existing.MovieId);
             }
         }
 
@@ -141,12 +180,14 @@ namespace Vidly.Repositories
         {
             lock (_lock)
             {
-                var rental = _rentals.SingleOrDefault(r => r.Id == id);
-                if (rental == null)
+                if (!_rentals.TryGetValue(id, out var rental))
                     throw new KeyNotFoundException(
                         $"Rental with Id {id} not found.");
 
-                _rentals.Remove(rental);
+                if (rental.Status != RentalStatus.Returned)
+                    _rentedMovieIds.Remove(rental.MovieId);
+
+                _rentals.Remove(id);
             }
         }
 
@@ -154,13 +195,15 @@ namespace Vidly.Repositories
         {
             lock (_lock)
             {
-                foreach (var r in _rentals) RefreshStatus(r);
-                return _rentals
-                    .Where(r => r.CustomerId == customerId && r.Status != RentalStatus.Returned)
-                    .OrderBy(r => r.DueDate)
-                    .Select(Clone)
-                    .ToList()
-                    .AsReadOnly();
+                var result = new List<Rental>();
+                foreach (var r in _rentals.Values)
+                {
+                    RefreshStatus(r);
+                    if (r.CustomerId == customerId && r.Status != RentalStatus.Returned)
+                        result.Add(Clone(r));
+                }
+                result.Sort((a, b) => a.DueDate.CompareTo(b.DueDate));
+                return result.AsReadOnly();
             }
         }
 
@@ -168,13 +211,15 @@ namespace Vidly.Repositories
         {
             lock (_lock)
             {
-                foreach (var r in _rentals) RefreshStatus(r);
-                return _rentals
-                    .Where(r => r.MovieId == movieId)
-                    .OrderByDescending(r => r.RentalDate)
-                    .Select(Clone)
-                    .ToList()
-                    .AsReadOnly();
+                var result = new List<Rental>();
+                foreach (var r in _rentals.Values)
+                {
+                    RefreshStatus(r);
+                    if (r.MovieId == movieId)
+                        result.Add(Clone(r));
+                }
+                result.Sort((a, b) => b.RentalDate.CompareTo(a.RentalDate));
+                return result.AsReadOnly();
             }
         }
 
@@ -182,13 +227,15 @@ namespace Vidly.Repositories
         {
             lock (_lock)
             {
-                foreach (var r in _rentals) RefreshStatus(r);
-                return _rentals
-                    .Where(r => r.Status == RentalStatus.Overdue)
-                    .OrderBy(r => r.DueDate)
-                    .Select(Clone)
-                    .ToList()
-                    .AsReadOnly();
+                var result = new List<Rental>();
+                foreach (var r in _rentals.Values)
+                {
+                    RefreshStatus(r);
+                    if (r.Status == RentalStatus.Overdue)
+                        result.Add(Clone(r));
+                }
+                result.Sort((a, b) => a.DueDate.CompareTo(b.DueDate));
+                return result.AsReadOnly();
             }
         }
 
@@ -196,28 +243,32 @@ namespace Vidly.Repositories
         {
             lock (_lock)
             {
-                foreach (var r in _rentals) RefreshStatus(r);
-                IEnumerable<Rental> results = _rentals;
+                bool hasQuery = !string.IsNullOrWhiteSpace(query);
+                var result = new List<Rental>();
 
-                if (!string.IsNullOrWhiteSpace(query))
+                foreach (var r in _rentals.Values)
                 {
-                    results = results.Where(r =>
-                        (r.CustomerName != null &&
-                         r.CustomerName.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0) ||
-                        (r.MovieName != null &&
-                         r.MovieName.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0));
+                    RefreshStatus(r);
+
+                    if (hasQuery)
+                    {
+                        bool matchesCustomer = r.CustomerName != null &&
+                            r.CustomerName.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0;
+                        bool matchesMovie = r.MovieName != null &&
+                            r.MovieName.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0;
+
+                        if (!matchesCustomer && !matchesMovie)
+                            continue;
+                    }
+
+                    if (status.HasValue && r.Status != status.Value)
+                        continue;
+
+                    result.Add(Clone(r));
                 }
 
-                if (status.HasValue)
-                {
-                    results = results.Where(r => r.Status == status.Value);
-                }
-
-                return results
-                    .OrderByDescending(r => r.RentalDate)
-                    .Select(Clone)
-                    .ToList()
-                    .AsReadOnly();
+                result.Sort((a, b) => b.RentalDate.CompareTo(a.RentalDate));
+                return result.AsReadOnly();
             }
         }
 
@@ -225,8 +276,7 @@ namespace Vidly.Repositories
         {
             lock (_lock)
             {
-                var rental = _rentals.SingleOrDefault(r => r.Id == rentalId);
-                if (rental == null)
+                if (!_rentals.TryGetValue(rentalId, out var rental))
                     throw new KeyNotFoundException(
                         $"Rental with Id {rentalId} not found.");
 
@@ -236,6 +286,9 @@ namespace Vidly.Repositories
 
                 rental.ReturnDate = DateTime.Today;
                 rental.Status = RentalStatus.Returned;
+
+                // Remove from rented set for O(1) availability checks
+                _rentedMovieIds.Remove(rental.MovieId);
 
                 // Calculate late fee
                 if (rental.ReturnDate.Value > rental.DueDate)
@@ -252,12 +305,14 @@ namespace Vidly.Repositories
             }
         }
 
+        /// <summary>
+        /// O(1) movie availability check using the rented movie ID set.
+        /// </summary>
         public bool IsMovieRentedOut(int movieId)
         {
             lock (_lock)
             {
-                return _rentals.Any(r =>
-                    r.MovieId == movieId && r.Status != RentalStatus.Returned);
+                return _rentedMovieIds.Contains(movieId);
             }
         }
 
@@ -268,18 +323,14 @@ namespace Vidly.Repositories
 
             lock (_lock)
             {
-                // Atomic check-and-insert: availability check and rental creation
-                // happen within the same lock acquisition, preventing TOCTOU races
-                // where concurrent requests could both pass IsMovieRentedOut and
-                // create duplicate rentals for the same movie.
-                if (_rentals.Any(r =>
-                    r.MovieId == rental.MovieId && r.Status != RentalStatus.Returned))
+                // O(1) availability check via HashSet
+                if (_rentedMovieIds.Contains(rental.MovieId))
                 {
                     throw new InvalidOperationException(
                         "This movie is currently rented out.");
                 }
 
-                rental.Id = _rentals.Any() ? _rentals.Max(r => r.Id) + 1 : 1;
+                rental.Id = _nextId++;
 
                 if (rental.DailyRate <= 0)
                     rental.DailyRate = DefaultDailyRate;
@@ -294,24 +345,46 @@ namespace Vidly.Repositories
                 rental.ReturnDate = null;
                 rental.LateFee = 0;
 
-                _rentals.Add(rental);
+                _rentals[rental.Id] = rental;
+                _rentedMovieIds.Add(rental.MovieId);
                 return Clone(rental);
             }
         }
 
+        /// <summary>
+        /// Computes rental statistics in a single pass over the collection,
+        /// avoiding multiple separate Count()/Sum() enumerations.
+        /// </summary>
         public RentalStats GetStats()
         {
             lock (_lock)
             {
-                foreach (var r in _rentals) RefreshStatus(r);
+                int active = 0, overdue = 0, returned = 0;
+                decimal totalRevenue = 0, totalLateFees = 0;
+
+                foreach (var r in _rentals.Values)
+                {
+                    RefreshStatus(r);
+
+                    switch (r.Status)
+                    {
+                        case RentalStatus.Active:   active++;   break;
+                        case RentalStatus.Overdue:  overdue++;  break;
+                        case RentalStatus.Returned: returned++; break;
+                    }
+
+                    totalRevenue += r.TotalCost;
+                    totalLateFees += r.LateFee;
+                }
+
                 return new RentalStats
                 {
                     TotalRentals = _rentals.Count,
-                    ActiveRentals = _rentals.Count(r => r.Status == RentalStatus.Active),
-                    OverdueRentals = _rentals.Count(r => r.Status == RentalStatus.Overdue),
-                    ReturnedRentals = _rentals.Count(r => r.Status == RentalStatus.Returned),
-                    TotalRevenue = _rentals.Sum(r => r.TotalCost),
-                    TotalLateFees = _rentals.Sum(r => r.LateFee)
+                    ActiveRentals = active,
+                    OverdueRentals = overdue,
+                    ReturnedRentals = returned,
+                    TotalRevenue = totalRevenue,
+                    TotalLateFees = totalLateFees
                 };
             }
         }

@@ -7,27 +7,27 @@ namespace Vidly.Repositories
 {
     /// <summary>
     /// Thread-safe in-memory movie repository.
-    /// Encapsulates the static movie store and all locking logic
-    /// previously embedded in MoviesController.
+    /// Uses Dictionary for O(1) lookups by ID and an atomic counter
+    /// for ID generation instead of O(n) Max() scans.
     /// </summary>
     public class InMemoryMovieRepository : IMovieRepository
     {
-        private static readonly List<Movie> _movies = new List<Movie>
+        private static readonly Dictionary<int, Movie> _movies = new Dictionary<int, Movie>
         {
-            new Movie { Id = 1, Name = "Shrek!", ReleaseDate = new DateTime(2001, 5, 18), Genre = Genre.Animation, Rating = 4 },
-            new Movie { Id = 2, Name = "The Godfather", ReleaseDate = new DateTime(1972, 3, 24), Genre = Genre.Drama, Rating = 5 },
-            new Movie { Id = 3, Name = "Toy Story", ReleaseDate = new DateTime(1995, 11, 22), Genre = Genre.Animation, Rating = 5 }
+            [1] = new Movie { Id = 1, Name = "Shrek!", ReleaseDate = new DateTime(2001, 5, 18), Genre = Genre.Animation, Rating = 4 },
+            [2] = new Movie { Id = 2, Name = "The Godfather", ReleaseDate = new DateTime(1972, 3, 24), Genre = Genre.Drama, Rating = 5 },
+            [3] = new Movie { Id = 3, Name = "Toy Story", ReleaseDate = new DateTime(1995, 11, 22), Genre = Genre.Animation, Rating = 5 }
         };
 
         private static readonly object _lock = new object();
         private static readonly Random _random = new Random();
+        private static int _nextId = 4;
 
         public Movie GetById(int id)
         {
             lock (_lock)
             {
-                var movie = _movies.SingleOrDefault(m => m.Id == id);
-                return movie == null ? null : Clone(movie);
+                return _movies.TryGetValue(id, out var movie) ? Clone(movie) : null;
             }
         }
 
@@ -35,7 +35,7 @@ namespace Vidly.Repositories
         {
             lock (_lock)
             {
-                return _movies.Select(Clone).ToList().AsReadOnly();
+                return _movies.Values.Select(Clone).ToList().AsReadOnly();
             }
         }
 
@@ -46,8 +46,8 @@ namespace Vidly.Repositories
 
             lock (_lock)
             {
-                movie.Id = _movies.Any() ? _movies.Max(m => m.Id) + 1 : 1;
-                _movies.Add(movie);
+                movie.Id = _nextId++;
+                _movies[movie.Id] = movie;
             }
         }
 
@@ -58,8 +58,7 @@ namespace Vidly.Repositories
 
             lock (_lock)
             {
-                var existing = _movies.SingleOrDefault(m => m.Id == movie.Id);
-                if (existing == null)
+                if (!_movies.TryGetValue(movie.Id, out var existing))
                     throw new KeyNotFoundException(
                         $"Movie with Id {movie.Id} not found.");
 
@@ -74,12 +73,9 @@ namespace Vidly.Repositories
         {
             lock (_lock)
             {
-                var movie = _movies.SingleOrDefault(m => m.Id == id);
-                if (movie == null)
+                if (!_movies.Remove(id))
                     throw new KeyNotFoundException(
                         $"Movie with Id {id} not found.");
-
-                _movies.Remove(movie);
             }
         }
 
@@ -87,7 +83,7 @@ namespace Vidly.Repositories
         {
             lock (_lock)
             {
-                return _movies
+                return _movies.Values
                     .Where(m => m.ReleaseDate.HasValue
                              && m.ReleaseDate.Value.Year == year
                              && m.ReleaseDate.Value.Month == month)
@@ -102,7 +98,7 @@ namespace Vidly.Repositories
         {
             lock (_lock)
             {
-                IEnumerable<Movie> results = _movies;
+                IEnumerable<Movie> results = _movies.Values;
 
                 if (!string.IsNullOrWhiteSpace(query))
                 {
@@ -134,10 +130,12 @@ namespace Vidly.Repositories
         {
             lock (_lock)
             {
-                if (!_movies.Any())
+                if (_movies.Count == 0)
                     return null;
 
-                return Clone(_movies[_random.Next(_movies.Count)]);
+                // Convert to list once for indexed access
+                var values = _movies.Values.ToList();
+                return Clone(values[_random.Next(values.Count)]);
             }
         }
 
