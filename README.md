@@ -1,10 +1,25 @@
 # 🎬 Vidly
 
+<!-- Build & Security -->
 [![CI — Build & Test](https://github.com/sauravbhattacharya001/Vidly/actions/workflows/ci.yml/badge.svg)](https://github.com/sauravbhattacharya001/Vidly/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/sauravbhattacharya001/Vidly/actions/workflows/codeql.yml/badge.svg)](https://github.com/sauravbhattacharya001/Vidly/actions/workflows/codeql.yml)
 [![Docker](https://github.com/sauravbhattacharya001/Vidly/actions/workflows/docker.yml/badge.svg)](https://github.com/sauravbhattacharya001/Vidly/actions/workflows/docker.yml)
+[![Pages](https://github.com/sauravbhattacharya001/Vidly/actions/workflows/pages.yml/badge.svg)](https://sauravbhattacharya001.github.io/Vidly/)
+
+<!-- Package & License -->
+[![NuGet](https://github.com/sauravbhattacharya001/Vidly/actions/workflows/nuget-publish.yml/badge.svg)](https://github.com/sauravbhattacharya001/Vidly/packages)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+<!-- Tech -->
 [![.NET Framework](https://img.shields.io/badge/.NET%20Framework-4.5.2-purple.svg)](https://dotnet.microsoft.com/en-us/download/dotnet-framework)
 [![ASP.NET MVC](https://img.shields.io/badge/ASP.NET%20MVC-5.2-green.svg)](https://www.asp.net/mvc)
+[![Tests](https://img.shields.io/badge/tests-22%20passing-brightgreen.svg)](Vidly.Tests)
+
+<!-- Repo -->
+[![GitHub last commit](https://img.shields.io/github/last-commit/sauravbhattacharya001/Vidly)](https://github.com/sauravbhattacharya001/Vidly/commits/master)
+[![GitHub repo size](https://img.shields.io/github/repo-size/sauravbhattacharya001/Vidly)](https://github.com/sauravbhattacharya001/Vidly)
+[![GitHub issues](https://img.shields.io/github/issues/sauravbhattacharya001/Vidly)](https://github.com/sauravbhattacharya001/Vidly/issues)
+[![GitHub stars](https://img.shields.io/github/stars/sauravbhattacharya001/Vidly?style=social)](https://github.com/sauravbhattacharya001/Vidly)
 
 A video rental store web application built with **ASP.NET MVC 5** that demonstrates core MVC patterns — routing, controllers, models, view models, and Razor views.
 
