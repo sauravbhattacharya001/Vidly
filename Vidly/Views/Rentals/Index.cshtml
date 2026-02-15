@@ -1,0 +1,193 @@
+@model Vidly.ViewModels.RentalSearchViewModel
+@{
+    ViewBag.Title = "Rentals";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>Rentals</h2>
+
+@if (TempData["Message"] != null)
+{
+    <div class="alert alert-success alert-dismissible">
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+        @TempData["Message"]
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible">
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+        @TempData["Error"]
+    </div>
+}
+
+@* Stats Dashboard *@
+<div class="row" style="margin-bottom: 15px;">
+    <div class="col-md-2 col-sm-4 col-xs-6">
+        <div class="panel panel-default text-center">
+            <div class="panel-body">
+                <h3 style="margin: 0;">@Model.Stats.TotalRentals</h3>
+                <small class="text-muted">Total</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2 col-sm-4 col-xs-6">
+        <div class="panel panel-info text-center">
+            <div class="panel-body">
+                <h3 style="margin: 0;">@Model.Stats.ActiveRentals</h3>
+                <small class="text-muted">Active</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2 col-sm-4 col-xs-6">
+        <div class="panel panel-danger text-center">
+            <div class="panel-body">
+                <h3 style="margin: 0;">@Model.Stats.OverdueRentals</h3>
+                <small class="text-muted">Overdue</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2 col-sm-4 col-xs-6">
+        <div class="panel panel-success text-center">
+            <div class="panel-body">
+                <h3 style="margin: 0;">@Model.Stats.ReturnedRentals</h3>
+                <small class="text-muted">Returned</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2 col-sm-4 col-xs-6">
+        <div class="panel panel-default text-center">
+            <div class="panel-body">
+                <h3 style="margin: 0;">$@Model.Stats.TotalRevenue.ToString("F2")</h3>
+                <small class="text-muted">Revenue</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2 col-sm-4 col-xs-6">
+        <div class="panel panel-warning text-center">
+            <div class="panel-body">
+                <h3 style="margin: 0;">$@Model.Stats.TotalLateFees.ToString("F2")</h3>
+                <small class="text-muted">Late Fees</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<p>
+    @Html.ActionLink("New Checkout", "Checkout", "Rentals", null, new { @class = "btn btn-primary" })
+    @Html.ActionLink("View Overdue", "Overdue", "Rentals", null, new { @class = "btn btn-danger" })
+</p>
+
+@* Search and filter panel *@
+<div class="panel panel-default">
+    <div class="panel-body">
+        @using (Html.BeginForm("Index", "Rentals", FormMethod.Get, new { @class = "form-inline" }))
+        {
+            <div class="form-group" style="margin-right: 10px;">
+                <label for="query" class="sr-only">Search</label>
+                <input type="text" name="query" id="query" class="form-control"
+                       placeholder="Search by customer or movie..." value="@Model.Query" />
+            </div>
+            <div class="form-group" style="margin-right: 10px;">
+                <label for="status" class="sr-only">Status</label>
+                @Html.DropDownList("status",
+                    new SelectList(Enum.GetValues(typeof(Vidly.Models.RentalStatus)), Model.Status),
+                    "All Status",
+                    new { @class = "form-control" })
+            </div>
+            <button type="submit" class="btn btn-info">
+                <span class="glyphicon glyphicon-search"></span> Search
+            </button>
+            if (!string.IsNullOrWhiteSpace(Model.Query) || Model.Status.HasValue)
+            {
+                @Html.ActionLink("Clear", "Index", null, new { @class = "btn btn-default", style = "margin-left: 5px;" })
+            }
+        }
+    </div>
+</div>
+
+@if (Model.Rentals.Count < Model.TotalCount)
+{
+    <p class="text-muted">
+        Showing @Model.Rentals.Count of @Model.TotalCount rentals
+    </p>
+}
+
+@if (!Model.Rentals.Any())
+{
+    <p class="text-muted">No rentals match your search criteria.</p>
+}
+else
+{
+    <table class="table table-bordered table-hover">
+        <thead>
+            <tr>
+                <th>@Html.ActionLink("Customer", "Index", new { query = Model.Query, status = Model.Status, sortBy = "Customer" })</th>
+                <th>@Html.ActionLink("Movie", "Index", new { query = Model.Query, status = Model.Status, sortBy = "Movie" })</th>
+                <th>@Html.ActionLink("Rented", "Index", new { query = Model.Query, status = Model.Status, sortBy = "RentalDate" })</th>
+                <th>@Html.ActionLink("Due", "Index", new { query = Model.Query, status = Model.Status, sortBy = "DueDate" })</th>
+                <th>@Html.ActionLink("Status", "Index", new { query = Model.Query, status = Model.Status, sortBy = "Status" })</th>
+                <th>@Html.ActionLink("Total", "Index", new { query = Model.Query, status = Model.Status, sortBy = "TotalCost" })</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var rental in Model.Rentals)
+            {
+                <tr class="@(rental.Status == Vidly.Models.RentalStatus.Overdue ? "danger" : rental.Status == Vidly.Models.RentalStatus.Returned ? "success" : "")">
+                    <td>@Html.ActionLink(rental.CustomerName ?? "—", "Details", "Customers", new { id = rental.CustomerId }, null)</td>
+                    <td>@Html.ActionLink(rental.MovieName ?? "—", "Details", "Movies", new { id = rental.MovieId }, null)</td>
+                    <td>@rental.RentalDate.ToString("MMM dd, yyyy")</td>
+                    <td>
+                        @rental.DueDate.ToString("MMM dd, yyyy")
+                        @if (rental.Status == Vidly.Models.RentalStatus.Overdue)
+                        {
+                            <span class="label label-danger" style="margin-left: 5px;">@rental.DaysOverdue day(s) late</span>
+                        }
+                    </td>
+                    <td>
+                        @switch (rental.Status)
+                        {
+                            case Vidly.Models.RentalStatus.Active:
+                                <span class="label label-info">Active</span>
+                                break;
+                            case Vidly.Models.RentalStatus.Overdue:
+                                <span class="label label-danger">Overdue</span>
+                                break;
+                            case Vidly.Models.RentalStatus.Returned:
+                                <span class="label label-success">Returned</span>
+                                break;
+                        }
+                    </td>
+                    <td>
+                        $@rental.TotalCost.ToString("F2")
+                        @if (rental.LateFee > 0)
+                        {
+                            <br /><small class="text-danger">(incl. $@rental.LateFee.ToString("F2") late fee)</small>
+                        }
+                    </td>
+                    <td>
+                        @Html.ActionLink("Details", "Details", new { id = rental.Id }, new { @class = "btn btn-sm btn-default" })
+                        @if (rental.Status != Vidly.Models.RentalStatus.Returned)
+                        {
+                            using (Html.BeginForm("Return", "Rentals", new { id = rental.Id }, FormMethod.Post, new { style = "display:inline" }))
+                            {
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-sm btn-success"
+                                        onclick="return confirm('Mark this rental as returned?');">
+                                    <span class="glyphicon glyphicon-ok"></span> Return
+                                </button>
+                            }
+                        }
+                        @using (Html.BeginForm("Delete", "Rentals", new { id = rental.Id }, FormMethod.Post, new { style = "display:inline" }))
+                        {
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-sm btn-danger"
+                                    onclick="return confirm('Delete this rental record?');">Delete</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

@@ -1,0 +1,70 @@
+@model System.Collections.Generic.IReadOnlyList<Vidly.Models.Rental>
+@{
+    ViewBag.Title = "Overdue Rentals";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>
+    <span class="glyphicon glyphicon-exclamation-sign text-danger"></span>
+    Overdue Rentals
+</h2>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-success">
+        <span class="glyphicon glyphicon-ok"></span>
+        No overdue rentals — everything is on time!
+    </div>
+}
+else
+{
+    <div class="alert alert-warning">
+        <strong>@Model.Count overdue rental(s)</strong> require attention.
+    </div>
+
+    <table class="table table-bordered table-hover">
+        <thead>
+            <tr>
+                <th>Customer</th>
+                <th>Movie</th>
+                <th>Rented</th>
+                <th>Due</th>
+                <th>Days Overdue</th>
+                <th>Accrued Late Fee</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var rental in Model)
+            {
+                <tr class="danger">
+                    <td>@Html.ActionLink(rental.CustomerName ?? "—", "Details", "Customers", new { id = rental.CustomerId }, null)</td>
+                    <td>@Html.ActionLink(rental.MovieName ?? "—", "Details", "Movies", new { id = rental.MovieId }, null)</td>
+                    <td>@rental.RentalDate.ToString("MMM dd, yyyy")</td>
+                    <td>@rental.DueDate.ToString("MMM dd, yyyy")</td>
+                    <td>
+                        <span class="label label-danger">@rental.DaysOverdue day(s)</span>
+                    </td>
+                    <td class="text-danger">
+                        <strong>$@((rental.DaysOverdue * 1.50m).ToString("F2"))</strong>
+                    </td>
+                    <td>
+                        @Html.ActionLink("Details", "Details", new { id = rental.Id }, new { @class = "btn btn-sm btn-default" })
+                        @using (Html.BeginForm("Return", "Rentals", new { id = rental.Id }, FormMethod.Post, new { style = "display:inline" }))
+                        {
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-sm btn-success"
+                                    onclick="return confirm('Mark this rental as returned?');">
+                                <span class="glyphicon glyphicon-ok"></span> Return
+                            </button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<p>
+    @Html.ActionLink("Back to Rentals", "Index", null, new { @class = "btn btn-default" })
+</p>

@@ -1,0 +1,120 @@
+@model Vidly.Models.Rental
+@{
+    ViewBag.Title = "Rental Details";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>Rental Details</h2>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title">
+                    Rental #@Model.Id
+                    @switch (Model.Status)
+                    {
+                        case Vidly.Models.RentalStatus.Active:
+                            <span class="label label-info pull-right">Active</span>
+                            break;
+                        case Vidly.Models.RentalStatus.Overdue:
+                            <span class="label label-danger pull-right">Overdue</span>
+                            break;
+                        case Vidly.Models.RentalStatus.Returned:
+                            <span class="label label-success pull-right">Returned</span>
+                            break;
+                    }
+                </h3>
+            </div>
+            <div class="panel-body">
+                <dl class="dl-horizontal">
+                    <dt>Customer</dt>
+                    <dd>@Html.ActionLink(Model.CustomerName ?? "—", "Details", "Customers", new { id = Model.CustomerId }, null)</dd>
+
+                    <dt>Movie</dt>
+                    <dd>@Html.ActionLink(Model.MovieName ?? "—", "Details", "Movies", new { id = Model.MovieId }, null)</dd>
+
+                    <dt>Rented On</dt>
+                    <dd>@Model.RentalDate.ToString("MMMM dd, yyyy")</dd>
+
+                    <dt>Due Date</dt>
+                    <dd>
+                        @Model.DueDate.ToString("MMMM dd, yyyy")
+                        @if (Model.IsOverdue)
+                        {
+                            <span class="label label-danger">@Model.DaysOverdue day(s) overdue</span>
+                        }
+                    </dd>
+
+                    @if (Model.ReturnDate.HasValue)
+                    {
+                        <dt>Returned On</dt>
+                        <dd>@Model.ReturnDate.Value.ToString("MMMM dd, yyyy")</dd>
+                    }
+
+                    <dt>Daily Rate</dt>
+                    <dd>$@Model.DailyRate.ToString("F2")</dd>
+
+                    @if (Model.LateFee > 0)
+                    {
+                        <dt>Late Fee</dt>
+                        <dd class="text-danger">$@Model.LateFee.ToString("F2")</dd>
+                    }
+
+                    <dt>Total Cost</dt>
+                    <dd><strong>$@Model.TotalCost.ToString("F2")</strong></dd>
+                </dl>
+            </div>
+            <div class="panel-footer">
+                @if (Model.Status != Vidly.Models.RentalStatus.Returned)
+                {
+                    using (Html.BeginForm("Return", "Rentals", new { id = Model.Id }, FormMethod.Post, new { style = "display:inline" }))
+                    {
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-success"
+                                onclick="return confirm('Mark this rental as returned?');">
+                            <span class="glyphicon glyphicon-ok"></span> Return Movie
+                        </button>
+                    }
+                }
+                @Html.ActionLink("Back to List", "Index", null, new { @class = "btn btn-default" })
+            </div>
+        </div>
+    </div>
+
+    @* Timeline sidebar *@
+    <div class="col-md-4">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h4 class="panel-title">Timeline</h4>
+            </div>
+            <ul class="list-group">
+                <li class="list-group-item">
+                    <span class="glyphicon glyphicon-shopping-cart text-primary"></span>
+                    <strong>Checked Out</strong>
+                    <span class="pull-right text-muted">@Model.RentalDate.ToString("MMM dd")</span>
+                </li>
+                <li class="list-group-item @(Model.IsOverdue ? "list-group-item-danger" : "")">
+                    <span class="glyphicon glyphicon-time @(Model.IsOverdue ? "text-danger" : "text-warning")"></span>
+                    <strong>Due</strong>
+                    <span class="pull-right text-muted">@Model.DueDate.ToString("MMM dd")</span>
+                </li>
+                @if (Model.ReturnDate.HasValue)
+                {
+                    <li class="list-group-item list-group-item-success">
+                        <span class="glyphicon glyphicon-ok text-success"></span>
+                        <strong>Returned</strong>
+                        <span class="pull-right text-muted">@Model.ReturnDate.Value.ToString("MMM dd")</span>
+                    </li>
+                }
+                else if (Model.IsOverdue)
+                {
+                    <li class="list-group-item list-group-item-danger">
+                        <span class="glyphicon glyphicon-exclamation-sign text-danger"></span>
+                        <strong>@Model.DaysOverdue day(s) overdue</strong>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+</div>

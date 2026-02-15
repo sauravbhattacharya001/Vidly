@@ -1,0 +1,100 @@
+@model Vidly.ViewModels.RentalCheckoutViewModel
+@{
+    ViewBag.Title = "New Checkout";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>New Checkout</h2>
+
+@using (Html.BeginForm("Checkout", "Rentals", FormMethod.Post, new { @class = "form-horizontal" }))
+{
+    @Html.AntiForgeryToken()
+
+    <div class="panel panel-primary">
+        <div class="panel-heading">
+            <h3 class="panel-title">Rent a Movie</h3>
+        </div>
+        <div class="panel-body">
+            @Html.ValidationSummary(true, "", new { @class = "text-danger" })
+
+            <div class="form-group">
+                <label for="Rental_CustomerId" class="col-md-3 control-label">Customer</label>
+                <div class="col-md-6">
+                    <select name="Rental.CustomerId" id="Rental_CustomerId" class="form-control">
+                        <option value="">-- Select Customer --</option>
+                        @foreach (var customer in Model.Customers)
+                        {
+                            var selected = Model.Rental?.CustomerId == customer.Id ? "selected" : "";
+                            <option value="@customer.Id" @selected>@customer.Name (@customer.MembershipType)</option>
+                        }
+                    </select>
+                    @Html.ValidationMessage("Rental.CustomerId", new { @class = "text-danger" })
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="Rental_MovieId" class="col-md-3 control-label">Movie</label>
+                <div class="col-md-6">
+                    @if (Model.AvailableMovies.Any())
+                    {
+                        <select name="Rental.MovieId" id="Rental_MovieId" class="form-control">
+                            <option value="">-- Select Movie --</option>
+                            @foreach (var movie in Model.AvailableMovies)
+                            {
+                                var selected = Model.Rental?.MovieId == movie.Id ? "selected" : "";
+                                var genre = movie.Genre.HasValue ? $" ({movie.Genre})" : "";
+                                <option value="@movie.Id" @selected>@movie.Name@genre</option>
+                            }
+                        </select>
+                    }
+                    else
+                    {
+                        <p class="form-control-static text-warning">
+                            <span class="glyphicon glyphicon-warning-sign"></span>
+                            All movies are currently rented out.
+                        </p>
+                    }
+                    @Html.ValidationMessage("Rental.MovieId", new { @class = "text-danger" })
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="Rental_RentalDate" class="col-md-3 control-label">Rental Date</label>
+                <div class="col-md-4">
+                    <input type="date" name="Rental.RentalDate" id="Rental_RentalDate"
+                           class="form-control"
+                           value="@Model.Rental.RentalDate.ToString("yyyy-MM-dd")" />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="Rental_DueDate" class="col-md-3 control-label">Due Date</label>
+                <div class="col-md-4">
+                    <input type="date" name="Rental.DueDate" id="Rental_DueDate"
+                           class="form-control"
+                           value="@Model.Rental.DueDate.ToString("yyyy-MM-dd")" />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="Rental_DailyRate" class="col-md-3 control-label">Daily Rate ($)</label>
+                <div class="col-md-3">
+                    <input type="number" name="Rental.DailyRate" id="Rental_DailyRate"
+                           class="form-control"
+                           value="@Model.Rental.DailyRate.ToString("F2")"
+                           step="0.01" min="0.01" max="999.99" />
+                </div>
+            </div>
+        </div>
+        <div class="panel-footer">
+            <div class="form-group" style="margin-bottom: 0;">
+                <div class="col-md-offset-3 col-md-6">
+                    <button type="submit" class="btn btn-primary">
+                        <span class="glyphicon glyphicon-shopping-cart"></span> Checkout
+                    </button>
+                    @Html.ActionLink("Cancel", "Index", null, new { @class = "btn btn-default" })
+                </div>
+            </div>
+        </div>
+    </div>
+}
