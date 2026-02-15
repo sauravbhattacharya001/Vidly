@@ -41,6 +41,18 @@ namespace Vidly.Repositories
         bool IsMovieRentedOut(int movieId);
 
         /// <summary>
+        /// Atomically checks movie availability and creates the rental in a single
+        /// operation, preventing TOCTOU race conditions where two concurrent requests
+        /// could both pass the availability check and create duplicate rentals.
+        /// </summary>
+        /// <param name="rental">The rental to create.</param>
+        /// <returns>The created rental with assigned Id and defaults.</returns>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when the movie is already rented out.
+        /// </exception>
+        Rental Checkout(Rental rental);
+
+        /// <summary>
         /// Returns dashboard statistics about rentals.
         /// </summary>
         RentalStats GetStats();

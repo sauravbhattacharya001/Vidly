@@ -261,6 +261,44 @@ namespace Vidly.Repositories
             }
         }
 
+        public Rental Checkout(Rental rental)
+        {
+            if (rental == null)
+                throw new ArgumentNullException(nameof(rental));
+
+            lock (_lock)
+            {
+                // Atomic check-and-insert: availability check and rental creation
+                // happen within the same lock acquisition, preventing TOCTOU races
+                // where concurrent requests could both pass IsMovieRentedOut and
+                // create duplicate rentals for the same movie.
+                if (_rentals.Any(r =>
+                    r.MovieId == rental.MovieId && r.Status != RentalStatus.Returned))
+                {
+                    throw new InvalidOperationException(
+                        "This movie is currently rented out.");
+                }
+
+                rental.Id = _rentals.Any() ? _rentals.Max(r => r.Id) + 1 : 1;
+
+                if (rental.DailyRate <= 0)
+                    rental.DailyRate = DefaultDailyRate;
+
+                if (rental.RentalDate == default)
+                    rental.RentalDate = DateTime.Today;
+
+                if (rental.DueDate == default)
+                    rental.DueDate = rental.RentalDate.AddDays(DefaultRentalDays);
+
+                rental.Status = RentalStatus.Active;
+                rental.ReturnDate = null;
+                rental.LateFee = 0;
+
+                _rentals.Add(rental);
+                return Clone(rental);
+            }
+        }
+
         public RentalStats GetStats()
         {
             lock (_lock)

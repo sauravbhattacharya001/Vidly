@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Vidly.Models;
 using Vidly.Repositories;
@@ -312,6 +314,155 @@ namespace Vidly.Tests
             Assert.IsTrue(stats.TotalLateFees >= 0);
             Assert.AreEqual(stats.TotalRentals,
                 stats.ActiveRentals + stats.OverdueRentals + stats.ReturnedRentals);
+        }
+
+        [TestMethod]
+        public void Checkout_AvailableMovie_CreatesRental()
+        {
+            var repo = new InMemoryRentalRepository();
+            var rental = new Rental
+            {
+                CustomerId = 1,
+                CustomerName = "Test User",
+                MovieId = 200,
+                MovieName = "Available Movie"
+            };
+
+            var result = repo.Checkout(rental);
+
+            Assert.IsNotNull(result);
+            Assert.IsTrue(result.Id > 0);
+            Assert.AreEqual(RentalStatus.Active, result.Status);
+            Assert.AreEqual(200, result.MovieId);
+            Assert.IsTrue(repo.IsMovieRentedOut(200));
+
+            repo.Remove(result.Id);
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(InvalidOperationException))]
+        public void Checkout_AlreadyRentedMovie_ThrowsInvalidOperationException()
+        {
+            var repo = new InMemoryRentalRepository();
+            // Movie 1 (Shrek) is already rented out in seed data
+            var rental = new Rental
+            {
+                CustomerId = 3,
+                CustomerName = "Another Customer",
+                MovieId = 1,
+                MovieName = "Shrek!"
+            };
+
+            repo.Checkout(rental);
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(ArgumentNullException))]
+        public void Checkout_NullRental_ThrowsArgumentNullException()
+        {
+            var repo = new InMemoryRentalRepository();
+            repo.Checkout(null);
+        }
+
+        [TestMethod]
+        public void Checkout_SetsDefaults_WhenNotProvided()
+        {
+            var repo = new InMemoryRentalRepository();
+            var rental = new Rental
+            {
+                CustomerId = 1,
+                CustomerName = "Defaults Test",
+                MovieId = 201,
+                MovieName = "Defaults Movie"
+            };
+
+            var result = repo.Checkout(rental);
+
+            Assert.AreEqual(DateTime.Today, result.RentalDate);
+            Assert.AreEqual(DateTime.Today.AddDays(InMemoryRentalRepository.DefaultRentalDays), result.DueDate);
+            Assert.AreEqual(InMemoryRentalRepository.DefaultDailyRate, result.DailyRate);
+            Assert.IsNull(result.ReturnDate);
+            Assert.AreEqual(0m, result.LateFee);
+
+            repo.Remove(result.Id);
+        }
+
+        [TestMethod]
+        public void Checkout_ReturnsDefensiveCopy()
+        {
+            var repo = new InMemoryRentalRepository();
+            var rental = new Rental
+            {
+                CustomerId = 1,
+                CustomerName = "Copy Test",
+                MovieId = 202,
+                MovieName = "Copy Movie"
+            };
+
+            var result = repo.Checkout(rental);
+            var fetched = repo.GetById(result.Id);
+
+            Assert.AreNotSame(result, fetched);
+            Assert.AreEqual(result.Id, fetched.Id);
+
+            repo.Remove(result.Id);
+        }
+
+        [TestMethod]
+        public void Checkout_ConcurrentRequests_OnlyOneSucceeds()
+        {
+            // This test verifies the TOCTOU fix: when multiple threads try to
+            // rent the same movie simultaneously, exactly one should succeed
+            // and the rest should get InvalidOperationException.
+            var repo = new InMemoryRentalRepository();
+            const int movieId = 300;
+            const int threadCount = 10;
+
+            int successCount = 0;
+            int failureCount = 0;
+            var ids = new List<int>();
+
+            var barrier = new Barrier(threadCount);
+            var tasks = new Task[threadCount];
+
+            for (int i = 0; i < threadCount; i++)
+            {
+                int customerId = 100 + i;
+                tasks[i] = Task.Run(() =>
+                {
+                    var r = new Rental
+                    {
+                        CustomerId = customerId,
+                        CustomerName = $"Customer {customerId}",
+                        MovieId = movieId,
+                        MovieName = "Race Condition Movie"
+                    };
+
+                    barrier.SignalAndWait();
+
+                    try
+                    {
+                        var result = repo.Checkout(r);
+                        Interlocked.Increment(ref successCount);
+                        lock (ids) { ids.Add(result.Id); }
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        Interlocked.Increment(ref failureCount);
+                    }
+                });
+            }
+
+            Task.WaitAll(tasks);
+
+            Assert.AreEqual(1, successCount,
+                "Exactly one concurrent checkout should succeed.");
+            Assert.AreEqual(threadCount - 1, failureCount,
+                "All other concurrent checkouts should fail.");
+            Assert.IsTrue(repo.IsMovieRentedOut(movieId));
+
+            // Clean up
+            foreach (var id in ids) repo.Remove(id);
         }
     }
 }

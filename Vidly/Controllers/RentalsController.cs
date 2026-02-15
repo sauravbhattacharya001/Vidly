@@ -146,15 +146,11 @@ namespace Vidly.Controllers
                 ModelState.AddModelError("Rental.CustomerId", "Selected customer does not exist.");
             }
 
-            // Validate movie exists and is available
+            // Validate movie exists
             var movie = _movieRepository.GetById(rental.MovieId);
             if (movie == null)
             {
                 ModelState.AddModelError("Rental.MovieId", "Selected movie does not exist.");
-            }
-            else if (_rentalRepository.IsMovieRentedOut(rental.MovieId))
-            {
-                ModelState.AddModelError("Rental.MovieId", "This movie is currently rented out.");
             }
 
             if (!ModelState.IsValid)
@@ -171,7 +167,22 @@ namespace Vidly.Controllers
             rental.CustomerName = customer.Name;
             rental.MovieName = movie.Name;
 
-            _rentalRepository.Add(rental);
+            // Use atomic Checkout to prevent TOCTOU race: availability check
+            // and rental creation happen in a single lock acquisition
+            try
+            {
+                _rentalRepository.Checkout(rental);
+            }
+            catch (InvalidOperationException)
+            {
+                ModelState.AddModelError("Rental.MovieId", "This movie is currently rented out.");
+                var movies = _movieRepository.GetAll();
+                viewModel.Customers = _customerRepository.GetAll();
+                viewModel.AvailableMovies = movies
+                    .Where(m => !_rentalRepository.IsMovieRentedOut(m.Id))
+                    .ToList();
+                return View(viewModel);
+            }
 
             return RedirectToAction("Index");
         }
