@@ -1,0 +1,263 @@
+@model Vidly.ViewModels.WatchlistViewModel
+@{
+    ViewBag.Title = "Watchlist";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>
+    <span class="glyphicon glyphicon-bookmark"></span> Watchlist
+</h2>
+
+@* Status message *@
+@if (!string.IsNullOrEmpty(Model.StatusMessage))
+{
+    <div class="alert @(Model.IsError ? "alert-danger" : "alert-success") alert-dismissible" role="alert">
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+        @Model.StatusMessage
+    </div>
+}
+
+@* Customer selector *@
+<div class="panel panel-default">
+    <div class="panel-body">
+        @using (Html.BeginForm("Index", "Watchlist", FormMethod.Get, new { @class = "form-inline" }))
+        {
+            <div class="form-group" style="margin-right: 10px;">
+                <label for="customerId">Customer:</label>
+                <select name="customerId" id="customerId" class="form-control" style="margin-left: 5px; min-width: 200px;">
+                    <option value="">-- Select Customer --</option>
+                    @foreach (var c in Model.Customers)
+                    {
+                        <option value="@c.Id" @(Model.SelectedCustomerId == c.Id ? "selected" : "")>@c.Name</option>
+                    }
+                </select>
+            </div>
+            <button type="submit" class="btn btn-info">
+                <span class="glyphicon glyphicon-list"></span> View Watchlist
+            </button>
+            <a href="@Url.Action("Add", "Watchlist", Model.SelectedCustomerId.HasValue ? new { customerId = Model.SelectedCustomerId } : null)"
+               class="btn btn-primary" style="margin-left: 5px;">
+                <span class="glyphicon glyphicon-plus"></span> Add to Watchlist
+            </a>
+        }
+    </div>
+</div>
+
+@if (Model.SelectedCustomerId.HasValue)
+{
+    @* Stats panel *@
+    if (Model.Stats != null)
+    {
+        <div class="row" style="margin-bottom: 15px;">
+            <div class="col-md-3">
+                <div class="panel panel-info">
+                    <div class="panel-heading"><strong>Total Items</strong></div>
+                    <div class="panel-body text-center">
+                        <h3>@Model.Stats.TotalItems</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="panel panel-danger">
+                    <div class="panel-heading"><strong>Must Watch</strong></div>
+                    <div class="panel-body text-center">
+                        <h3>@Model.Stats.MustWatchCount</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="panel panel-warning">
+                    <div class="panel-heading"><strong>High Priority</strong></div>
+                    <div class="panel-body text-center">
+                        <h3>@Model.Stats.HighCount</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="panel panel-default">
+                    <div class="panel-heading"><strong>Normal</strong></div>
+                    <div class="panel-body text-center">
+                        <h3>@Model.Stats.NormalCount</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <h3>@Model.SelectedCustomerName's Watchlist</h3>
+
+    @if (Model.Items.Any())
+    {
+        <table class="table table-bordered table-hover">
+            <thead>
+                <tr>
+                    <th>Priority</th>
+                    <th>Movie</th>
+                    <th>Genre</th>
+                    <th>Rating</th>
+                    <th>Note</th>
+                    <th>Added</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Items)
+                {
+                    <tr>
+                        <td>
+                            @switch (item.Priority)
+                            {
+                                case Vidly.Models.WatchlistPriority.MustWatch:
+                                    <span class="label label-danger">Must Watch</span>
+                                    break;
+                                case Vidly.Models.WatchlistPriority.High:
+                                    <span class="label label-warning">High</span>
+                                    break;
+                                default:
+                                    <span class="label label-default">Normal</span>
+                                    break;
+                            }
+                        </td>
+                        <td>
+                            @Html.ActionLink(item.MovieName, "Details", "Movies", new { id = item.MovieId }, null)
+                        </td>
+                        <td>
+                            @if (item.MovieGenre.HasValue)
+                            {
+                                <span class="label label-info">@item.MovieGenre</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                        </td>
+                        <td>
+                            @if (item.MovieRating.HasValue)
+                            {
+                                for (int i = 1; i <= 5; i++)
+                                {
+                                    if (i <= item.MovieRating.Value)
+                                    {
+                                        <span class="glyphicon glyphicon-star text-warning"></span>
+                                    }
+                                    else
+                                    {
+                                        <span class="glyphicon glyphicon-star-empty text-muted"></span>
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                        </td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(item.Note))
+                            {
+                                <em>@item.Note</em>
+                            }
+                            else
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                        </td>
+                        <td>@item.AddedDate.ToString("MMM dd, yyyy")</td>
+                        <td>
+                            @* Priority buttons *@
+                            <div class="btn-group btn-group-xs" style="margin-bottom: 3px;">
+                                @using (Html.BeginForm("UpdatePriority", "Watchlist", new { id = item.Id, customerId = Model.SelectedCustomerId }, FormMethod.Post, new { style = "display:inline" }))
+                                {
+                                    @Html.AntiForgeryToken()
+                                    @if (item.Priority != Vidly.Models.WatchlistPriority.MustWatch)
+                                    {
+                                        <button type="submit" name="priority" value="@((int)Vidly.Models.WatchlistPriority.MustWatch)"
+                                                class="btn btn-xs btn-danger" title="Set Must Watch">
+                                            <span class="glyphicon glyphicon-exclamation-sign"></span>
+                                        </button>
+                                    }
+                                    @if (item.Priority != Vidly.Models.WatchlistPriority.High)
+                                    {
+                                        <button type="submit" name="priority" value="@((int)Vidly.Models.WatchlistPriority.High)"
+                                                class="btn btn-xs btn-warning" title="Set High Priority">
+                                            <span class="glyphicon glyphicon-arrow-up"></span>
+                                        </button>
+                                    }
+                                    @if (item.Priority != Vidly.Models.WatchlistPriority.Normal)
+                                    {
+                                        <button type="submit" name="priority" value="@((int)Vidly.Models.WatchlistPriority.Normal)"
+                                                class="btn btn-xs btn-default" title="Set Normal Priority">
+                                            <span class="glyphicon glyphicon-minus"></span>
+                                        </button>
+                                    }
+                                }
+                            </div>
+
+                            @* Remove button *@
+                            @using (Html.BeginForm("Remove", "Watchlist", new { id = item.Id, customerId = Model.SelectedCustomerId }, FormMethod.Post, new { style = "display:inline" }))
+                            {
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-xs btn-danger"
+                                        onclick="return confirm('Remove from watchlist?');"
+                                        title="Remove from watchlist">
+                                    <span class="glyphicon glyphicon-trash"></span>
+                                </button>
+                            }
+
+                            @* Rent button *@
+                            @Html.ActionLink("Rent", "Checkout", "Rentals",
+                                new { customerId = item.CustomerId, movieId = item.MovieId },
+                                new { @class = "btn btn-xs btn-success", title = "Rent this movie" })
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        @* Clear all button *@
+        <div style="margin-top: 10px;">
+            @using (Html.BeginForm("Clear", "Watchlist", new { customerId = Model.SelectedCustomerId }, FormMethod.Post, new { style = "display:inline" }))
+            {
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-danger"
+                        onclick="return confirm('Clear entire watchlist for @Model.SelectedCustomerName?');">
+                    <span class="glyphicon glyphicon-trash"></span> Clear Entire Watchlist
+                </button>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-info">
+            <span class="glyphicon glyphicon-info-sign"></span>
+            @Model.SelectedCustomerName's watchlist is empty.
+            @Html.ActionLink("Add a movie", "Add", "Watchlist", new { customerId = Model.SelectedCustomerId }, null)
+            to get started!
+        </div>
+    }
+}
+
+@* Popular Movies section (always visible) *@
+@if (Model.PopularMovies.Any())
+{
+    <hr />
+    <h3>
+        <span class="glyphicon glyphicon-fire"></span> Most Popular on Watchlists
+    </h3>
+    <div class="row">
+        @foreach (var popular in Model.PopularMovies)
+        {
+            <div class="col-md-2">
+                <div class="panel panel-default">
+                    <div class="panel-body text-center">
+                        <h4>
+                            @Html.ActionLink(popular.MovieName, "Details", "Movies", new { id = popular.MovieId }, null)
+                        </h4>
+                        <span class="badge">@popular.WatchlistCount @(popular.WatchlistCount == 1 ? "person" : "people")</span>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
