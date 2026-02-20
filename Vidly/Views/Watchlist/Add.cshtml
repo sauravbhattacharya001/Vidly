@@ -1,0 +1,103 @@
+@model Vidly.ViewModels.WatchlistAddViewModel
+@{
+    ViewBag.Title = "Add to Watchlist";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>
+    <span class="glyphicon glyphicon-plus"></span> Add to Watchlist
+</h2>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title">Add a Movie to Watch Later</h3>
+            </div>
+            <div class="panel-body">
+                @using (Html.BeginForm("Add", "Watchlist", FormMethod.Post))
+                {
+                    @Html.AntiForgeryToken()
+                    @Html.ValidationSummary(true, "", new { @class = "text-danger" })
+
+                    <div class="form-group">
+                        <label for="CustomerId">Customer</label>
+                        <select name="CustomerId" id="CustomerId" class="form-control">
+                            <option value="">-- Select Customer --</option>
+                            @foreach (var c in Model.Customers)
+                            {
+                                <option value="@c.Id"
+                                    @(Model.Item.CustomerId == c.Id || Model.SelectedCustomerId == c.Id ? "selected" : "")>
+                                    @c.Name
+                                </option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="MovieId">Movie</label>
+                        <select name="MovieId" id="MovieId" class="form-control">
+                            <option value="">-- Select Movie --</option>
+                            @foreach (var m in Model.AvailableMovies)
+                            {
+                                <option value="@m.Id"
+                                    @(Model.Item.MovieId == m.Id || Model.SelectedMovieId == m.Id ? "selected" : "")>
+                                    @m.Name
+                                    @if (m.Genre.HasValue) { <text>(@m.Genre)</text> }
+                                    @if (m.Rating.HasValue) { <text>— @m.Rating★</text> }
+                                </option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="Priority">Priority</label>
+                        <select name="Priority" id="Priority" class="form-control">
+                            <option value="@((int)Vidly.Models.WatchlistPriority.Normal)"
+                                @(Model.Item.Priority == Vidly.Models.WatchlistPriority.Normal ? "selected" : "")>
+                                Normal
+                            </option>
+                            <option value="@((int)Vidly.Models.WatchlistPriority.High)"
+                                @(Model.Item.Priority == Vidly.Models.WatchlistPriority.High ? "selected" : "")>
+                                High
+                            </option>
+                            <option value="@((int)Vidly.Models.WatchlistPriority.MustWatch)"
+                                @(Model.Item.Priority == Vidly.Models.WatchlistPriority.MustWatch ? "selected" : "")>
+                                Must Watch
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="Note">Note <small class="text-muted">(optional, max 500 chars)</small></label>
+                        <textarea name="Note" id="Note" class="form-control" rows="3"
+                                  maxlength="500" placeholder="Why do you want to watch this?">@Model.Item.Note</textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <span class="glyphicon glyphicon-bookmark"></span> Add to Watchlist
+                    </button>
+                    @Html.ActionLink("Cancel", "Index", "Watchlist",
+                        Model.SelectedCustomerId.HasValue ? new { customerId = Model.SelectedCustomerId } : null,
+                        new { @class = "btn btn-default" })
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="panel panel-info">
+            <div class="panel-heading">
+                <h3 class="panel-title"><span class="glyphicon glyphicon-info-sign"></span> Tips</h3>
+            </div>
+            <div class="panel-body">
+                <ul style="padding-left: 20px;">
+                    <li>Use <strong>Must Watch</strong> priority for movies you definitely want to see soon.</li>
+                    <li>Add a <strong>note</strong> to remember why you added this movie.</li>
+                    <li>Movies already on the selected customer's watchlist won't appear in the dropdown.</li>
+                    <li>You can rent directly from your watchlist later!</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>

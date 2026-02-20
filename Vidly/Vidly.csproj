@@ -148,6 +148,11 @@
     <Compile Include="ViewModels\RentalCheckoutViewModel.cs" />
     <Compile Include="ViewModels\RentalSearchViewModel.cs" />
     <Compile Include="Services\RecommendationService.cs" />
+    <Compile Include="Models\WatchlistItem.cs" />
+    <Compile Include="Repositories\IWatchlistRepository.cs" />
+    <Compile Include="Repositories\InMemoryWatchlistRepository.cs" />
+    <Compile Include="Controllers\WatchlistController.cs" />
+    <Compile Include="ViewModels\WatchlistViewModel.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Content\bootstrap-lumen.css" />
@@ -200,6 +205,8 @@
     <Content Include="Views\Rentals\Checkout.cshtml" />
     <Content Include="Views\Rentals\Overdue.cshtml" />
     <Content Include="Views\Recommendations\Index.cshtml" />
+    <Content Include="Views\Watchlist\Index.cshtml" />
+    <Content Include="Views\Watchlist\Add.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
