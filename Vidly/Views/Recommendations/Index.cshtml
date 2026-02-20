@@ -1,0 +1,215 @@
+@model Vidly.ViewModels.RecommendationViewModel
+@{
+    ViewBag.Title = "Recommendations";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>
+    <span class="glyphicon glyphicon-thumbs-up"></span>
+    Movie Recommendations
+</h2>
+<p class="text-muted">Personalized movie suggestions based on rental history and genre preferences.</p>
+
+@* Customer Selector *@
+<div class="panel panel-default">
+    <div class="panel-body">
+        @using (Html.BeginForm("Index", "Recommendations", FormMethod.Get, new { @class = "form-inline" }))
+        {
+            <div class="form-group" style="margin-right: 10px;">
+                <label for="customerId">
+                    <span class="glyphicon glyphicon-user"></span> Select Customer:
+                </label>
+                <select name="customerId" id="customerId" class="form-control" style="margin-left: 8px; min-width: 200px;">
+                    <option value="">-- Choose a customer --</option>
+                    @foreach (var customer in Model.Customers)
+                    {
+                        <option value="@customer.Id"
+                                @(Model.SelectedCustomerId == customer.Id ? "selected" : "")>
+                            @customer.Name (@customer.MembershipType)
+                        </option>
+                    }
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <span class="glyphicon glyphicon-search"></span> Get Recommendations
+            </button>
+        }
+    </div>
+</div>
+
+@if (Model.Result != null)
+{
+    <div class="row" style="margin-bottom: 20px;">
+        <div class="col-md-12">
+            <h3>
+                Recommendations for <strong>@Model.SelectedCustomerName</strong>
+            </h3>
+        </div>
+    </div>
+
+    @* Stats row *@
+    <div class="row" style="margin-bottom: 15px;">
+        <div class="col-md-3 col-sm-6">
+            <div class="panel panel-info text-center">
+                <div class="panel-body">
+                    <h3 style="margin: 0;">@Model.Result.TotalRentals</h3>
+                    <small class="text-muted">Past Rentals</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="panel panel-success text-center">
+                <div class="panel-body">
+                    <h3 style="margin: 0;">@Model.Result.GenrePreferences.Count</h3>
+                    <small class="text-muted">Genre Interests</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="panel panel-warning text-center">
+                <div class="panel-body">
+                    <h3 style="margin: 0;">@Model.Result.Recommendations.Count</h3>
+                    <small class="text-muted">Suggestions</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="panel panel-default text-center">
+                <div class="panel-body">
+                    <h3 style="margin: 0;">@Model.Result.TotalAvailableMovies</h3>
+                    <small class="text-muted">Unwatched Movies</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Genre Preferences *@
+    @if (Model.Result.GenrePreferences.Any())
+    {
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h4 class="panel-title">
+                    <span class="glyphicon glyphicon-stats"></span> Genre Preferences
+                </h4>
+            </div>
+            <div class="panel-body">
+                @{
+                    var maxScore = Model.Result.GenrePreferences.Max(g => g.Score);
+                }
+                @foreach (var pref in Model.Result.GenrePreferences)
+                {
+                    var percentage = maxScore > 0 ? (int)((pref.Score / maxScore) * 100) : 0;
+                    var barClass = percentage >= 75 ? "progress-bar-success" :
+                                   percentage >= 40 ? "progress-bar-info" : "progress-bar-warning";
+                    <div style="margin-bottom: 8px;">
+                        <div class="row">
+                            <div class="col-xs-3 col-sm-2">
+                                <strong>@pref.Genre</strong>
+                            </div>
+                            <div class="col-xs-7 col-sm-8">
+                                <div class="progress" style="margin-bottom: 0;">
+                                    <div class="progress-bar @barClass"
+                                         role="progressbar"
+                                         style="width: @(percentage)%; min-width: 40px;"
+                                         aria-valuenow="@pref.Score"
+                                         aria-valuemin="0"
+                                         aria-valuemax="@maxScore">
+                                        @pref.Score.ToString("F1")
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-xs-2 col-sm-2 text-muted">
+                                @pref.RentalCount rental(s)
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    @* Recommendation Cards *@
+    @if (Model.Result.Recommendations.Any())
+    {
+        <div class="row">
+            @foreach (var rec in Model.Result.Recommendations)
+            {
+                <div class="col-md-4 col-sm-6" style="margin-bottom: 20px;">
+                    <div class="panel panel-default" style="height: 100%;">
+                        <div class="panel-heading" style="position: relative;">
+                            <h4 class="panel-title" style="padding-right: 60px;">
+                                @Html.ActionLink(rec.Movie.Name, "Details", "Movies", new { id = rec.Movie.Id }, null)
+                            </h4>
+                            <span class="badge"
+                                  style="position: absolute; top: 10px; right: 15px; font-size: 14px;
+                                         background-color: @(rec.Score >= 8 ? "#5cb85c" : rec.Score >= 5 ? "#5bc0de" : "#f0ad4e");">
+                                @rec.Score.ToString("F1")
+                            </span>
+                        </div>
+                        <div class="panel-body">
+                            @if (rec.Movie.Genre.HasValue)
+                            {
+                                <span class="label label-primary" style="margin-right: 5px;">@rec.Movie.Genre</span>
+                            }
+                            @if (rec.Movie.Rating.HasValue)
+                            {
+                                <span style="color: #f0ad4e;">
+                                    @for (int i = 0; i < rec.Movie.Rating.Value; i++)
+                                    {
+                                        <span class="glyphicon glyphicon-star"></span>
+                                    }
+                                    @for (int i = rec.Movie.Rating.Value; i < 5; i++)
+                                    {
+                                        <span class="glyphicon glyphicon-star-empty"></span>
+                                    }
+                                </span>
+                            }
+                            @if (rec.Movie.ReleaseDate.HasValue)
+                            {
+                                <br />
+                                <small class="text-muted">
+                                    Released: @rec.Movie.ReleaseDate.Value.ToString("MMM yyyy")
+                                </small>
+                            }
+                            <hr style="margin: 10px 0;" />
+                            <p class="text-muted" style="font-style: italic; margin: 0;">
+                                <span class="glyphicon glyphicon-info-sign"></span>
+                                @rec.Reason
+                            </p>
+                        </div>
+                        <div class="panel-footer">
+                            @Html.ActionLink("View Details", "Details", "Movies",
+                                new { id = rec.Movie.Id },
+                                new { @class = "btn btn-sm btn-default" })
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else if (Model.Result.TotalRentals == 0)
+    {
+        <div class="alert alert-info">
+            <span class="glyphicon glyphicon-info-sign"></span>
+            <strong>@Model.SelectedCustomerName</strong> hasn't rented any movies yet.
+            Recommendations will improve as they rent more!
+            <br /><br />
+            In the meantime, here are our top-rated movies for them to try:
+        </div>
+    }
+    else if (Model.Result.TotalAvailableMovies == 0)
+    {
+        <div class="alert alert-success">
+            <span class="glyphicon glyphicon-ok-sign"></span>
+            <strong>@Model.SelectedCustomerName</strong> has watched every movie in our collection!
+            Check back when new titles are added.
+        </div>
+    }
+}
+else
+{
+    <div class="alert alert-info">
+        <span class="glyphicon glyphicon-info-sign"></span>
+        Select a customer above to see personalized movie recommendations.
+    </div>
+}

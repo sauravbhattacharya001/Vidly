@@ -26,6 +26,7 @@
   <ItemGroup>
     <Reference Include="System.Web" />
     <Reference Include="System.ComponentModel.DataAnnotations" />
+    <Reference Include="Microsoft.CSharp" />
   </ItemGroup>
 
   <!--
@@ -38,6 +39,7 @@
     <Compile Include="..\Vidly\ViewModels\*.cs" Link="Source\ViewModels\%(Filename)%(Extension)" />
     <Compile Include="..\Vidly\Controllers\*.cs" Link="Source\Controllers\%(Filename)%(Extension)" />
     <Compile Include="..\Vidly\Repositories\*.cs" Link="Source\Repositories\%(Filename)%(Extension)" />
+    <Compile Include="..\Vidly\Services\*.cs" Link="Source\Services\%(Filename)%(Extension)" />
     <Compile Include="..\Vidly\Filters\*.cs" Link="Source\Filters\%(Filename)%(Extension)" />
     <Compile Include="..\Vidly\App_Start\RouteConfig.cs" Link="Source\App_Start\RouteConfig.cs" />
     <Compile Include="..\Vidly\App_Start\FilterConfig.cs" Link="Source\App_Start\FilterConfig.cs" />
