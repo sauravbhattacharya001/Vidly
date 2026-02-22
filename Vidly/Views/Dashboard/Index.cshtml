@@ -1,0 +1,376 @@
+@model Vidly.ViewModels.DashboardViewModel
+@{
+    ViewBag.Title = "Revenue Dashboard";
+}
+
+<style>
+    .dashboard-container { margin-top: 10px; }
+    .kpi-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+    .kpi-card {
+        flex: 1; min-width: 160px; max-width: 220px;
+        background: #fff; border: 1px solid #ddd; border-radius: 6px;
+        padding: 16px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .kpi-card .kpi-value {
+        font-size: 28px; font-weight: 700; color: #333; margin-bottom: 4px;
+    }
+    .kpi-card .kpi-label {
+        font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .kpi-card.revenue .kpi-value { color: #2e7d32; }
+    .kpi-card.warning .kpi-value { color: #e65100; }
+    .kpi-card.info .kpi-value { color: #1565c0; }
+
+    .dashboard-section {
+        background: #fff; border: 1px solid #ddd; border-radius: 6px;
+        padding: 16px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .dashboard-section h3 {
+        margin-top: 0; padding-bottom: 8px;
+        border-bottom: 2px solid #f0f0f0; color: #333;
+    }
+
+    .rank-table { width: 100%; border-collapse: collapse; }
+    .rank-table th {
+        text-align: left; padding: 8px 10px; background: #f8f8f8;
+        border-bottom: 2px solid #e0e0e0; font-size: 13px; color: #666;
+    }
+    .rank-table td {
+        padding: 8px 10px; border-bottom: 1px solid #f0f0f0; font-size: 14px;
+    }
+    .rank-table tr:hover { background: #fafafa; }
+
+    .rank-medal { display: inline-block; width: 22px; text-align: center; }
+    .rank-medal.gold { color: #ffc107; }
+    .rank-medal.silver { color: #90a4ae; }
+    .rank-medal.bronze { color: #bf8040; }
+
+    .badge-tier {
+        display: inline-block; padding: 2px 8px; border-radius: 10px;
+        font-size: 11px; font-weight: 600; color: #fff;
+    }
+    .badge-tier.Basic { background: #9e9e9e; }
+    .badge-tier.Silver { background: #78909c; }
+    .badge-tier.Gold { background: #ffc107; color: #333; }
+    .badge-tier.Platinum { background: #7b1fa2; }
+
+    .status-badge {
+        display: inline-block; padding: 2px 8px; border-radius: 10px;
+        font-size: 11px; font-weight: 600; color: #fff;
+    }
+    .status-badge.Active { background: #4caf50; }
+    .status-badge.Overdue { background: #f44336; }
+    .status-badge.Returned { background: #2196f3; }
+
+    .bar-cell { position: relative; min-width: 120px; }
+    .bar-fill {
+        height: 20px; border-radius: 3px; background: #42a5f5;
+        display: inline-block; vertical-align: middle; min-width: 2px;
+    }
+    .bar-label {
+        display: inline-block; margin-left: 6px; font-size: 12px; color: #666;
+        vertical-align: middle;
+    }
+
+    .two-col { display: flex; gap: 20px; flex-wrap: wrap; }
+    .two-col > div { flex: 1; min-width: 300px; }
+
+    .stars { color: #ffc107; letter-spacing: 1px; }
+</style>
+
+<div class="dashboard-container">
+    <h2><span class="glyphicon glyphicon-dashboard"></span> Revenue Dashboard</h2>
+
+    @* ─── KPI Cards ─── *@
+    <div class="kpi-row">
+        <div class="kpi-card revenue">
+            <div class="kpi-value">$@Model.Data.Stats.TotalRevenue.ToString("N2")</div>
+            <div class="kpi-label">Total Revenue</div>
+        </div>
+        <div class="kpi-card info">
+            <div class="kpi-value">@Model.Data.Stats.TotalRentals</div>
+            <div class="kpi-label">Total Rentals</div>
+        </div>
+        <div class="kpi-card info">
+            <div class="kpi-value">@Model.Data.Stats.ActiveRentals</div>
+            <div class="kpi-label">Active Rentals</div>
+        </div>
+        <div class="kpi-card warning">
+            <div class="kpi-value">@Model.Data.Stats.OverdueRentals</div>
+            <div class="kpi-label">Overdue</div>
+        </div>
+        <div class="kpi-card warning">
+            <div class="kpi-value">$@Model.Data.Stats.TotalLateFees.ToString("N2")</div>
+            <div class="kpi-label">Late Fees</div>
+        </div>
+        <div class="kpi-card revenue">
+            <div class="kpi-value">$@Model.Data.AverageRevenuePerRental.ToString("N2")</div>
+            <div class="kpi-label">Avg per Rental</div>
+        </div>
+        <div class="kpi-card info">
+            <div class="kpi-value">@Model.Data.CustomerCount</div>
+            <div class="kpi-label">Customers</div>
+        </div>
+        <div class="kpi-card info">
+            <div class="kpi-value">@Model.Data.MovieCount</div>
+            <div class="kpi-label">Movies</div>
+        </div>
+    </div>
+
+    <div class="two-col">
+        @* ─── Top Movies ─── *@
+        <div class="dashboard-section">
+            <h3><span class="glyphicon glyphicon-film"></span> Top Movies</h3>
+            @if (Model.Data.TopMovies.Count == 0)
+            {
+                <p class="text-muted">No rental data yet.</p>
+            }
+            else
+            {
+                <table class="rank-table">
+                    <thead>
+                        <tr>
+                            <th style="width:30px">#</th>
+                            <th>Movie</th>
+                            <th>Genre</th>
+                            <th style="text-align:center">Rating</th>
+                            <th style="text-align:right">Rentals</th>
+                            <th style="text-align:right">Revenue</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < Model.Data.TopMovies.Count; i++)
+                        {
+                            var m = Model.Data.TopMovies[i];
+                            string medalClass = i == 0 ? "gold" : i == 1 ? "silver" : i == 2 ? "bronze" : "";
+                            string medalIcon = i == 0 ? "★" : i == 1 ? "★" : i == 2 ? "★" : (i + 1).ToString();
+                            <tr>
+                                <td><span class="rank-medal @medalClass">@medalIcon</span></td>
+                                <td><strong>@m.MovieName</strong></td>
+                                <td>@(m.Genre.HasValue ? m.Genre.Value.ToString() : "—")</td>
+                                <td style="text-align:center">
+                                    @if (m.Rating.HasValue)
+                                    {
+                                        <span class="stars">@(new string('★', m.Rating.Value))@(new string('☆', 5 - m.Rating.Value))</span>
+                                    }
+                                    else
+                                    {
+                                        <text>—</text>
+                                    }
+                                </td>
+                                <td style="text-align:right">@m.RentalCount</td>
+                                <td style="text-align:right">$@m.TotalRevenue.ToString("N2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+
+        @* ─── Top Customers ─── *@
+        <div class="dashboard-section">
+            <h3><span class="glyphicon glyphicon-user"></span> Top Customers</h3>
+            @if (Model.Data.TopCustomers.Count == 0)
+            {
+                <p class="text-muted">No rental data yet.</p>
+            }
+            else
+            {
+                <table class="rank-table">
+                    <thead>
+                        <tr>
+                            <th style="width:30px">#</th>
+                            <th>Customer</th>
+                            <th>Tier</th>
+                            <th style="text-align:right">Rentals</th>
+                            <th style="text-align:right">Spent</th>
+                            <th style="text-align:right">Late Fees</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < Model.Data.TopCustomers.Count; i++)
+                        {
+                            var c = Model.Data.TopCustomers[i];
+                            string medalClass = i == 0 ? "gold" : i == 1 ? "silver" : i == 2 ? "bronze" : "";
+                            string medalIcon = i == 0 ? "★" : i == 1 ? "★" : i == 2 ? "★" : (i + 1).ToString();
+                            <tr>
+                                <td><span class="rank-medal @medalClass">@medalIcon</span></td>
+                                <td><strong>@c.CustomerName</strong></td>
+                                <td><span class="badge-tier @c.MembershipType">@c.MembershipType</span></td>
+                                <td style="text-align:right">@c.RentalCount</td>
+                                <td style="text-align:right">$@c.TotalSpent.ToString("N2")</td>
+                                <td style="text-align:right">
+                                    @if (c.LateFees > 0)
+                                    {
+                                        <span style="color:#e65100">$@c.LateFees.ToString("N2")</span>
+                                    }
+                                    else
+                                    {
+                                        <text>$0.00</text>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+
+    <div class="two-col">
+        @* ─── Revenue by Genre ─── *@
+        <div class="dashboard-section">
+            <h3><span class="glyphicon glyphicon-th-list"></span> Revenue by Genre</h3>
+            @if (Model.Data.RevenueByGenre.Count == 0)
+            {
+                <p class="text-muted">No rental data yet.</p>
+            }
+            else
+            {
+                var maxRevenue = Model.Data.RevenueByGenre.Max(g => g.Revenue);
+                <table class="rank-table">
+                    <thead>
+                        <tr>
+                            <th>Genre</th>
+                            <th>Revenue</th>
+                            <th style="text-align:right">Rentals</th>
+                            <th style="text-align:right">Late Fees</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var g in Model.Data.RevenueByGenre)
+                        {
+                            var pct = maxRevenue > 0 ? (double)(g.Revenue / maxRevenue) * 100 : 0;
+                            <tr>
+                                <td><strong>@g.GenreName</strong></td>
+                                <td class="bar-cell">
+                                    <span class="bar-fill" style="width:@((int)pct)%"></span>
+                                    <span class="bar-label">$@g.Revenue.ToString("N2")</span>
+                                </td>
+                                <td style="text-align:right">@g.RentalCount</td>
+                                <td style="text-align:right">$@g.LateFees.ToString("N2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+
+        @* ─── Membership Breakdown ─── *@
+        <div class="dashboard-section">
+            <h3><span class="glyphicon glyphicon-star"></span> Revenue by Membership</h3>
+            @if (Model.Data.MembershipBreakdown.Count == 0)
+            {
+                <p class="text-muted">No rental data yet.</p>
+            }
+            else
+            {
+                <table class="rank-table">
+                    <thead>
+                        <tr>
+                            <th>Tier</th>
+                            <th style="text-align:right">Customers</th>
+                            <th style="text-align:right">Rentals</th>
+                            <th style="text-align:right">Revenue</th>
+                            <th style="text-align:right">Avg/Customer</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var t in Model.Data.MembershipBreakdown)
+                        {
+                            var avg = t.UniqueCustomers > 0 ? t.Revenue / t.UniqueCustomers : 0m;
+                            <tr>
+                                <td><span class="badge-tier @t.Tier">@t.Tier</span></td>
+                                <td style="text-align:right">@t.UniqueCustomers</td>
+                                <td style="text-align:right">@t.RentalCount</td>
+                                <td style="text-align:right">$@t.Revenue.ToString("N2")</td>
+                                <td style="text-align:right">$@avg.ToString("N2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+
+    @* ─── Monthly Revenue ─── *@
+    @if (Model.Data.MonthlyRevenue.Count > 0)
+    {
+        <div class="dashboard-section">
+            <h3><span class="glyphicon glyphicon-signal"></span> Monthly Revenue (Last 6 Months)</h3>
+            <table class="rank-table">
+                <thead>
+                    <tr>
+                        <th>Month</th>
+                        <th>Revenue</th>
+                        <th style="text-align:right">Rentals</th>
+                        <th style="text-align:right">Late Fees</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{
+                        var maxMonthly = Model.Data.MonthlyRevenue.Any()
+                            ? Model.Data.MonthlyRevenue.Max(m => m.Revenue) : 0m;
+                    }
+                    @foreach (var m in Model.Data.MonthlyRevenue)
+                    {
+                        var pct = maxMonthly > 0 ? (double)(m.Revenue / maxMonthly) * 100 : 0;
+                        <tr>
+                            <td><strong>@m.Label</strong></td>
+                            <td class="bar-cell">
+                                @if (m.Revenue > 0)
+                                {
+                                    <span class="bar-fill" style="width:@((int)pct)%; background:#66bb6a"></span>
+                                    <span class="bar-label">$@m.Revenue.ToString("N2")</span>
+                                }
+                                else
+                                {
+                                    <span class="bar-label" style="color:#bbb">—</span>
+                                }
+                            </td>
+                            <td style="text-align:right">@m.RentalCount</td>
+                            <td style="text-align:right">$@m.LateFees.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @* ─── Recent Activity ─── *@
+    <div class="dashboard-section">
+        <h3><span class="glyphicon glyphicon-time"></span> Recent Activity</h3>
+        @if (Model.Data.RecentRentals.Count == 0)
+        {
+            <p class="text-muted">No recent activity.</p>
+        }
+        else
+        {
+            <table class="rank-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Customer</th>
+                        <th>Movie</th>
+                        <th>Status</th>
+                        <th style="text-align:right">Due</th>
+                        <th style="text-align:right">Cost</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in Model.Data.RecentRentals)
+                    {
+                        <tr>
+                            <td>@r.RentalDate.ToString("MMM dd, yyyy")</td>
+                            <td>@r.CustomerName</td>
+                            <td>@r.MovieName</td>
+                            <td><span class="status-badge @r.Status">@r.Status</span></td>
+                            <td style="text-align:right">@r.DueDate.ToString("MMM dd")</td>
+                            <td style="text-align:right">$@r.TotalCost.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
