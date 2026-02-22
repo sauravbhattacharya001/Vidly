@@ -1,0 +1,331 @@
+@model Vidly.Services.CustomerActivityReport
+@{
+    ViewBag.Title = "Customer Activity";
+    var customers = ViewBag.Customers as System.Collections.Generic.List<Vidly.Models.Customer>;
+}
+
+<style>
+    .activity-container { margin-top: 10px; }
+    .selector-row { margin-bottom: 20px; }
+    .selector-row select { padding: 6px 12px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; min-width: 260px; }
+    .selector-row .btn { margin-left: 8px; }
+
+    .kpi-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+    .kpi-card {
+        flex: 1; min-width: 140px; max-width: 200px;
+        background: #fff; border: 1px solid #ddd; border-radius: 6px;
+        padding: 14px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .kpi-card .kpi-value { font-size: 26px; font-weight: 700; color: #333; margin-bottom: 4px; }
+    .kpi-card .kpi-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+    .kpi-card.revenue .kpi-value { color: #2e7d32; }
+    .kpi-card.warning .kpi-value { color: #e65100; }
+    .kpi-card.info .kpi-value { color: #1565c0; }
+    .kpi-card.loyalty .kpi-value { color: #6a1b9a; }
+
+    .activity-section {
+        background: #fff; border: 1px solid #ddd; border-radius: 6px;
+        padding: 16px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .activity-section h3 {
+        margin-top: 0; padding-bottom: 8px;
+        border-bottom: 2px solid #f0f0f0; color: #333;
+    }
+
+    .customer-header {
+        display: flex; align-items: center; gap: 16px; margin-bottom: 20px;
+        padding: 16px; background: #fff; border: 1px solid #ddd; border-radius: 6px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .customer-avatar {
+        width: 60px; height: 60px; border-radius: 50%;
+        background: #1565c0; color: #fff; display: flex; align-items: center;
+        justify-content: center; font-size: 24px; font-weight: 700;
+    }
+    .customer-info h2 { margin: 0 0 4px; }
+    .customer-info .meta { color: #888; font-size: 13px; }
+
+    .badge-tier {
+        display: inline-block; padding: 2px 8px; border-radius: 10px;
+        font-size: 11px; font-weight: 600; color: #fff;
+    }
+    .badge-tier.Basic { background: #9e9e9e; }
+    .badge-tier.Silver { background: #78909c; }
+    .badge-tier.Gold { background: #ffc107; color: #333; }
+    .badge-tier.Platinum { background: #7b1fa2; }
+
+    .status-badge {
+        display: inline-block; padding: 2px 8px; border-radius: 10px;
+        font-size: 11px; font-weight: 600; color: #fff;
+    }
+    .status-Active { background: #43a047; }
+    .status-Overdue { background: #e65100; }
+    .status-Returned { background: #757575; }
+
+    .loyalty-meter {
+        height: 12px; background: #e0e0e0; border-radius: 6px; overflow: hidden;
+        margin-top: 6px;
+    }
+    .loyalty-fill {
+        height: 100%; border-radius: 6px;
+        transition: width 0.5s ease;
+    }
+    .loyalty-low { background: #ef5350; }
+    .loyalty-med { background: #ffa726; }
+    .loyalty-high { background: #66bb6a; }
+    .loyalty-top { background: #7b1fa2; }
+
+    .insight-card {
+        display: flex; align-items: flex-start; gap: 10px;
+        padding: 10px 12px; border-radius: 6px; margin-bottom: 8px;
+    }
+    .insight-Info { background: #e3f2fd; border-left: 3px solid #1565c0; }
+    .insight-Positive { background: #e8f5e9; border-left: 3px solid #43a047; }
+    .insight-Warning { background: #fff3e0; border-left: 3px solid #e65100; }
+    .insight-icon { font-size: 20px; flex-shrink: 0; }
+    .insight-title { font-weight: 600; font-size: 14px; }
+    .insight-desc { font-size: 13px; color: #555; }
+
+    .genre-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+    .genre-bar-label { width: 100px; font-size: 13px; text-align: right; }
+    .genre-bar-track { flex: 1; height: 18px; background: #f0f0f0; border-radius: 4px; overflow: hidden; }
+    .genre-bar-fill { height: 100%; border-radius: 4px; background: #1565c0; min-width: 2px; }
+    .genre-bar-value { width: 80px; font-size: 12px; color: #666; }
+
+    .month-bar-row { display: flex; align-items: flex-end; gap: 4px; height: 120px; padding-top: 10px; }
+    .month-bar {
+        flex: 1; background: #1565c0; border-radius: 3px 3px 0 0; min-height: 2px;
+        position: relative; cursor: default;
+    }
+    .month-bar:hover { background: #1976d2; }
+    .month-label { text-align: center; font-size: 10px; color: #888; margin-top: 4px; }
+    .month-labels { display: flex; gap: 4px; }
+
+    .history-table { width: 100%; border-collapse: collapse; }
+    .history-table th {
+        text-align: left; padding: 8px 10px; background: #f8f8f8;
+        border-bottom: 2px solid #e0e0e0; font-size: 13px; color: #666;
+    }
+    .history-table td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+    .history-table tr:hover { background: #fafafa; }
+
+    .two-col { display: flex; gap: 20px; flex-wrap: wrap; }
+    .two-col > div { flex: 1; min-width: 300px; }
+
+    .empty-state { text-align: center; padding: 40px 20px; color: #888; }
+    .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+</style>
+
+<div class="activity-container">
+    <h2>📊 Customer Activity</h2>
+
+    <!-- Customer Selector -->
+    <div class="selector-row">
+        <form method="get" action="@Url.Action("Index", "Activity")" style="display: inline-flex; align-items: center;">
+            <select name="customerId" id="customerSelect">
+                <option value="">-- Select a customer --</option>
+                @if (customers != null)
+                {
+                    foreach (var c in customers)
+                    {
+                        var selected = Model != null && Model.CustomerId == c.Id ? "selected" : "";
+                        <option value="@c.Id" @selected>@c.Name (@c.MembershipType)</option>
+                    }
+                }
+            </select>
+            <button type="submit" class="btn btn-primary">View Activity</button>
+        </form>
+    </div>
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">@TempData["Error"]</div>
+    }
+
+    @if (Model == null)
+    {
+        <div class="empty-state">
+            <div class="icon">👤</div>
+            <p>Select a customer above to view their rental activity report.</p>
+        </div>
+    }
+    else
+    {
+        <!-- Customer Header -->
+        <div class="customer-header">
+            <div class="customer-avatar">@Model.CustomerName[0]</div>
+            <div class="customer-info">
+                <h2>@Model.CustomerName</h2>
+                <div class="meta">
+                    <span class="badge-tier @Model.MembershipType">@Model.MembershipType</span>
+                    @if (Model.MemberSince.HasValue)
+                    {
+                        <span style="margin-left: 8px;">Member since @Model.MemberSince.Value.ToString("MMM yyyy")</span>
+                    }
+                </div>
+            </div>
+            <div style="margin-left: auto; text-align: center;">
+                <div style="font-size: 14px; font-weight: 600; color: #6a1b9a;">Loyalty Score</div>
+                <div style="font-size: 32px; font-weight: 800; color: @(Model.LoyaltyScore >= 75 ? "#43a047" : Model.LoyaltyScore >= 50 ? "#ffa726" : "#ef5350");">
+                    @Model.LoyaltyScore
+                </div>
+                <div class="loyalty-meter" style="width: 120px;">
+                    <div class="loyalty-fill @(Model.LoyaltyScore >= 80 ? "loyalty-top" : Model.LoyaltyScore >= 60 ? "loyalty-high" : Model.LoyaltyScore >= 30 ? "loyalty-med" : "loyalty-low")"
+                         style="width: @(Model.LoyaltyScore)%;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="kpi-row">
+            <div class="kpi-card">
+                <div class="kpi-value">@Model.Summary.TotalRentals</div>
+                <div class="kpi-label">Total Rentals</div>
+            </div>
+            <div class="kpi-card revenue">
+                <div class="kpi-value">$@Model.Summary.TotalSpent.ToString("F2")</div>
+                <div class="kpi-label">Total Spent</div>
+            </div>
+            <div class="kpi-card info">
+                <div class="kpi-value">@Model.Summary.ActiveRentals</div>
+                <div class="kpi-label">Active</div>
+            </div>
+            <div class="kpi-card warning">
+                <div class="kpi-value">@Model.Summary.OverdueRentals</div>
+                <div class="kpi-label">Overdue</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-value">@Model.Summary.AverageRentalDays d</div>
+                <div class="kpi-label">Avg Duration</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-value">$@Model.Summary.AverageSpentPerRental.ToString("F2")</div>
+                <div class="kpi-label">Avg / Rental</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-value">@Model.Summary.OnTimeReturnRate%</div>
+                <div class="kpi-label">On-Time Rate</div>
+            </div>
+            <div class="kpi-card warning">
+                <div class="kpi-value">$@Model.Summary.TotalLateFees.ToString("F2")</div>
+                <div class="kpi-label">Late Fees</div>
+            </div>
+        </div>
+
+        <!-- Insights -->
+        @if (Model.Insights.Any())
+        {
+            <div class="activity-section">
+                <h3>💡 Insights</h3>
+                @foreach (var insight in Model.Insights)
+                {
+                    <div class="insight-card insight-@insight.Type">
+                        <div class="insight-icon">@insight.Icon</div>
+                        <div>
+                            <div class="insight-title">@insight.Title</div>
+                            <div class="insight-desc">@insight.Description</div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
+        <!-- Two-column layout -->
+        <div class="two-col">
+            <!-- Genre Breakdown -->
+            <div class="activity-section">
+                <h3>🎭 Genre Breakdown</h3>
+                @if (Model.GenreBreakdown.Any())
+                {
+                    var maxCount = Model.GenreBreakdown.Max(g => g.RentalCount);
+                    foreach (var genre in Model.GenreBreakdown)
+                    {
+                        var pct = maxCount > 0 ? (int)((double)genre.RentalCount / maxCount * 100) : 0;
+                        <div class="genre-bar-row">
+                            <div class="genre-bar-label">@genre.Genre</div>
+                            <div class="genre-bar-track">
+                                <div class="genre-bar-fill" style="width: @(pct)%;"></div>
+                            </div>
+                            <div class="genre-bar-value">@genre.RentalCount (@genre.Percentage%) · $@genre.TotalSpent.ToString("F2")</div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <p style="color: #888;">No genre data available.</p>
+                }
+            </div>
+
+            <!-- Monthly Activity -->
+            <div class="activity-section">
+                <h3>📅 Monthly Activity (Last 6 Months)</h3>
+                @if (Model.MonthlyActivity.Any())
+                {
+                    var maxMonthly = Model.MonthlyActivity.Max(m => m.RentalCount);
+                    maxMonthly = maxMonthly > 0 ? maxMonthly : 1;
+                    <div class="month-bar-row">
+                        @foreach (var month in Model.MonthlyActivity)
+                        {
+                            var heightPct = (int)((double)month.RentalCount / maxMonthly * 100);
+                            <div class="month-bar" style="height: @(Math.Max(heightPct, 2))%;"
+                                 title="@month.MonthName: @month.RentalCount rentals, $@month.TotalSpent.ToString("F2")">
+                            </div>
+                        }
+                    </div>
+                    <div class="month-labels">
+                        @foreach (var month in Model.MonthlyActivity)
+                        {
+                            <div class="month-label" style="flex: 1;">@month.MonthName</div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p style="color: #888;">No monthly data available.</p>
+                }
+            </div>
+        </div>
+
+        <!-- Rental History -->
+        <div class="activity-section">
+            <h3>📋 Rental History (@Model.RentalHistory.Count total)</h3>
+            @if (Model.RentalHistory.Any())
+            {
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Movie</th>
+                            <th>Rented</th>
+                            <th>Due</th>
+                            <th>Returned</th>
+                            <th>Status</th>
+                            <th>Cost</th>
+                            <th>Late Fee</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var rental in Model.RentalHistory)
+                        {
+                            <tr>
+                                <td><strong>@rental.MovieName</strong></td>
+                                <td>@rental.RentalDate.ToString("MMM d, yyyy")</td>
+                                <td>@rental.DueDate.ToString("MMM d, yyyy")</td>
+                                <td>@(rental.ReturnDate.HasValue ? rental.ReturnDate.Value.ToString("MMM d, yyyy") : "—")</td>
+                                <td><span class="status-badge status-@rental.Status">@rental.Status</span></td>
+                                <td>$@rental.TotalCost.ToString("F2")</td>
+                                <td>@(rental.LateFee > 0 ? "$" + rental.LateFee.ToString("F2") : "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <div class="empty-state">
+                    <div class="icon">🎬</div>
+                    <p>No rental history found for this customer.</p>
+                </div>
+            }
+        </div>
+    }
+</div>
