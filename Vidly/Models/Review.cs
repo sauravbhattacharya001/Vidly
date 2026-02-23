@@ -9,6 +9,9 @@ namespace Vidly.Models
     /// </summary>
     public class Review
     {
+        /// <summary>Maximum allowed length for review text.</summary>
+        public const int MaxReviewTextLength = 2000;
+
         public int Id { get; set; }
 
         /// <summary>Customer who wrote the review.</summary>
@@ -26,7 +29,7 @@ namespace Vidly.Models
         public int Stars { get; set; }
 
         /// <summary>Optional text review.</summary>
-        [StringLength(2000, ErrorMessage = "Review text cannot exceed 2000 characters.")]
+        [StringLength(MaxReviewTextLength, ErrorMessage = "Review text cannot exceed 2000 characters.")]
         [Display(Name = "Review")]
         public string ReviewText { get; set; }
 

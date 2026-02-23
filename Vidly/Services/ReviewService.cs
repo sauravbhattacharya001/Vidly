@@ -34,6 +34,19 @@ namespace Vidly.Services
         /// </summary>
         public Review SubmitReview(int customerId, int movieId, int stars, string reviewText)
         {
+            // Input validation — the service is the domain boundary.
+            // Data annotations on Review are only enforced by MVC model
+            // binding; direct callers (APIs, other services) bypass them.
+            if (stars < 1 || stars > 5)
+                throw new ArgumentOutOfRangeException(
+                    nameof(stars), stars,
+                    "Rating must be between 1 and 5 stars.");
+
+            if (reviewText != null && reviewText.Length > Review.MaxReviewTextLength)
+                throw new ArgumentException(
+                    $"Review text cannot exceed {Review.MaxReviewTextLength} characters.",
+                    nameof(reviewText));
+
             var customer = _customerRepository.GetById(customerId);
             if (customer == null)
                 throw new ArgumentException("Customer not found.", nameof(customerId));

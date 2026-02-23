@@ -763,5 +763,92 @@ namespace Vidly.Tests
             var topRated = _reviewRepo.GetTopRatedMovies(10);
             Assert.AreEqual(1, topRated[0].MovieId); // more reviews comes first
         }
+
+        // ── Input Validation (Issue #18) ─────────────────────────────
+
+        [TestMethod]
+        [ExpectedException(typeof(ArgumentOutOfRangeException))]
+        public void Service_SubmitReview_ZeroStars_Throws()
+        {
+            _reviewService.SubmitReview(1, 1, 0, "text");
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(ArgumentOutOfRangeException))]
+        public void Service_SubmitReview_NegativeStars_Throws()
+        {
+            _reviewService.SubmitReview(1, 1, -1, "text");
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(ArgumentOutOfRangeException))]
+        public void Service_SubmitReview_SixStars_Throws()
+        {
+            _reviewService.SubmitReview(1, 1, 6, "text");
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(ArgumentOutOfRangeException))]
+        public void Service_SubmitReview_HundredStars_Throws()
+        {
+            _reviewService.SubmitReview(1, 1, 100, "text");
+        }
+
+        [TestMethod]
+        public void Service_SubmitReview_BoundaryOneStar_Succeeds()
+        {
+            var review = _reviewService.SubmitReview(1, 1, 1, "Terrible");
+            Assert.AreEqual(1, review.Stars);
+        }
+
+        [TestMethod]
+        public void Service_SubmitReview_BoundaryFiveStars_Succeeds()
+        {
+            var review = _reviewService.SubmitReview(1, 1, 5, "Perfect");
+            Assert.AreEqual(5, review.Stars);
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(ArgumentException))]
+        public void Service_SubmitReview_TextTooLong_Throws()
+        {
+            var longText = new string('x', Review.MaxReviewTextLength + 1);
+            _reviewService.SubmitReview(1, 1, 5, longText);
+        }
+
+        [TestMethod]
+        public void Service_SubmitReview_TextAtMaxLength_Succeeds()
+        {
+            var maxText = new string('x', Review.MaxReviewTextLength);
+            var review = _reviewService.SubmitReview(1, 1, 5, maxText);
+            Assert.AreEqual(Review.MaxReviewTextLength, review.ReviewText.Length);
+        }
+
+        [TestMethod]
+        public void Service_SubmitReview_NullText_StillAllowed()
+        {
+            var review = _reviewService.SubmitReview(1, 1, 4, null);
+            Assert.IsNull(review.ReviewText);
+        }
+
+        [TestMethod]
+        public void Review_MaxReviewTextLength_Is2000()
+        {
+            Assert.AreEqual(2000, Review.MaxReviewTextLength);
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(ArgumentOutOfRangeException))]
+        public void Service_SubmitReview_IntMinStars_Throws()
+        {
+            _reviewService.SubmitReview(1, 1, int.MinValue, "text");
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(ArgumentOutOfRangeException))]
+        public void Service_SubmitReview_IntMaxStars_Throws()
+        {
+            _reviewService.SubmitReview(1, 1, int.MaxValue, "text");
+        }
     }
 }
