@@ -68,6 +68,10 @@ namespace Vidly.Repositories
         public int OverdueRentals { get; set; }
         public int ReturnedRentals { get; set; }
         public decimal TotalRevenue { get; set; }
+        /// <summary>Revenue from returned rentals only (actual collected revenue).</summary>
+        public decimal RealizedRevenue { get; set; }
+        /// <summary>Projected revenue from active/overdue rentals (not yet collected).</summary>
+        public decimal ProjectedRevenue { get; set; }
         public decimal TotalLateFees { get; set; }
     }
 }

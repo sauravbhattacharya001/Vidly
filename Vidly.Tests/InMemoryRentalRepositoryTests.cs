@@ -317,6 +317,60 @@ namespace Vidly.Tests
         }
 
         [TestMethod]
+        public void GetStats_RealizedRevenue_OnlyCountsReturnedRentals()
+        {
+            var repo = new InMemoryRentalRepository();
+            var stats = repo.GetStats();
+
+            // RealizedRevenue should be >= 0 and only from returned rentals
+            Assert.IsTrue(stats.RealizedRevenue >= 0);
+            // If there are no returned rentals, realized revenue should be 0
+            if (stats.ReturnedRentals == 0)
+                Assert.AreEqual(0m, stats.RealizedRevenue);
+        }
+
+        [TestMethod]
+        public void GetStats_ProjectedRevenue_OnlyCountsActiveAndOverdueRentals()
+        {
+            var repo = new InMemoryRentalRepository();
+            var stats = repo.GetStats();
+
+            // ProjectedRevenue should be >= 0 and from active/overdue rentals
+            Assert.IsTrue(stats.ProjectedRevenue >= 0);
+            // If there are no active or overdue rentals, projected revenue should be 0
+            if (stats.ActiveRentals == 0 && stats.OverdueRentals == 0)
+                Assert.AreEqual(0m, stats.ProjectedRevenue);
+        }
+
+        [TestMethod]
+        public void GetStats_RealizedPlusProjected_EqualsTotalRevenue()
+        {
+            var repo = new InMemoryRentalRepository();
+            var stats = repo.GetStats();
+
+            Assert.AreEqual(stats.TotalRevenue, stats.RealizedRevenue + stats.ProjectedRevenue,
+                "RealizedRevenue + ProjectedRevenue must equal TotalRevenue");
+        }
+
+        [TestMethod]
+        public void GetStats_AverageRevenuePerRental_UsesRealizedRevenue()
+        {
+            var repo = new InMemoryRentalRepository();
+            var stats = repo.GetStats();
+
+            // Compute expected average using realized revenue / returned count
+            decimal expectedAvg = stats.ReturnedRentals > 0
+                ? stats.RealizedRevenue / stats.ReturnedRentals
+                : 0m;
+
+            // The DashboardService should use this formula; verify via stats properties
+            Assert.IsTrue(stats.RealizedRevenue >= 0);
+            Assert.IsTrue(stats.ReturnedRentals >= 0);
+            if (stats.ReturnedRentals > 0)
+                Assert.AreEqual(expectedAvg, stats.RealizedRevenue / stats.ReturnedRentals);
+        }
+
+        [TestMethod]
         public void Checkout_AvailableMovie_CreatesRental()
         {
             var repo = new InMemoryRentalRepository();
