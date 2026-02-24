@@ -19,6 +19,11 @@ namespace Vidly.Repositories
         /// </summary>
         private static readonly HashSet<string> _customerMovieKeys = new HashSet<string>();
 
+        /// <summary>
+        /// Maps composite key "customerId:movieId" → review ID for O(1) lookup.
+        /// </summary>
+        private static readonly Dictionary<string, int> _reviewByCompositeKey = new Dictionary<string, int>();
+
         private static readonly object _lock = new object();
         private static int _nextId = 1;
 
@@ -63,6 +68,7 @@ namespace Vidly.Repositories
 
                 _reviews[review.Id] = review;
                 _customerMovieKeys.Add(key);
+                _reviewByCompositeKey[key] = review.Id;
             }
         }
 
@@ -86,7 +92,9 @@ namespace Vidly.Repositories
             {
                 if (_reviews.TryGetValue(id, out var review))
                 {
-                    _customerMovieKeys.Remove(CompositeKey(review.CustomerId, review.MovieId));
+                    var compositeKey = CompositeKey(review.CustomerId, review.MovieId);
+                    _customerMovieKeys.Remove(compositeKey);
+                    _reviewByCompositeKey.Remove(compositeKey);
                     _reviews.Remove(id);
                 }
             }
@@ -122,9 +130,13 @@ namespace Vidly.Repositories
         {
             lock (_lock)
             {
-                var review = _reviews.Values
-                    .FirstOrDefault(r => r.CustomerId == customerId && r.MovieId == movieId);
-                return review != null ? Clone(review) : null;
+                string key = CompositeKey(customerId, movieId);
+                if (_reviewByCompositeKey.TryGetValue(key, out var reviewId) &&
+                    _reviews.TryGetValue(reviewId, out var review))
+                {
+                    return Clone(review);
+                }
+                return null;
             }
         }
 
@@ -216,6 +228,7 @@ namespace Vidly.Repositories
             {
                 _reviews.Clear();
                 _customerMovieKeys.Clear();
+                _reviewByCompositeKey.Clear();
                 _nextId = 1;
             }
         }

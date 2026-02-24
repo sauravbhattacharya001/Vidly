@@ -850,5 +850,31 @@ namespace Vidly.Tests
         {
             _reviewService.SubmitReview(1, 1, int.MaxValue, "text");
         }
+
+        [TestMethod]
+        public void Repository_GetByCustomerAndMovie_AfterRemoval_ReturnsNull()
+        {
+            var review = _reviewService.SubmitReview(1, 1, 5, "Great");
+            _reviewRepo.Remove(review.Id);
+            Assert.IsNull(_reviewRepo.GetByCustomerAndMovie(1, 1));
+        }
+
+        [TestMethod]
+        public void Repository_HasReviewed_ConsistentWithGetByCustomerAndMovie()
+        {
+            // Before adding: both should indicate no review
+            Assert.IsFalse(_reviewRepo.HasReviewed(1, 1));
+            Assert.IsNull(_reviewRepo.GetByCustomerAndMovie(1, 1));
+
+            // After adding: both should indicate review exists
+            var review = _reviewService.SubmitReview(1, 1, 4, "Good");
+            Assert.IsTrue(_reviewRepo.HasReviewed(1, 1));
+            Assert.IsNotNull(_reviewRepo.GetByCustomerAndMovie(1, 1));
+
+            // After removing: both should indicate no review
+            _reviewRepo.Remove(review.Id);
+            Assert.IsFalse(_reviewRepo.HasReviewed(1, 1));
+            Assert.IsNull(_reviewRepo.GetByCustomerAndMovie(1, 1));
+        }
     }
 }
