@@ -424,7 +424,8 @@ namespace Vidly.Tests
         {
             var customer = MakeCustomer();
             var insights = CustomerActivityService.GenerateInsights(
-                new List<Rental>(), customer, MakeMovieLookup());
+                new List<Rental>(), customer, MakeMovieLookup(),
+                new List<GenreActivity>());
 
             Assert.AreEqual(1, insights.Count());
             Assert.AreEqual("No rentals yet", insights[0].Title);
@@ -441,7 +442,8 @@ namespace Vidly.Tests
             };
 
             var insights = CustomerActivityService.GenerateInsights(
-                rentals, customer, MakeMovieLookup());
+                rentals, customer, MakeMovieLookup(),
+                CustomerActivityService.BuildGenreBreakdown(rentals, MakeMovieLookup()));
 
             Assert.IsTrue(insights.Any(i => i.Title.Contains("overdue") && i.Type == InsightType.Warning));
         }
@@ -457,7 +459,8 @@ namespace Vidly.Tests
             };
 
             var insights = CustomerActivityService.GenerateInsights(
-                rentals, customer, MakeMovieLookup());
+                rentals, customer, MakeMovieLookup(),
+                CustomerActivityService.BuildGenreBreakdown(rentals, MakeMovieLookup()));
 
             Assert.IsTrue(insights.Any(i => i.Title.Contains("2 overdue")));
         }
@@ -474,7 +477,8 @@ namespace Vidly.Tests
             };
 
             var insights = CustomerActivityService.GenerateInsights(
-                rentals, customer, MakeMovieLookup());
+                rentals, customer, MakeMovieLookup(),
+                CustomerActivityService.BuildGenreBreakdown(rentals, MakeMovieLookup()));
 
             Assert.IsTrue(insights.Any(i => i.Title.Contains("Perfect") && i.Type == InsightType.Positive));
         }
@@ -491,7 +495,8 @@ namespace Vidly.Tests
             };
 
             var insights = CustomerActivityService.GenerateInsights(
-                rentals, customer, MakeMovieLookup());
+                rentals, customer, MakeMovieLookup(),
+                CustomerActivityService.BuildGenreBreakdown(rentals, MakeMovieLookup()));
 
             Assert.IsTrue(insights.Any(i => i.Title.Contains("late") && i.Type == InsightType.Warning));
         }
@@ -508,7 +513,8 @@ namespace Vidly.Tests
             };
 
             var insights = CustomerActivityService.GenerateInsights(
-                rentals, customer, MakeMovieLookup());
+                rentals, customer, MakeMovieLookup(),
+                CustomerActivityService.BuildGenreBreakdown(rentals, MakeMovieLookup()));
 
             Assert.IsTrue(insights.Any(i => i.Title.Contains("Action")));
         }
@@ -522,7 +528,8 @@ namespace Vidly.Tests
                 rentals.Add(MakeRental(i + 1, 1, 1, "M1", i + 1));
 
             var insights = CustomerActivityService.GenerateInsights(
-                rentals, customer, MakeMovieLookup());
+                rentals, customer, MakeMovieLookup(),
+                CustomerActivityService.BuildGenreBreakdown(rentals, MakeMovieLookup()));
 
             Assert.IsTrue(insights.Any(i => i.Title.Contains("High-value") && i.Type == InsightType.Positive));
         }
@@ -536,7 +543,8 @@ namespace Vidly.Tests
                 rentals.Add(MakeRental(i + 1, 1, i + 1, $"M{i}", i + 1));
 
             var insights = CustomerActivityService.GenerateInsights(
-                rentals, customer, MakeMovieLookup());
+                rentals, customer, MakeMovieLookup(),
+                CustomerActivityService.BuildGenreBreakdown(rentals, MakeMovieLookup()));
 
             Assert.IsTrue(insights.Any(i => i.Title.Contains("Upgrade")));
         }
@@ -551,7 +559,8 @@ namespace Vidly.Tests
             };
 
             var insights = CustomerActivityService.GenerateInsights(
-                rentals, customer, MakeMovieLookup());
+                rentals, customer, MakeMovieLookup(),
+                CustomerActivityService.BuildGenreBreakdown(rentals, MakeMovieLookup()));
 
             Assert.IsTrue(insights.Any(i => i.Title.Contains("Inactive") && i.Type == InsightType.Warning));
         }
@@ -565,7 +574,8 @@ namespace Vidly.Tests
                 rentals.Add(MakeRental(i + 1, 1, 1, "M1", i + 1));
 
             var insights = CustomerActivityService.GenerateInsights(
-                rentals, customer, MakeMovieLookup());
+                rentals, customer, MakeMovieLookup(),
+                CustomerActivityService.BuildGenreBreakdown(rentals, MakeMovieLookup()));
 
             Assert.IsFalse(insights.Any(i => i.Title.Contains("Upgrade")));
         }
