@@ -50,6 +50,8 @@ namespace Vidly.Services
             var allMovies = _movieRepository.GetAll();
             var movieLookup = allMovies.ToDictionary(m => m.Id);
 
+            var genreBreakdown = BuildGenreBreakdown(customerRentals, movieLookup);
+
             var report = new CustomerActivityReport
             {
                 CustomerId = customerId,
@@ -58,10 +60,10 @@ namespace Vidly.Services
                 MemberSince = customer.MemberSince,
                 RentalHistory = customerRentals,
                 Summary = BuildSummary(customerRentals),
-                GenreBreakdown = BuildGenreBreakdown(customerRentals, movieLookup),
+                GenreBreakdown = genreBreakdown,
                 MonthlyActivity = BuildMonthlyActivity(customerRentals),
                 LoyaltyScore = CalculateLoyaltyScore(customerRentals, customer),
-                Insights = GenerateInsights(customerRentals, customer, movieLookup)
+                Insights = GenerateInsights(customerRentals, customer, movieLookup, genreBreakdown)
             };
 
             return report;
@@ -78,6 +80,7 @@ namespace Vidly.Services
             }
 
             int active = 0, overdue = 0, returned = 0;
+            int onTimeCount = 0;
             decimal totalSpent = 0, totalLateFees = 0;
             double totalDurationDays = 0;
             int completedRentals = 0;
@@ -88,7 +91,10 @@ namespace Vidly.Services
                 {
                     case RentalStatus.Active: active++; break;
                     case RentalStatus.Overdue: overdue++; break;
-                    case RentalStatus.Returned: returned++; break;
+                    case RentalStatus.Returned:
+                        returned++;
+                        if (r.LateFee == 0) onTimeCount++;
+                        break;
                 }
 
                 totalSpent += r.TotalCost;
@@ -121,10 +127,7 @@ namespace Vidly.Services
                 FirstRentalDate = firstRental,
                 LastRentalDate = lastRental,
                 OnTimeReturnRate = returned > 0
-                    ? Math.Round(
-                        (double)rentals.Count(r =>
-                            r.Status == RentalStatus.Returned && r.LateFee == 0)
-                        / returned * 100, 1)
+                    ? Math.Round((double)onTimeCount / returned * 100, 1)
                     : 0
             };
         }
@@ -211,10 +214,20 @@ namespace Vidly.Services
             score += Math.Min(rentals.Count, 30);
 
             // On-time returns: up to 25 points
-            var returned = rentals.Where(r => r.Status == RentalStatus.Returned).ToList();
-            if (returned.Count > 0)
+            int returnedCount = 0;
+            int onTimeCount = 0;
+            foreach (var r in rentals)
             {
-                var onTimeRate = (double)returned.Count(r => r.LateFee == 0) / returned.Count;
+                if (r.Status == RentalStatus.Returned)
+                {
+                    returnedCount++;
+                    if (r.LateFee == 0) onTimeCount++;
+                }
+            }
+
+            if (returnedCount > 0)
+            {
+                var onTimeRate = (double)onTimeCount / returnedCount;
                 score += onTimeRate * 25;
             }
 
@@ -249,7 +262,8 @@ namespace Vidly.Services
         internal static List<ActivityInsight> GenerateInsights(
             IList<Rental> rentals,
             Customer customer,
-            Dictionary<int, Movie> movieLookup)
+            Dictionary<int, Movie> movieLookup,
+            List<GenreActivity> genreBreakdown)
         {
             var insights = new List<ActivityInsight>();
 
@@ -306,7 +320,6 @@ namespace Vidly.Services
             }
 
             // Favorite genre
-            var genreBreakdown = BuildGenreBreakdown(rentals, movieLookup);
             if (genreBreakdown.Count > 0)
             {
                 var top = genreBreakdown.First();
