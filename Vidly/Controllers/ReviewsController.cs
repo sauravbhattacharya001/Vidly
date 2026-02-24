@@ -174,7 +174,7 @@ namespace Vidly.Controllers
             bool deleted = _reviewService.DeleteReview(id);
             string message = deleted ? "Review deleted." : "Review not found.";
 
-            if (!string.IsNullOrEmpty(returnUrl))
+            if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
                 return Redirect(returnUrl);
 
             return RedirectToAction("Index", new { message, error = !deleted });
