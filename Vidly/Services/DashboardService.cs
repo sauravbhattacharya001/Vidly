@@ -53,8 +53,10 @@ namespace Vidly.Services
                 CustomerCount = customers.Count,
                 MovieCount = movies.Count,
                 AverageRevenuePerRental = rentals.Count > 0
-                    ? stats.TotalRevenue / rentals.Count
+                    ? stats.RealizedRevenue / Math.Max(1, stats.ReturnedRentals)
                     : 0m,
+                RealizedRevenue = stats.RealizedRevenue,
+                ProjectedRevenue = stats.ProjectedRevenue,
                 TopMovies = ComputeTopMovies(rentals, movieLookup, 5),
                 TopCustomers = ComputeTopCustomers(rentals, customerLookup, 5),
                 RevenueByGenre = ComputeRevenueByGenre(rentals, movieLookup),
@@ -292,6 +294,8 @@ namespace Vidly.Services
         public int CustomerCount { get; set; }
         public int MovieCount { get; set; }
         public decimal AverageRevenuePerRental { get; set; }
+        public decimal RealizedRevenue { get; set; }
+        public decimal ProjectedRevenue { get; set; }
         public List<MovieRankEntry> TopMovies { get; set; }
         public List<CustomerRankEntry> TopCustomers { get; set; }
         public List<GenreRevenueEntry> RevenueByGenre { get; set; }

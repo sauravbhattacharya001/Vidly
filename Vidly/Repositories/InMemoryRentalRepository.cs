@@ -361,6 +361,7 @@ namespace Vidly.Repositories
             {
                 int active = 0, overdue = 0, returned = 0;
                 decimal totalRevenue = 0, totalLateFees = 0;
+                decimal realizedRevenue = 0, projectedRevenue = 0;
 
                 foreach (var r in _rentals.Values)
                 {
@@ -368,13 +369,24 @@ namespace Vidly.Repositories
 
                     switch (r.Status)
                     {
-                        case RentalStatus.Active:   active++;   break;
-                        case RentalStatus.Overdue:  overdue++;  break;
-                        case RentalStatus.Returned: returned++; break;
+                        case RentalStatus.Returned:
+                            returned++;
+                            totalRevenue += r.TotalCost;
+                            realizedRevenue += r.TotalCost;
+                            totalLateFees += r.LateFee;
+                            break;
+                        case RentalStatus.Active:
+                            active++;
+                            totalRevenue += r.TotalCost;
+                            projectedRevenue += r.TotalCost;
+                            break;
+                        case RentalStatus.Overdue:
+                            overdue++;
+                            totalRevenue += r.TotalCost;
+                            projectedRevenue += r.TotalCost;
+                            totalLateFees += r.LateFee;
+                            break;
                     }
-
-                    totalRevenue += r.TotalCost;
-                    totalLateFees += r.LateFee;
                 }
 
                 return new RentalStats
@@ -384,6 +396,8 @@ namespace Vidly.Repositories
                     OverdueRentals = overdue,
                     ReturnedRentals = returned,
                     TotalRevenue = totalRevenue,
+                    RealizedRevenue = realizedRevenue,
+                    ProjectedRevenue = projectedRevenue,
                     TotalLateFees = totalLateFees
                 };
             }

@@ -133,9 +133,18 @@ namespace Vidly.Tests
                     stats.TotalLateFees += r.LateFee;
                     switch (r.Status)
                     {
-                        case RentalStatus.Active: stats.ActiveRentals++; break;
-                        case RentalStatus.Overdue: stats.OverdueRentals++; break;
-                        case RentalStatus.Returned: stats.ReturnedRentals++; break;
+                        case RentalStatus.Active:
+                            stats.ActiveRentals++;
+                            stats.ProjectedRevenue += r.TotalCost;
+                            break;
+                        case RentalStatus.Overdue:
+                            stats.OverdueRentals++;
+                            stats.ProjectedRevenue += r.TotalCost;
+                            break;
+                        case RentalStatus.Returned:
+                            stats.ReturnedRentals++;
+                            stats.RealizedRevenue += r.TotalCost;
+                            break;
                     }
                 }
                 return stats;
