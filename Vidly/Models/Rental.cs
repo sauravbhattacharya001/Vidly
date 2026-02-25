@@ -65,7 +65,7 @@ namespace Vidly.Models
             get
             {
                 var endDate = ReturnDate ?? DateTime.Today;
-                var days = Math.Max(1, (int)(endDate - RentalDate).TotalDays);
+                var days = Math.Max(1, (int)Math.Ceiling((endDate - RentalDate).TotalDays));
                 return (days * DailyRate) + LateFee;
             }
         }
@@ -79,11 +79,11 @@ namespace Vidly.Models
             {
                 if (Status == RentalStatus.Returned)
                     return ReturnDate.HasValue && ReturnDate.Value > DueDate
-                        ? (int)(ReturnDate.Value - DueDate).TotalDays
+                        ? (int)Math.Ceiling((ReturnDate.Value - DueDate).TotalDays)
                         : 0;
 
                 return DateTime.Today > DueDate
-                    ? (int)(DateTime.Today - DueDate).TotalDays
+                    ? (int)Math.Ceiling((DateTime.Today - DueDate).TotalDays)
                     : 0;
             }
         }
