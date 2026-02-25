@@ -293,7 +293,7 @@ namespace Vidly.Repositories
                 // Calculate late fee
                 if (rental.ReturnDate.Value > rental.DueDate)
                 {
-                    var overdueDays = (int)(rental.ReturnDate.Value - rental.DueDate).TotalDays;
+                    var overdueDays = (int)Math.Ceiling((rental.ReturnDate.Value - rental.DueDate).TotalDays);
                     rental.LateFee = overdueDays * LateFeePerDay;
                 }
                 else
