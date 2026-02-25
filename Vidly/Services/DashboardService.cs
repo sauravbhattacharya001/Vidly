@@ -234,24 +234,57 @@ namespace Vidly.Services
         }
 
         /// <summary>
-        /// Most recent rentals.
+        /// Most recent rentals. Uses partial sort (min-heap style) to avoid
+        /// sorting the entire rental list when only a small number is needed.
+        /// O(R × log(count)) instead of O(R × log(R)) for full sort.
         /// </summary>
         internal static List<Rental> GetRecentRentals(
             IReadOnlyList<Rental> rentals, int count)
         {
-            var sorted = rentals.ToList();
-            sorted.Sort((a, b) => b.RentalDate.CompareTo(a.RentalDate));
-            return sorted.Take(count).ToList();
+            if (rentals.Count <= count)
+            {
+                var all = rentals.ToList();
+                all.Sort((a, b) => b.RentalDate.CompareTo(a.RentalDate));
+                return all;
+            }
+
+            // Use a SortedSet as a min-heap of size 'count'
+            // to find top-N most recent without full sort.
+            // We use a comparer that never returns 0 to allow duplicate dates.
+            var heap = new SortedSet<(DateTime Date, int Index)>();
+            for (int i = 0; i < rentals.Count; i++)
+            {
+                var key = (rentals[i].RentalDate, i);
+                if (heap.Count < count)
+                {
+                    heap.Add(key);
+                }
+                else if (rentals[i].RentalDate > heap.Min.Date)
+                {
+                    heap.Remove(heap.Min);
+                    heap.Add(key);
+                }
+            }
+
+            var result = new List<Rental>(heap.Count);
+            foreach (var item in heap.Reverse())
+            {
+                result.Add(rentals[item.Index]);
+            }
+            return result;
         }
 
         /// <summary>
         /// Monthly revenue for the last N months.
+        /// Uses a dictionary keyed by (year, month) for O(R) rental matching
+        /// instead of O(R × months) nested iteration.
         /// </summary>
         internal static List<MonthlyRevenueEntry> ComputeMonthlyRevenue(
             IReadOnlyList<Rental> rentals, int months)
         {
             var today = DateTime.Today;
             var result = new List<MonthlyRevenueEntry>();
+            var lookup = new Dictionary<(int Year, int Month), MonthlyRevenueEntry>();
 
             for (int i = months - 1; i >= 0; i--)
             {
@@ -263,19 +296,16 @@ namespace Vidly.Services
                     Label = monthStart.ToString("MMM yyyy")
                 };
                 result.Add(entry);
+                lookup[(entry.Year, entry.Month)] = entry;
             }
 
             foreach (var r in rentals)
             {
-                foreach (var entry in result)
+                if (lookup.TryGetValue((r.RentalDate.Year, r.RentalDate.Month), out var entry))
                 {
-                    if (r.RentalDate.Year == entry.Year && r.RentalDate.Month == entry.Month)
-                    {
-                        entry.Revenue += r.TotalCost;
-                        entry.RentalCount++;
-                        entry.LateFees += r.LateFee;
-                        break;
-                    }
+                    entry.Revenue += r.TotalCost;
+                    entry.RentalCount++;
+                    entry.LateFees += r.LateFee;
                 }
             }
 

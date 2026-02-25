@@ -145,6 +145,8 @@ namespace Vidly.Services
 
         /// <summary>
         /// Get a similarity matrix for all movies (useful for analytics/heatmaps).
+        /// Uses a pre-built customer-to-movies index to compute all co-rental
+        /// scores in a single pass instead of scanning all rentals per movie.
         /// </summary>
         public SimilarityMatrix GetSimilarityMatrix()
         {
@@ -153,11 +155,15 @@ namespace Vidly.Services
             var n = allMovies.Count;
             var scores = new double[n, n];
 
-            // Pre-build co-rental indices for all movies
+            // Build customer -> set of rented movie IDs index in one pass: O(R)
+            var customerMovies = BuildCustomerMovieIndex(allRentals);
+
+            // Derive co-rental indices for all movies from the customer index
+            // instead of scanning allRentals M times.
             var coRentalIndices = new Dictionary<int, Dictionary<int, double>>();
             foreach (var movie in allMovies)
             {
-                coRentalIndices[movie.Id] = BuildCoRentalIndex(movie.Id, allRentals);
+                coRentalIndices[movie.Id] = BuildCoRentalFromIndex(movie.Id, customerMovies, allRentals);
             }
 
             for (int i = 0; i < n; i++)
@@ -241,6 +247,68 @@ namespace Vidly.Services
                 .Select(r => r.CustomerId)
                 .Distinct()
                 .Count();
+        }
+
+        /// <summary>
+        /// Build an index mapping each customer to the set of movies they rented.
+        /// Single O(R) pass over all rentals.
+        /// </summary>
+        internal static Dictionary<int, HashSet<int>> BuildCustomerMovieIndex(
+            IReadOnlyList<Rental> allRentals)
+        {
+            var index = new Dictionary<int, HashSet<int>>();
+            foreach (var r in allRentals)
+            {
+                if (!index.TryGetValue(r.CustomerId, out var movies))
+                {
+                    movies = new HashSet<int>();
+                    index[r.CustomerId] = movies;
+                }
+                movies.Add(r.MovieId);
+            }
+            return index;
+        }
+
+        /// <summary>
+        /// Build co-rental scores for a movie using a pre-built customer-movie index.
+        /// Avoids scanning all rentals again — only iterates renters of this movie
+        /// and their rented movies.
+        /// </summary>
+        internal static Dictionary<int, double> BuildCoRentalFromIndex(
+            int movieId,
+            Dictionary<int, HashSet<int>> customerMovies,
+            IReadOnlyList<Rental> allRentals)
+        {
+            // Find renters of this movie
+            var renters = new HashSet<int>();
+            foreach (var r in allRentals)
+            {
+                if (r.MovieId == movieId)
+                    renters.Add(r.CustomerId);
+            }
+
+            if (renters.Count == 0) return new Dictionary<int, double>();
+
+            // Count co-rentals using the customer index
+            var coRentalCounts = new Dictionary<int, int>();
+            foreach (var customerId in renters)
+            {
+                if (!customerMovies.TryGetValue(customerId, out var theirMovies)) continue;
+                foreach (var mid in theirMovies)
+                {
+                    if (mid == movieId) continue;
+                    if (!coRentalCounts.ContainsKey(mid))
+                        coRentalCounts[mid] = 0;
+                    coRentalCounts[mid]++;
+                }
+            }
+
+            if (coRentalCounts.Count == 0) return new Dictionary<int, double>();
+
+            var maxCount = coRentalCounts.Values.Max();
+            return coRentalCounts.ToDictionary(
+                kvp => kvp.Key,
+                kvp => (double)kvp.Value / maxCount);
         }
 
         internal static List<string> BuildReasons(Movie source, Movie candidate,
