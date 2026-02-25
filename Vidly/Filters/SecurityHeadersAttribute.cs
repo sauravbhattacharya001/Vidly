@@ -29,6 +29,12 @@ namespace Vidly.Filters
             // Restrict browser feature access
             SetHeaderIfMissing(response, "Permissions-Policy", "camera=(), microphone=(), geolocation=()");
 
+            // HTTP Strict Transport Security — force HTTPS for 1 year, include subdomains
+            if (filterContext.HttpContext.Request.IsSecureConnection)
+            {
+                SetHeaderIfMissing(response, "Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+            }
+
             // Content Security Policy — allow self-hosted resources plus CDN for Bootstrap/jQuery
             SetHeaderIfMissing(response, "Content-Security-Policy",
                 "default-src 'self'; " +
