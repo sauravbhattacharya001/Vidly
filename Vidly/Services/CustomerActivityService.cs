@@ -71,6 +71,8 @@ namespace Vidly.Services
 
         /// <summary>
         /// Computes summary statistics from rental history in a single pass.
+        /// Tracks min/max dates within the main loop instead of using
+        /// separate Min()/Max() LINQ calls (eliminates 2 extra passes).
         /// </summary>
         internal static ActivitySummary BuildSummary(IList<Rental> rentals)
         {
@@ -84,6 +86,8 @@ namespace Vidly.Services
             decimal totalSpent = 0, totalLateFees = 0;
             double totalDurationDays = 0;
             int completedRentals = 0;
+            var firstRental = DateTime.MaxValue;
+            var lastRental = DateTime.MinValue;
 
             foreach (var r in rentals)
             {
@@ -100,15 +104,15 @@ namespace Vidly.Services
                 totalSpent += r.TotalCost;
                 totalLateFees += r.LateFee;
 
+                if (r.RentalDate < firstRental) firstRental = r.RentalDate;
+                if (r.RentalDate > lastRental) lastRental = r.RentalDate;
+
                 if (r.ReturnDate.HasValue)
                 {
                     totalDurationDays += (r.ReturnDate.Value - r.RentalDate).TotalDays;
                     completedRentals++;
                 }
             }
-
-            var firstRental = rentals.Min(r => r.RentalDate);
-            var lastRental = rentals.Max(r => r.RentalDate);
 
             return new ActivitySummary
             {

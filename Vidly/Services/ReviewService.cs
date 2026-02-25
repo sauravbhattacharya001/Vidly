@@ -118,27 +118,69 @@ namespace Vidly.Services
 
         /// <summary>
         /// Returns global review summary statistics.
+        /// Single-pass: computes all metrics (star sum, distinct movies/customers,
+        /// star distribution, most-reviewed movie) in one iteration over allReviews.
+        /// Previous implementation used 8+ separate LINQ passes.
         /// </summary>
         public ReviewSummary GetSummary()
         {
             var allReviews = _reviewRepository.GetAll();
             var movies = _movieRepository.GetAll();
 
+            if (allReviews.Count == 0)
+            {
+                return new ReviewSummary
+                {
+                    TotalReviews = 0,
+                    AverageStars = 0,
+                    ReviewedMovieCount = 0,
+                    TotalMovieCount = movies.Count,
+                    ReviewingCustomerCount = 0,
+                    StarDistribution = Enumerable.Range(1, 5)
+                        .ToDictionary(s => s, s => 0),
+                    MostReviewedMovieId = null,
+                };
+            }
+
+            long starSum = 0;
+            var starCounts = new int[6]; // index 1-5 for star ratings
+            var distinctMovies = new HashSet<int>();
+            var distinctCustomers = new HashSet<int>();
+            var movieRentalCounts = new Dictionary<int, int>();
+            int topMovieId = 0;
+            int topMovieCount = 0;
+
+            foreach (var r in allReviews)
+            {
+                starSum += r.Stars;
+                if (r.Stars >= 1 && r.Stars <= 5)
+                    starCounts[r.Stars]++;
+
+                distinctMovies.Add(r.MovieId);
+                distinctCustomers.Add(r.CustomerId);
+
+                if (!movieRentalCounts.TryGetValue(r.MovieId, out var count))
+                    count = 0;
+                count++;
+                movieRentalCounts[r.MovieId] = count;
+
+                if (count > topMovieCount)
+                {
+                    topMovieCount = count;
+                    topMovieId = r.MovieId;
+                }
+            }
+
             return new ReviewSummary
             {
                 TotalReviews = allReviews.Count,
-                AverageStars = allReviews.Count > 0
-                    ? Math.Round(allReviews.Average(r => r.Stars), 1)
-                    : 0,
-                ReviewedMovieCount = allReviews.Select(r => r.MovieId).Distinct().Count(),
+                AverageStars = Math.Round((double)starSum / allReviews.Count, 1),
+                ReviewedMovieCount = distinctMovies.Count,
                 TotalMovieCount = movies.Count,
-                ReviewingCustomerCount = allReviews.Select(r => r.CustomerId).Distinct().Count(),
+                ReviewingCustomerCount = distinctCustomers.Count,
                 StarDistribution = Enumerable.Range(1, 5)
-                    .ToDictionary(s => s, s => allReviews.Count(r => r.Stars == s)),
-                MostReviewedMovieId = allReviews
-                    .GroupBy(r => r.MovieId)
-                    .OrderByDescending(g => g.Count())
-                    .FirstOrDefault()?.Key,
+                    .ToDictionary(s => s, s => starCounts[s]),
+                MostReviewedMovieId = topMovieId,
             };
         }
 
@@ -157,21 +199,53 @@ namespace Vidly.Services
 
         /// <summary>
         /// Enriches reviews with customer and movie display names.
+        /// Pre-builds lookup dictionaries from unique IDs to avoid
+        /// N+1 per-review GetById calls. O(R) instead of O(R × 2).
         /// </summary>
         private IReadOnlyList<Review> Enrich(IReadOnlyList<Review> reviews)
         {
+            // Collect IDs that actually need enrichment
+            var customerIdsNeeded = new HashSet<int>();
+            var movieIdsNeeded = new HashSet<int>();
             foreach (var review in reviews)
             {
                 if (string.IsNullOrEmpty(review.CustomerName))
-                {
-                    var customer = _customerRepository.GetById(review.CustomerId);
-                    review.CustomerName = customer?.Name ?? "Unknown";
-                }
+                    customerIdsNeeded.Add(review.CustomerId);
                 if (string.IsNullOrEmpty(review.MovieName))
+                    movieIdsNeeded.Add(review.MovieId);
+            }
+
+            // Batch-build lookups (one call each instead of N)
+            var customerNames = new Dictionary<int, string>();
+            if (customerIdsNeeded.Count > 0)
+            {
+                foreach (var id in customerIdsNeeded)
                 {
-                    var movie = _movieRepository.GetById(review.MovieId);
-                    review.MovieName = movie?.Name ?? "Unknown";
+                    var customer = _customerRepository.GetById(id);
+                    customerNames[id] = customer?.Name ?? "Unknown";
                 }
+            }
+
+            var movieNames = new Dictionary<int, string>();
+            if (movieIdsNeeded.Count > 0)
+            {
+                foreach (var id in movieIdsNeeded)
+                {
+                    var movie = _movieRepository.GetById(id);
+                    movieNames[id] = movie?.Name ?? "Unknown";
+                }
+            }
+
+            // Enrich from lookups — no repeated GetById for same customer/movie
+            foreach (var review in reviews)
+            {
+                if (string.IsNullOrEmpty(review.CustomerName) &&
+                    customerNames.TryGetValue(review.CustomerId, out var cName))
+                    review.CustomerName = cName;
+
+                if (string.IsNullOrEmpty(review.MovieName) &&
+                    movieNames.TryGetValue(review.MovieId, out var mName))
+                    review.MovieName = mName;
             }
             return reviews;
         }
