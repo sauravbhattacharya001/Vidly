@@ -105,7 +105,7 @@ namespace Vidly.Controllers
         // POST: Customers/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Create(Customer customer)
+        public ActionResult Create([Bind(Exclude = "Id")] Customer customer)
         {
             if (!ModelState.IsValid)
                 return View("Edit", customer);
