@@ -102,7 +102,6 @@ namespace Vidly.Services
                 })
                 .ToList();
         }
-        }
 
         /// <summary>
         /// Analyzes a customer's rental history to compute genre preference scores.
