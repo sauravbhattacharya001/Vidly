@@ -157,13 +157,15 @@ namespace Vidly.Services
 
             // Build customer -> set of rented movie IDs index in one pass: O(R)
             var customerMovies = BuildCustomerMovieIndex(allRentals);
+            // Build movie -> set of renters index from customer index: O(edges)
+            // Eliminates O(M*R) rental scans — each movie's renters looked up in O(1)
+            var movieRenters = BuildMovieRentersIndex(customerMovies);
 
-            // Derive co-rental indices for all movies from the customer index
-            // instead of scanning allRentals M times.
+            // Derive co-rental indices for all movies using both indexes
             var coRentalIndices = new Dictionary<int, Dictionary<int, double>>();
             foreach (var movie in allMovies)
             {
-                coRentalIndices[movie.Id] = BuildCoRentalFromIndex(movie.Id, customerMovies, allRentals);
+                coRentalIndices[movie.Id] = BuildCoRentalFromIndex(movie.Id, customerMovies, movieRenters);
             }
 
             for (int i = 0; i < n; i++)
@@ -270,24 +272,41 @@ namespace Vidly.Services
         }
 
         /// <summary>
-        /// Build co-rental scores for a movie using a pre-built customer-movie index.
-        /// Avoids scanning all rentals again — only iterates renters of this movie
-        /// and their rented movies.
+        /// Build a reverse index mapping each movie to the set of customers who rented it.
+        /// Derived from the customer-movie index in O(total edges) — no rental scan needed.
+        /// </summary>
+        internal static Dictionary<int, HashSet<int>> BuildMovieRentersIndex(
+            Dictionary<int, HashSet<int>> customerMovies)
+        {
+            var index = new Dictionary<int, HashSet<int>>();
+            foreach (var kvp in customerMovies)
+            {
+                var customerId = kvp.Key;
+                foreach (var movieId in kvp.Value)
+                {
+                    if (!index.TryGetValue(movieId, out var renters))
+                    {
+                        renters = new HashSet<int>();
+                        index[movieId] = renters;
+                    }
+                    renters.Add(customerId);
+                }
+            }
+            return index;
+        }
+
+        /// <summary>
+        /// Build co-rental scores for a movie using pre-built indexes.
+        /// Uses movie-renters index for O(1) renter lookup instead of O(R) rental scan.
         /// </summary>
         internal static Dictionary<int, double> BuildCoRentalFromIndex(
             int movieId,
             Dictionary<int, HashSet<int>> customerMovies,
-            IReadOnlyList<Rental> allRentals)
+            Dictionary<int, HashSet<int>> movieRenters)
         {
-            // Find renters of this movie
-            var renters = new HashSet<int>();
-            foreach (var r in allRentals)
-            {
-                if (r.MovieId == movieId)
-                    renters.Add(r.CustomerId);
-            }
-
-            if (renters.Count == 0) return new Dictionary<int, double>();
+            // O(1) lookup for renters of this movie
+            if (!movieRenters.TryGetValue(movieId, out var renters) || renters.Count == 0)
+                return new Dictionary<int, double>();
 
             // Count co-rentals using the customer index
             var coRentalCounts = new Dictionary<int, int>();
@@ -309,6 +328,19 @@ namespace Vidly.Services
             return coRentalCounts.ToDictionary(
                 kvp => kvp.Key,
                 kvp => (double)kvp.Value / maxCount);
+        }
+
+        /// <summary>
+        /// Legacy overload: builds movie-renters index from allRentals when no
+        /// pre-built index is available. Preserves backward compatibility.
+        /// </summary>
+        internal static Dictionary<int, double> BuildCoRentalFromIndex(
+            int movieId,
+            Dictionary<int, HashSet<int>> customerMovies,
+            IReadOnlyList<Rental> allRentals)
+        {
+            var movieRenters = BuildMovieRentersIndex(customerMovies);
+            return BuildCoRentalFromIndex(movieId, customerMovies, movieRenters);
         }
 
         internal static List<string> BuildReasons(Movie source, Movie candidate,
