@@ -97,10 +97,12 @@ namespace Vidly.Controllers
         // POST: Movies/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Edit(int id, Movie movie)
+        public ActionResult Edit(int id, [Bind(Include = "Name,ReleaseDate,Genre,Rating")] Movie movie)
         {
-            if (movie.Id != id)
-                return new HttpStatusCodeResult(400, "Movie ID mismatch.");
+            // Security: Use route ID as authoritative — never trust form-submitted IDs.
+            // The [Bind] attribute above excludes Id from model binding entirely,
+            // preventing over-posting where an attacker modifies the hidden Id field.
+            movie.Id = id;
 
             if (!ModelState.IsValid)
                 return View(movie);
