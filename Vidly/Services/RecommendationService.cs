@@ -60,22 +60,48 @@ namespace Vidly.Services
             {
                 CustomerId = customerId,
                 TotalRentals = customerRentals.Count,
-                GenrePreferences = genrePreferences
-                    .OrderByDescending(gp => gp.Value)
-                    .Select(gp => new GenrePreference
-                    {
-                        Genre = gp.Key,
-                        RentalCount = customerRentals.Count(r =>
-                        {
-                            var movie = allMovies.FirstOrDefault(m => m.Id == r.MovieId);
-                            return movie?.Genre == gp.Key;
-                        }),
-                        Score = gp.Value
-                    })
-                    .ToList(),
+                GenrePreferences = BuildGenrePreferenceList(
+                    genrePreferences, customerRentals, allMovies),
                 Recommendations = recommendations,
                 TotalAvailableMovies = allMovies.Count(m => !rentedMovieIds.Contains(m.Id))
             };
+        }
+
+        /// <summary>
+        /// Builds the genre preference list using a dictionary lookup instead of
+        /// FirstOrDefault per rental per genre (O(G*R) → O(R) with O(1) lookups).
+        /// </summary>
+        internal static List<GenrePreference> BuildGenrePreferenceList(
+            Dictionary<Genre, double> genrePreferences,
+            IList<Rental> customerRentals,
+            IReadOnlyList<Movie> allMovies)
+        {
+            var movieLookup = allMovies.ToDictionary(m => m.Id);
+
+            // Single pass: count rentals per genre using O(1) dictionary lookups
+            var rentalCounts = new Dictionary<Genre, int>();
+            foreach (var rental in customerRentals)
+            {
+                if (movieLookup.TryGetValue(rental.MovieId, out var movie) && movie.Genre.HasValue)
+                {
+                    var genre = movie.Genre.Value;
+                    if (rentalCounts.ContainsKey(genre))
+                        rentalCounts[genre]++;
+                    else
+                        rentalCounts[genre] = 1;
+                }
+            }
+
+            return genrePreferences
+                .OrderByDescending(gp => gp.Value)
+                .Select(gp => new GenrePreference
+                {
+                    Genre = gp.Key,
+                    RentalCount = rentalCounts.TryGetValue(gp.Key, out var count) ? count : 0,
+                    Score = gp.Value
+                })
+                .ToList();
+        }
         }
 
         /// <summary>
