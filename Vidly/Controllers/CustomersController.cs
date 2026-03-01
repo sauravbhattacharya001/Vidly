@@ -129,10 +129,11 @@ namespace Vidly.Controllers
         // POST: Customers/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Edit(int id, Customer customer)
+        public ActionResult Edit(int id, [Bind(Include = "Name,Email,Phone,MemberSince,MembershipType")] Customer customer)
         {
-            if (customer.Id != id)
-                return new HttpStatusCodeResult(400, "Customer ID mismatch.");
+            // Security: Use route ID as authoritative — prevents over-posting via
+            // manipulated hidden Id field that could update a different customer record.
+            customer.Id = id;
 
             if (!ModelState.IsValid)
                 return View(customer);

@@ -167,6 +167,16 @@ namespace Vidly.Controllers
             rental.CustomerName = customer.Name;
             rental.MovieName = movie.Name;
 
+            // Security: enforce server-side daily rate — never trust client-submitted pricing.
+            // This prevents price manipulation attacks where a user modifies the form to
+            // submit a lower DailyRate (e.g., $0.01 instead of $3.99).
+            rental.DailyRate = InMemoryRentalRepository.DefaultDailyRate;
+
+            // Security: enforce server-side rental period — prevent users from extending
+            // due dates via form manipulation to avoid late fees.
+            rental.RentalDate = DateTime.Today;
+            rental.DueDate = DateTime.Today.AddDays(InMemoryRentalRepository.DefaultRentalDays);
+
             // Use atomic Checkout to prevent TOCTOU race: availability check
             // and rental creation happen in a single lock acquisition
             try
