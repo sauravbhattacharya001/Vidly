@@ -44,6 +44,12 @@ namespace Vidly.Filters
                 "img-src 'self' data:; " +
                 "frame-ancestors 'none'");
 
+            // Prevent browsers from caching sensitive pages (customer data, rentals)
+            // Shared/public caches and browser back-button could otherwise expose
+            // private data to the next user on a shared computer.
+            SetHeaderIfMissing(response, "Cache-Control", "no-store, no-cache, must-revalidate, private");
+            SetHeaderIfMissing(response, "Pragma", "no-cache");
+
             // Remove server identification headers
             response.Headers.Remove("Server");
             response.Headers.Remove("X-Powered-By");
