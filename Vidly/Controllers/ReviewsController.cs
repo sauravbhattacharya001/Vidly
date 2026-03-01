@@ -49,42 +49,11 @@ namespace Vidly.Controllers
         // GET: Reviews?search=...&minStars=...
         public ActionResult Index(string search, int? minStars, string message, bool? error)
         {
-            IReadOnlyList<Review> reviews;
-            if (!string.IsNullOrWhiteSpace(search) || minStars.HasValue)
-            {
-                reviews = _reviewRepository.Search(search, minStars);
-                // Enrich results with names
-                foreach (var r in reviews)
-                {
-                    if (string.IsNullOrEmpty(r.CustomerName))
-                    {
-                        var cust = _customerRepository.GetById(r.CustomerId);
-                        r.CustomerName = cust?.Name ?? "Unknown";
-                    }
-                    if (string.IsNullOrEmpty(r.MovieName))
-                    {
-                        var movie = _movieRepository.GetById(r.MovieId);
-                        r.MovieName = movie?.Name ?? "Unknown";
-                    }
-                }
-            }
-            else
-            {
-                reviews = _reviewRepository.GetAll();
-                foreach (var r in reviews)
-                {
-                    if (string.IsNullOrEmpty(r.CustomerName))
-                    {
-                        var cust = _customerRepository.GetById(r.CustomerId);
-                        r.CustomerName = cust?.Name ?? "Unknown";
-                    }
-                    if (string.IsNullOrEmpty(r.MovieName))
-                    {
-                        var movie = _movieRepository.GetById(r.MovieId);
-                        r.MovieName = movie?.Name ?? "Unknown";
-                    }
-                }
-            }
+            var reviews = (!string.IsNullOrWhiteSpace(search) || minStars.HasValue)
+                ? _reviewRepository.Search(search, minStars)
+                : _reviewRepository.GetAll();
+
+            EnrichReviews(reviews);
 
             var viewModel = new ReviewIndexViewModel
             {
@@ -178,6 +147,27 @@ namespace Vidly.Controllers
                 return Redirect(returnUrl);
 
             return RedirectToAction("Index", new { message, error = !deleted });
+        }
+
+        /// <summary>
+        /// Enriches reviews with customer and movie display names where missing.
+        /// Eliminates duplicated inline enrichment loops.
+        /// </summary>
+        private void EnrichReviews(IReadOnlyList<Review> reviews)
+        {
+            foreach (var r in reviews)
+            {
+                if (string.IsNullOrEmpty(r.CustomerName))
+                {
+                    var cust = _customerRepository.GetById(r.CustomerId);
+                    r.CustomerName = cust?.Name ?? "Unknown";
+                }
+                if (string.IsNullOrEmpty(r.MovieName))
+                {
+                    var movie = _movieRepository.GetById(r.MovieId);
+                    r.MovieName = movie?.Name ?? "Unknown";
+                }
+            }
         }
     }
 }
