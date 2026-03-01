@@ -125,23 +125,7 @@ namespace Vidly.Repositories
 
             lock (_lock)
             {
-                rental.Id = _nextId++;
-
-                if (rental.DailyRate <= 0)
-                    rental.DailyRate = DefaultDailyRate;
-
-                if (rental.RentalDate == default)
-                    rental.RentalDate = DateTime.Today;
-
-                if (rental.DueDate == default)
-                    rental.DueDate = rental.RentalDate.AddDays(DefaultRentalDays);
-
-                rental.Status = RentalStatus.Active;
-                rental.ReturnDate = null;
-                rental.LateFee = 0;
-
-                _rentals[rental.Id] = rental;
-                _rentedMovieIds.Add(rental.MovieId);
+                InitializeNewRental(rental);
             }
         }
 
@@ -330,25 +314,35 @@ namespace Vidly.Repositories
                         "This movie is currently rented out.");
                 }
 
-                rental.Id = _nextId++;
-
-                if (rental.DailyRate <= 0)
-                    rental.DailyRate = DefaultDailyRate;
-
-                if (rental.RentalDate == default)
-                    rental.RentalDate = DateTime.Today;
-
-                if (rental.DueDate == default)
-                    rental.DueDate = rental.RentalDate.AddDays(DefaultRentalDays);
-
-                rental.Status = RentalStatus.Active;
-                rental.ReturnDate = null;
-                rental.LateFee = 0;
-
-                _rentals[rental.Id] = rental;
-                _rentedMovieIds.Add(rental.MovieId);
+                InitializeNewRental(rental);
                 return Clone(rental);
             }
+        }
+
+        /// <summary>
+        /// Shared initialization for new rentals: assigns ID, applies defaults,
+        /// sets status, and registers in storage + rented movie set.
+        /// Must be called within a lock.
+        /// </summary>
+        private static void InitializeNewRental(Rental rental)
+        {
+            rental.Id = _nextId++;
+
+            if (rental.DailyRate <= 0)
+                rental.DailyRate = DefaultDailyRate;
+
+            if (rental.RentalDate == default)
+                rental.RentalDate = DateTime.Today;
+
+            if (rental.DueDate == default)
+                rental.DueDate = rental.RentalDate.AddDays(DefaultRentalDays);
+
+            rental.Status = RentalStatus.Active;
+            rental.ReturnDate = null;
+            rental.LateFee = 0;
+
+            _rentals[rental.Id] = rental;
+            _rentedMovieIds.Add(rental.MovieId);
         }
 
         /// <summary>
