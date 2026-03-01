@@ -32,6 +32,9 @@ namespace Vidly.Services
 
         /// <summary>
         /// Find movies similar to the given movie.
+        /// Builds customer-movie and movie-renters indexes once, then derives
+        /// co-rental scores and unique renter count from them — avoids
+        /// redundant O(R) scans from BuildCoRentalIndex + GetUniqueRenters.
         /// </summary>
         /// <param name="movieId">The source movie to find similarities for.</param>
         /// <param name="maxResults">Maximum similar movies to return (default 10).</param>
@@ -48,8 +51,13 @@ namespace Vidly.Services
             var allMovies = _movieRepository.GetAll();
             var allRentals = _rentalRepository.GetAll();
 
-            // Build co-rental index: for each movie, which other movies were rented by the same customers
-            var coRentalScores = BuildCoRentalIndex(movieId, allRentals);
+            // Single pass: build indexes for O(1) lookups
+            var customerMovies = BuildCustomerMovieIndex(allRentals);
+            var movieRenters = BuildMovieRentersIndex(customerMovies);
+
+            // Derive co-rental scores and unique renters from indexes
+            var coRentalScores = BuildCoRentalFromIndex(movieId, customerMovies, movieRenters);
+            var uniqueRenters = movieRenters.TryGetValue(movieId, out var renters) ? renters.Count : 0;
 
             // Score each candidate movie
             var candidates = new List<SimilarMovie>();
@@ -93,7 +101,7 @@ namespace Vidly.Services
                 TotalCandidatesScored = candidates.Count,
                 Signals = new SimilaritySignals
                 {
-                    UniqueRenters = GetUniqueRenters(movieId, allRentals),
+                    UniqueRenters = uniqueRenters,
                     CoRentedMovieCount = coRentalScores.Count,
                     HasGenre = sourceMovie.Genre.HasValue,
                     HasRating = sourceMovie.Rating.HasValue
@@ -103,6 +111,9 @@ namespace Vidly.Services
 
         /// <summary>
         /// Compare two specific movies for similarity.
+        /// Builds a single customer-movie index from all rentals and derives
+        /// renter sets + co-rental scores from it, replacing 4 separate rental
+        /// scans with 1 pass + O(1) lookups.
         /// </summary>
         public MovieComparison Compare(int movieId1, int movieId2)
         {
@@ -112,17 +123,26 @@ namespace Vidly.Services
             if (movie2 == null) throw new ArgumentException($"Movie {movieId2} not found.");
 
             var allRentals = _rentalRepository.GetAll();
-            var coRentalScores1 = BuildCoRentalIndex(movieId1, allRentals);
+
+            // Single pass: build customer-movie and movie-renters indexes
+            var customerMovies = BuildCustomerMovieIndex(allRentals);
+            var movieRenters = BuildMovieRentersIndex(customerMovies);
+
+            // Derive co-rental scores and renter sets from indexes (no extra rental scans)
+            var coRentalScores1 = BuildCoRentalFromIndex(movieId1, customerMovies, movieRenters);
+            var renters1 = movieRenters.TryGetValue(movieId1, out var r1) ? r1 : new HashSet<int>();
+            var renters2 = movieRenters.TryGetValue(movieId2, out var r2) ? r2 : new HashSet<int>();
 
             var genreScore = CalculateGenreScore(movie1, movie2);
             var ratingScore = CalculateRatingScore(movie1, movie2);
             var coRentalScore = coRentalScores1.TryGetValue(movieId2, out var crs) ? crs : 0.0;
             var totalScore = (genreScore * GenreWeight) + (ratingScore * RatingWeight) + (coRentalScore * CoRentalWeight);
 
-            // Shared renters
-            var renters1 = new HashSet<int>(allRentals.Where(r => r.MovieId == movieId1).Select(r => r.CustomerId));
-            var renters2 = new HashSet<int>(allRentals.Where(r => r.MovieId == movieId2).Select(r => r.CustomerId));
-            var sharedRenters = renters1.Intersect(renters2).Count();
+            var sharedRenters = 0;
+            foreach (var cid in renters1)
+            {
+                if (renters2.Contains(cid)) sharedRenters++;
+            }
 
             return new MovieComparison
             {
