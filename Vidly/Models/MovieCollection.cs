@@ -43,12 +43,16 @@ namespace Vidly.Models
     /// </summary>
     public class CollectionItem
     {
+        /// <summary>Maximum allowed length for collection item notes.</summary>
+        public const int MaxNoteLength = 500;
+
         public int MovieId { get; set; }
         public int SortOrder { get; set; }
 
         /// <summary>
         /// Optional note about why this movie is in the collection.
         /// </summary>
+        [StringLength(MaxNoteLength, ErrorMessage = "Note cannot exceed 500 characters.")]
         public string Note { get; set; }
     }
 }

@@ -67,7 +67,7 @@ namespace Vidly.Controllers
         // POST: Collections/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Create(MovieCollection collection)
+        public ActionResult Create([Bind(Exclude = "Id")] MovieCollection collection)
         {
             if (!ModelState.IsValid)
                 return View(collection);
@@ -128,6 +128,13 @@ namespace Vidly.Controllers
             var movie = _movieRepository.GetById(movieId);
             if (movie == null)
                 return HttpNotFound("Movie not found.");
+
+            // Enforce note length limit to prevent unbounded input
+            if (note != null && note.Length > CollectionItem.MaxNoteLength)
+            {
+                TempData["Error"] = $"Note cannot exceed {CollectionItem.MaxNoteLength} characters.";
+                return RedirectToAction("Details", new { id });
+            }
 
             var success = _collectionRepository.AddMovie(id, movieId, note);
             if (!success)

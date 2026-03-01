@@ -195,6 +195,12 @@ namespace Vidly.Repositories
 
         public bool AddMovie(int collectionId, int movieId, string note = null)
         {
+            // Enforce note length at the storage boundary as defense-in-depth
+            if (note != null && note.Length > CollectionItem.MaxNoteLength)
+                throw new ArgumentException(
+                    $"Note cannot exceed {CollectionItem.MaxNoteLength} characters.",
+                    nameof(note));
+
             lock (_lock)
             {
                 if (!_collections.TryGetValue(collectionId, out var collection))

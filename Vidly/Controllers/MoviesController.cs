@@ -73,7 +73,7 @@ namespace Vidly.Controllers
         // POST: Movies/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Create(Movie movie)
+        public ActionResult Create([Bind(Exclude = "Id")] Movie movie)
         {
             if (!ModelState.IsValid)
                 return View("Edit", movie);
