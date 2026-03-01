@@ -12,13 +12,69 @@ namespace Vidly.Services
     /// </summary>
     public interface IRentalHistoryService
     {
+        /// <summary>
+        /// Retrieves filtered rental history entries, ordered by rental date descending.
+        /// </summary>
+        /// <param name="customerId">Optional filter by customer ID.</param>
+        /// <param name="movieId">Optional filter by movie ID.</param>
+        /// <param name="from">Optional start date (inclusive).</param>
+        /// <param name="to">Optional end date (inclusive).</param>
+        /// <param name="status">Optional filter by rental status.</param>
+        /// <returns>Filtered and enriched rental history entries.</returns>
         IReadOnlyList<RentalHistoryEntry> GetRentalHistory(int? customerId, int? movieId, DateTime? from, DateTime? to, RentalStatus? status);
+
+        /// <summary>
+        /// Builds a chronological timeline of rental events for a customer,
+        /// including rented, returned, late fee, and overdue warning events.
+        /// </summary>
+        /// <param name="customerId">The customer whose timeline to build.</param>
+        /// <returns>Timeline events ordered by date, then by event type.</returns>
         IReadOnlyList<TimelineEvent> GetCustomerTimeline(int customerId);
+
+        /// <summary>
+        /// Analyzes rental patterns to identify the busiest days and hours.
+        /// </summary>
+        /// <returns>Rental counts grouped by day of week and hour of day.</returns>
         PopularTimesResult GetPopularTimes();
+
+        /// <summary>
+        /// Computes customer retention metrics including return rate, repeat
+        /// customer rate, average inter-rental gap, and per-customer churn risk.
+        /// </summary>
+        /// <returns>Retention and churn analysis for the entire customer base.</returns>
         RetentionMetrics GetRetentionMetrics();
+
+        /// <summary>
+        /// Predicts movie availability over the next <paramref name="daysAhead"/> days
+        /// based on average rental durations.
+        /// </summary>
+        /// <param name="daysAhead">Number of days to forecast (must be non-negative).</param>
+        /// <returns>Per-movie availability predictions.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="daysAhead"/> is negative.</exception>
         InventoryForecast GetInventoryForecast(int daysAhead);
+
+        /// <summary>
+        /// Calculates a loyalty score (0–100) for a customer based on frequency,
+        /// recency, on-time return rate, and total spend. Maps to a tier
+        /// (Bronze/Silver/Gold/Platinum).
+        /// </summary>
+        /// <param name="customerId">The customer to evaluate.</param>
+        /// <returns>Loyalty score, tier, and per-factor breakdown.</returns>
         LoyaltyResult GetLoyaltyScore(int customerId);
+
+        /// <summary>
+        /// Identifies seasonal rental trends by genre and month.
+        /// </summary>
+        /// <returns>Rental counts grouped by genre and month, ordered chronologically
+        /// with the most popular genres first within each month.</returns>
         IReadOnlyList<SeasonalTrend> GetSeasonalTrends();
+
+        /// <summary>
+        /// Generates a formatted rental report of the specified type (Summary,
+        /// Detailed, CustomerFocused, or MovieFocused).
+        /// </summary>
+        /// <param name="type">The type of report to generate.</param>
+        /// <returns>A report with titled sections and formatted content.</returns>
         RentalReport GenerateReport(ReportType type);
     }
 
@@ -41,6 +97,7 @@ namespace Vidly.Services
             _movieRepository = movieRepository ?? throw new ArgumentNullException(nameof(movieRepository));
         }
 
+        /// <inheritdoc />
         public IReadOnlyList<RentalHistoryEntry> GetRentalHistory(int? customerId, int? movieId, DateTime? from, DateTime? to, RentalStatus? status)
         {
             var rentals = _rentalRepository.GetAll().AsEnumerable();
@@ -91,6 +148,7 @@ namespace Vidly.Services
             .ToList();
         }
 
+        /// <inheritdoc />
         public IReadOnlyList<TimelineEvent> GetCustomerTimeline(int customerId)
         {
             var rentals = _rentalRepository.GetAll().Where(r => r.CustomerId == customerId).ToList();
@@ -157,6 +215,7 @@ namespace Vidly.Services
             return events.OrderBy(e => e.Date).ThenBy(e => e.EventType).ToList();
         }
 
+        /// <inheritdoc />
         public PopularTimesResult GetPopularTimes()
         {
             var rentals = _rentalRepository.GetAll();
@@ -183,6 +242,7 @@ namespace Vidly.Services
             return result;
         }
 
+        /// <inheritdoc />
         public RetentionMetrics GetRetentionMetrics()
         {
             var rentals = _rentalRepository.GetAll();
@@ -239,6 +299,7 @@ namespace Vidly.Services
             return metrics;
         }
 
+        /// <inheritdoc />
         public InventoryForecast GetInventoryForecast(int daysAhead)
         {
             if (daysAhead < 0)
@@ -281,6 +342,7 @@ namespace Vidly.Services
             return forecast;
         }
 
+        /// <inheritdoc />
         public LoyaltyResult GetLoyaltyScore(int customerId)
         {
             var customer = _customerRepository.GetById(customerId);
@@ -347,6 +409,7 @@ namespace Vidly.Services
             };
         }
 
+        /// <inheritdoc />
         public IReadOnlyList<SeasonalTrend> GetSeasonalTrends()
         {
             var rentals = _rentalRepository.GetAll();
@@ -366,6 +429,7 @@ namespace Vidly.Services
                 .ToList();
         }
 
+        /// <inheritdoc />
         public RentalReport GenerateReport(ReportType type)
         {
             var report = new RentalReport
@@ -397,6 +461,9 @@ namespace Vidly.Services
             return report;
         }
 
+        /// <summary>
+        /// Generates overview section with total/active/overdue/returned counts and revenue.
+        /// </summary>
         private List<ReportSection> GenerateSummaryReport()
         {
             var rentals = _rentalRepository.GetAll();
@@ -414,6 +481,9 @@ namespace Vidly.Services
             return sections;
         }
 
+        /// <summary>
+        /// Extends the summary report with popular-times and retention sections.
+        /// </summary>
         private List<ReportSection> GenerateDetailedReport()
         {
             var sections = GenerateSummaryReport();
@@ -439,6 +509,9 @@ namespace Vidly.Services
             return sections;
         }
 
+        /// <summary>
+        /// Generates customer-centric report with total counts and top-5 by rental count.
+        /// </summary>
         private List<ReportSection> GenerateCustomerReport()
         {
             var sections = new List<ReportSection>();
@@ -468,6 +541,9 @@ namespace Vidly.Services
             return sections;
         }
 
+        /// <summary>
+        /// Generates movie-centric report with inventory overview, top-5 movies, and seasonal trends.
+        /// </summary>
         private List<ReportSection> GenerateMovieReport()
         {
             var sections = new List<ReportSection>();
