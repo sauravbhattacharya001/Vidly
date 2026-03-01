@@ -249,6 +249,79 @@ All tests use MSTest (`[TestClass]`, `[TestMethod]`). Coverage is collected via 
 
 **Known test issues:** 16 pre-existing failures due to date-dependent assertions and seed data assumptions (e.g., overdue date thresholds, average revenue calculations).
 
+## Performance Patterns
+
+Several optimization patterns are used consistently across the codebase. Understanding these helps maintain performance when adding features.
+
+### Single-Pass Aggregation
+
+Multiple statistics are computed in a single loop instead of chaining separate LINQ queries:
+
+```csharp
+// ✗ O(3N) — three passes over the collection
+var active = rentals.Count(r => r.Status == RentalStatus.Active);
+var revenue = rentals.Sum(r => r.TotalCost);
+var overdue = rentals.Count(r => r.Status == RentalStatus.Overdue);
+
+// ✓ O(N) — single pass with accumulators
+foreach (var r in rentals)
+{
+    switch (r.Status) { ... }
+    totalRevenue += r.TotalCost;
+}
+```
+
+Used in: `InMemoryRentalRepository.GetStats()`, `CustomerActivityService.BuildSummary()`, `DashboardService.ComputeMonthlyRevenue()`
+
+### Dictionary-Based Grouping
+
+Grouping by key uses pre-built dictionaries for O(1) bin lookups instead of nested iteration:
+
+```csharp
+// ✗ O(K×N) — iterates all items for each bucket
+for (int i = 0; i < 6; i++)
+{
+    var monthItems = items.Where(r => InMonth(r, i)).ToList();
+}
+
+// ✓ O(N) — single pass, O(1) per-item lookup
+var lookup = new Dictionary<(int Year, int Month), Entry>();
+foreach (var r in items)
+{
+    if (lookup.TryGetValue((r.Date.Year, r.Date.Month), out var entry))
+        entry.Count++;
+}
+```
+
+Used in: `CustomerActivityService.BuildMonthlyActivity()`, `DashboardService.ComputeMonthlyRevenue()`, `CustomerActivityService.BuildGenreBreakdown()`
+
+### Pre-Built Indexes for Collaborative Filtering
+
+`MovieSimilarityService` builds two indexes from a single O(R) pass over all rentals, then derives all co-rental scores and renter counts from them:
+
+```
+allRentals  ──O(R)──►  customerMovies: { customerId → Set<movieId> }
+                              │
+                         O(edges)
+                              │
+                              ▼
+                        movieRenters: { movieId → Set<customerId> }
+```
+
+This replaces the old pattern where `FindSimilar()` and `Compare()` each made 2–4 independent O(R) scans of all rentals. The indexes are reused across operations:
+
+- `FindSimilar()` — builds indexes once, derives scores for all candidate movies
+- `Compare()` — builds indexes once, gets renters and co-rental data for both movies
+- `GetSimilarityMatrix()` — builds indexes once, computes all pairwise scores
+
+### HashSet for O(1) Membership Checks
+
+`InMemoryRentalRepository` maintains a `_rentedMovieIds` HashSet alongside the main Dictionary, updated on every Add/Update/Remove/Return. This enables O(1) availability checks in `IsMovieRentedOut()` and `Checkout()` instead of scanning all rentals.
+
+### Defensive Cloning
+
+All repository `Get*()` methods return cloned objects to prevent callers from mutating internal state. The `Clone()` methods are lightweight (property copy, no deep graph traversal) since models are flat value types + strings.
+
 ## Extending Vidly
 
 ### Adding a New Entity

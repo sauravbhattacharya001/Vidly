@@ -174,30 +174,35 @@ namespace Vidly.Services
 
         /// <summary>
         /// Groups rentals by month for the last 6 months.
+        /// Uses a dictionary keyed by (year, month) for O(R) single-pass
+        /// aggregation instead of O(6*R) nested iteration.
         /// </summary>
         internal static List<MonthlyActivityEntry> BuildMonthlyActivity(IList<Rental> rentals)
         {
-            var result = new List<MonthlyActivityEntry>();
             var today = DateTime.Today;
+            var result = new List<MonthlyActivityEntry>();
+            var lookup = new Dictionary<(int Year, int Month), MonthlyActivityEntry>();
 
             for (int i = 5; i >= 0; i--)
             {
-                var month = today.AddMonths(-i);
-                var monthStart = new DateTime(month.Year, month.Month, 1);
-                var monthEnd = monthStart.AddMonths(1);
-
-                var monthRentals = rentals
-                    .Where(r => r.RentalDate >= monthStart && r.RentalDate < monthEnd)
-                    .ToList();
-
-                result.Add(new MonthlyActivityEntry
+                var monthStart = new DateTime(today.Year, today.Month, 1).AddMonths(-i);
+                var entry = new MonthlyActivityEntry
                 {
                     Year = monthStart.Year,
                     Month = monthStart.Month,
-                    MonthName = monthStart.ToString("MMM yyyy"),
-                    RentalCount = monthRentals.Count,
-                    TotalSpent = monthRentals.Sum(r => r.TotalCost)
-                });
+                    MonthName = monthStart.ToString("MMM yyyy")
+                };
+                result.Add(entry);
+                lookup[(entry.Year, entry.Month)] = entry;
+            }
+
+            foreach (var r in rentals)
+            {
+                if (lookup.TryGetValue((r.RentalDate.Year, r.RentalDate.Month), out var entry))
+                {
+                    entry.RentalCount++;
+                    entry.TotalSpent += r.TotalCost;
+                }
             }
 
             return result;
