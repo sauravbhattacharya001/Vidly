@@ -4,6 +4,8 @@ using System.Linq;
 using Vidly.Models;
 using Vidly.Repositories;
 
+// Data models for DashboardService live in Models/DashboardModels.cs
+
 namespace Vidly.Services
 {
     /// <summary>
@@ -312,78 +314,4 @@ namespace Vidly.Services
             return result;
         }
     }
-
-    #region Data Models
-
-    /// <summary>
-    /// Complete dashboard data model.
-    /// </summary>
-    public class DashboardData
-    {
-        public RentalStats Stats { get; set; }
-        public int CustomerCount { get; set; }
-        public int MovieCount { get; set; }
-        public decimal AverageRevenuePerRental { get; set; }
-        public decimal RealizedRevenue { get; set; }
-        public decimal ProjectedRevenue { get; set; }
-        public List<MovieRankEntry> TopMovies { get; set; }
-        public List<CustomerRankEntry> TopCustomers { get; set; }
-        public List<GenreRevenueEntry> RevenueByGenre { get; set; }
-        public List<MembershipRevenueEntry> MembershipBreakdown { get; set; }
-        public List<Rental> RecentRentals { get; set; }
-        public List<MonthlyRevenueEntry> MonthlyRevenue { get; set; }
-    }
-
-    public class MovieRankEntry
-    {
-        public int MovieId { get; set; }
-        public string MovieName { get; set; }
-        public Genre? Genre { get; set; }
-        public int? Rating { get; set; }
-        public int RentalCount { get; set; }
-        public decimal TotalRevenue { get; set; }
-    }
-
-    public class CustomerRankEntry
-    {
-        public int CustomerId { get; set; }
-        public string CustomerName { get; set; }
-        public MembershipType MembershipType { get; set; }
-        public int RentalCount { get; set; }
-        public decimal TotalSpent { get; set; }
-        public decimal LateFees { get; set; }
-    }
-
-    public class GenreRevenueEntry
-    {
-        public string GenreName { get; set; }
-        public int RentalCount { get; set; }
-        public decimal Revenue { get; set; }
-        public decimal LateFees { get; set; }
-    }
-
-    public class MembershipRevenueEntry
-    {
-        public MembershipType Tier { get; set; }
-        public int UniqueCustomers { get; set; }
-        public int RentalCount { get; set; }
-        public decimal Revenue { get; set; }
-
-        /// <summary>
-        /// Internal tracking — customer IDs for unique count.
-        /// </summary>
-        internal HashSet<int> CustomerIds { get; set; } = new HashSet<int>();
-    }
-
-    public class MonthlyRevenueEntry
-    {
-        public int Year { get; set; }
-        public int Month { get; set; }
-        public string Label { get; set; }
-        public decimal Revenue { get; set; }
-        public int RentalCount { get; set; }
-        public decimal LateFees { get; set; }
-    }
-
-    #endregion
 }

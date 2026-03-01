@@ -1,4 +1,4 @@
-using Vidly.Services;
+using Vidly.Models;
 
 namespace Vidly.ViewModels
 {
