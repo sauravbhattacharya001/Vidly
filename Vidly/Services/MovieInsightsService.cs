@@ -127,6 +127,10 @@ namespace Vidly.Services
 
         // ── Internal builders (static for testability) ──
 
+        /// <summary>
+        /// Builds a rental summary from a list of rentals, including counts by status,
+        /// unique/repeat customer counts, average rental duration, and date range.
+        /// </summary>
         internal static RentalSummary BuildRentalSummary(List<Rental> rentals)
         {
             if (rentals == null || rentals.Count == 0)
@@ -180,6 +184,10 @@ namespace Vidly.Services
             };
         }
 
+        /// <summary>
+        /// Computes revenue breakdown: total, base (minus late fees), late fees,
+        /// average per rental, and late-fee percentage.
+        /// </summary>
         internal static RevenueBreakdown BuildRevenue(List<Rental> rentals)
         {
             if (rentals == null || rentals.Count == 0)
@@ -206,6 +214,10 @@ namespace Vidly.Services
             };
         }
 
+        /// <summary>
+        /// Builds a customer demographic breakdown showing membership tier distribution,
+        /// total unique customers, and the dominant (most common) tier.
+        /// </summary>
         internal static CustomerDemographicBreakdown BuildDemographics(
             List<Rental> rentals, Dictionary<int, Customer> customerLookup)
         {
@@ -247,6 +259,10 @@ namespace Vidly.Services
             };
         }
 
+        /// <summary>
+        /// Builds a monthly trend showing rental count and revenue per calendar month.
+        /// Results are sorted chronologically (yyyy-MM).
+        /// </summary>
         internal static List<MonthlyRentalPoint> BuildMonthlyTrend(List<Rental> rentals)
         {
             if (rentals == null || rentals.Count == 0)
@@ -277,6 +293,11 @@ namespace Vidly.Services
             return result;
         }
 
+        /// <summary>
+        /// Computes a multi-factor performance score (0–100) using weighted averages
+        /// of popularity (35%), revenue (30%), retention (20%), and rating (15%).
+        /// Assigns a letter grade (A–F).
+        /// </summary>
         internal static PerformanceScore ComputePerformanceScore(
             List<Rental> movieRentals, IReadOnlyList<Rental> allRentals,
             IReadOnlyList<Movie> allMovies, Movie movie)
@@ -362,6 +383,7 @@ namespace Vidly.Services
             };
         }
 
+        /// <summary>Maps a numeric score (0–100) to a letter grade (A–F).</summary>
         internal static string GetGrade(double score)
         {
             if (score >= 90) return "A";
@@ -371,6 +393,10 @@ namespace Vidly.Services
             return "F";
         }
 
+        /// <summary>
+        /// Compares two movie insights across revenue, popularity, and performance,
+        /// returning a natural-language verdict.
+        /// </summary>
         internal static string GetComparisonVerdict(MovieInsight a, MovieInsight b)
         {
             int aWins = 0, bWins = 0;
@@ -386,6 +412,10 @@ namespace Vidly.Services
 
     // ── Data models ──
 
+    /// <summary>
+    /// Comprehensive analytics for a single movie: rental summary, revenue,
+    /// customer demographics, monthly trends, and performance score.
+    /// </summary>
     public class MovieInsight
     {
         public int MovieId { get; set; }
@@ -400,6 +430,9 @@ namespace Vidly.Services
         public PerformanceScore PerformanceScore { get; set; }
     }
 
+    /// <summary>
+    /// Rental counts by status, unique/repeat customers, average duration, and date range.
+    /// </summary>
     public class RentalSummary
     {
         public int TotalRentals { get; set; }
@@ -413,6 +446,9 @@ namespace Vidly.Services
         public DateTime? LastRentalDate { get; set; }
     }
 
+    /// <summary>
+    /// Revenue split into base rental income and late fees, with per-rental average.
+    /// </summary>
     public class RevenueBreakdown
     {
         public decimal TotalRevenue { get; set; }
@@ -422,6 +458,9 @@ namespace Vidly.Services
         public double LateFeePercentage { get; set; }
     }
 
+    /// <summary>
+    /// Customer membership tier distribution for a movie's renters.
+    /// </summary>
     public class CustomerDemographicBreakdown
     {
         public Dictionary<string, int> TierDistribution { get; set; }
@@ -430,6 +469,9 @@ namespace Vidly.Services
         public string DominantTier { get; set; }
     }
 
+    /// <summary>
+    /// A single data point in a monthly rental trend (count and revenue for one month).
+    /// </summary>
     public class MonthlyRentalPoint
     {
         public string Month { get; set; }
@@ -439,6 +481,10 @@ namespace Vidly.Services
         public decimal Revenue { get; set; }
     }
 
+    /// <summary>
+    /// Weighted composite score (0–100) with sub-scores for popularity, revenue,
+    /// retention, and rating, plus a letter grade.
+    /// </summary>
     public class PerformanceScore
     {
         public double Popularity { get; set; }
@@ -449,6 +495,9 @@ namespace Vidly.Services
         public string Grade { get; set; }
     }
 
+    /// <summary>
+    /// Side-by-side comparison of two movies with per-metric winners and an overall verdict.
+    /// </summary>
     public class MovieInsightComparison
     {
         public MovieInsight MovieA { get; set; }
