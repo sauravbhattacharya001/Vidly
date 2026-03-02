@@ -202,7 +202,7 @@ namespace Vidly.Services
         /// Pre-builds lookup dictionaries from unique IDs to avoid
         /// N+1 per-review GetById calls. O(R) instead of O(R × 2).
         /// </summary>
-        private IReadOnlyList<Review> Enrich(IReadOnlyList<Review> reviews)
+        public IReadOnlyList<Review> Enrich(IReadOnlyList<Review> reviews)
         {
             // Collect IDs that actually need enrichment
             var customerIdsNeeded = new HashSet<int>();

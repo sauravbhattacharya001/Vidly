@@ -53,7 +53,7 @@ namespace Vidly.Controllers
                 ? _reviewRepository.Search(search, minStars)
                 : _reviewRepository.GetAll();
 
-            EnrichReviews(reviews);
+            _reviewService.Enrich(reviews);
 
             var viewModel = new ReviewIndexViewModel
             {
@@ -149,25 +149,5 @@ namespace Vidly.Controllers
             return RedirectToAction("Index", new { message, error = !deleted });
         }
 
-        /// <summary>
-        /// Enriches reviews with customer and movie display names where missing.
-        /// Eliminates duplicated inline enrichment loops.
-        /// </summary>
-        private void EnrichReviews(IReadOnlyList<Review> reviews)
-        {
-            foreach (var r in reviews)
-            {
-                if (string.IsNullOrEmpty(r.CustomerName))
-                {
-                    var cust = _customerRepository.GetById(r.CustomerId);
-                    r.CustomerName = cust?.Name ?? "Unknown";
-                }
-                if (string.IsNullOrEmpty(r.MovieName))
-                {
-                    var movie = _movieRepository.GetById(r.MovieId);
-                    r.MovieName = movie?.Name ?? "Unknown";
-                }
-            }
-        }
     }
 }
