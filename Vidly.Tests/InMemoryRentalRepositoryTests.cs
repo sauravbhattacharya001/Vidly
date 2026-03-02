@@ -518,5 +518,39 @@ namespace Vidly.Tests
             // Clean up
             foreach (var id in ids) repo.Remove(id);
         }
+
+        [TestMethod]
+        public void RefreshStatus_OverdueRental_AccruesLateFee()
+        {
+            // Regression test: previously RefreshStatus only set Status to
+            // Overdue but left LateFee at 0, causing GetStats and billing
+            // views to undercount late fees for unreturned rentals.
+            var repo = new InMemoryRentalRepository();
+            var rental = new Rental
+            {
+                CustomerId = 1,
+                CustomerName = "Test Overdue",
+                MovieId = 999,
+                MovieName = "Overdue Movie",
+                RentalDate = DateTime.Today.AddDays(-14),
+                DueDate = DateTime.Today.AddDays(-7),
+                DailyRate = 3.99m
+            };
+            repo.Add(rental);
+
+            var fetched = repo.GetById(rental.Id);
+            Assert.AreEqual(RentalStatus.Overdue, fetched.Status,
+                "Rental past due date should be Overdue.");
+            Assert.IsTrue(fetched.LateFee > 0,
+                "Overdue rental should have accruing late fee > 0.");
+
+            var expectedDays = (int)Math.Ceiling((DateTime.Today - rental.DueDate).TotalDays);
+            Assert.AreEqual(expectedDays * InMemoryRentalRepository.LateFeePerDay,
+                fetched.LateFee,
+                "Late fee should equal overdue days × per-day rate.");
+
+            // Clean up
+            repo.Remove(rental.Id);
+        }
     }
 }
