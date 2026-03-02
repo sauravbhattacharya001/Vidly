@@ -215,6 +215,11 @@ namespace Vidly.Services
 
         /// <summary>
         /// Forecast availability for a movie over the next N days.
+        /// 
+        /// Overdue rentals (due date in the past but not returned) are treated as
+        /// still rented on day 0 and assumed to be returned one day later.  The
+        /// previous implementation counted overdue items as "returned by today",
+        /// inflating predicted availability.
         /// </summary>
         public List<AvailabilityForecast> ForecastAvailability(int movieId, int days = 7)
         {
@@ -227,22 +232,30 @@ namespace Vidly.Services
 
             var totalCopies = GetStockCount(movieId);
             var rentals = _rentalRepository.GetAll();
+            var today = DateTime.Today;
 
-            var activeRentals = new List<DateTime>();
+            // Collect expected return dates for active rentals.
+            // For overdue rentals the due date is already past, so we push
+            // their expected return to tomorrow (today + 1) — they are
+            // still checked out and we can't count them as available today.
+            var expectedReturns = new List<DateTime>();
             foreach (var r in rentals)
             {
                 if (r.MovieId == movieId && r.Status != RentalStatus.Returned)
-                    activeRentals.Add(r.DueDate);
+                {
+                    var returnDate = r.DueDate < today ? today.AddDays(1) : r.DueDate;
+                    expectedReturns.Add(returnDate);
+                }
             }
 
-            activeRentals.Sort();
+            expectedReturns.Sort();
 
             var forecasts = new List<AvailabilityForecast>();
             for (int d = 0; d < days; d++)
             {
-                var forecastDate = DateTime.Today.AddDays(d);
-                var returnsBy = activeRentals.Count(due => due <= forecastDate);
-                var stillRented = activeRentals.Count - returnsBy;
+                var forecastDate = today.AddDays(d);
+                var returnsBy = expectedReturns.Count(due => due <= forecastDate);
+                var stillRented = expectedReturns.Count - returnsBy;
                 var available = Math.Max(0, totalCopies - stillRented);
 
                 forecasts.Add(new AvailabilityForecast
