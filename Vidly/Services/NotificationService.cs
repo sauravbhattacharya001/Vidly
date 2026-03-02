@@ -114,16 +114,19 @@ namespace Vidly.Services
 
             foreach (var rental in rentals)
             {
-                var daysSinceRental = (DateTime.Today - rental.RentalDate).TotalDays;
-                if (daysSinceRental > 7) // Overdue after 7 days
+                // Use the actual DueDate from the rental — it already accounts for
+                // membership-tier extended rental periods (Silver +1, Gold +2, Platinum +3).
+                // The previous hardcoded "7 days" logic was incorrect for non-Basic members.
+                if (DateTime.Today > rental.DueDate)
                 {
+                    var daysOverdue = (int)(DateTime.Today - rental.DueDate).TotalDays;
                     var movie = _movieRepository.GetAll().FirstOrDefault(m => m.Id == rental.MovieId);
                     yield return new Notification
                     {
                         Type = NotificationType.OverdueRental,
                         Priority = NotificationPriority.Urgent,
                         Title = "Overdue Rental",
-                        Message = $"\"{movie?.Name ?? "Unknown"}\" was due {(int)daysSinceRental - 7} day(s) ago. Late fees may apply.",
+                        Message = $"\"{movie?.Name ?? "Unknown"}\" was due {daysOverdue} day(s) ago. Late fees may apply.",
                         Timestamp = DateTime.Now,
                         RelatedMovieId = rental.MovieId,
                         Icon = "⚠️"
@@ -140,17 +143,18 @@ namespace Vidly.Services
 
             foreach (var rental in rentals)
             {
-                var daysSinceRental = (DateTime.Today - rental.RentalDate).TotalDays;
-                if (daysSinceRental >= 5 && daysSinceRental <= 7) // Due soon (5-7 days)
+                // Use the actual DueDate — it already accounts for membership-tier
+                // extended rental periods. Alert when due within 2 days.
+                var daysUntilDue = (int)(rental.DueDate - DateTime.Today).TotalDays;
+                if (daysUntilDue >= 0 && daysUntilDue <= 2)
                 {
                     var movie = _movieRepository.GetAll().FirstOrDefault(m => m.Id == rental.MovieId);
-                    var daysLeft = 7 - (int)daysSinceRental;
                     yield return new Notification
                     {
                         Type = NotificationType.DueSoon,
                         Priority = NotificationPriority.High,
                         Title = "Rental Due Soon",
-                        Message = $"\"{movie?.Name ?? "Unknown"}\" is due in {daysLeft} day(s). Return it to avoid late fees!",
+                        Message = $"\"{movie?.Name ?? "Unknown"}\" is due in {daysUntilDue} day(s). Return it to avoid late fees!",
                         Timestamp = DateTime.Now,
                         RelatedMovieId = rental.MovieId,
                         Icon = "⏰"
