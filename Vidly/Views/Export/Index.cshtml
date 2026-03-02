@@ -1,0 +1,94 @@
+@{
+    ViewBag.Title = "Export Data";
+}
+
+<h2><span class="glyphicon glyphicon-download-alt"></span> Export Data</h2>
+<p class="lead">Download your Vidly data in CSV or JSON format.</p>
+
+<div class="row" style="margin-top: 30px;">
+    <div class="col-md-4">
+        <div class="panel panel-primary">
+            <div class="panel-heading">
+                <h3 class="panel-title">
+                    <span class="glyphicon glyphicon-film"></span> Movies
+                </h3>
+            </div>
+            <div class="panel-body">
+                <p><strong>@ViewBag.MovieCount</strong> movies available</p>
+                <p class="text-muted">Includes name, release date, genre, and rating.</p>
+                <div class="btn-group btn-group-justified" style="margin-top: 15px;">
+                    <div class="btn-group">
+                        <a href="@Url.Action("Movies", "Export", new { format = "csv" })" class="btn btn-default">
+                            <span class="glyphicon glyphicon-list-alt"></span> CSV
+                        </a>
+                    </div>
+                    <div class="btn-group">
+                        <a href="@Url.Action("Movies", "Export", new { format = "json" })" class="btn btn-default">
+                            <span class="glyphicon glyphicon-transfer"></span> JSON
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="panel panel-success">
+            <div class="panel-heading">
+                <h3 class="panel-title">
+                    <span class="glyphicon glyphicon-user"></span> Customers
+                </h3>
+            </div>
+            <div class="panel-body">
+                <p><strong>@ViewBag.CustomerCount</strong> customers registered</p>
+                <p class="text-muted">Includes name, email, phone, and membership info.</p>
+                <div class="btn-group btn-group-justified" style="margin-top: 15px;">
+                    <div class="btn-group">
+                        <a href="@Url.Action("Customers", "Export", new { format = "csv" })" class="btn btn-default">
+                            <span class="glyphicon glyphicon-list-alt"></span> CSV
+                        </a>
+                    </div>
+                    <div class="btn-group">
+                        <a href="@Url.Action("Customers", "Export", new { format = "json" })" class="btn btn-default">
+                            <span class="glyphicon glyphicon-transfer"></span> JSON
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="panel panel-info">
+            <div class="panel-heading">
+                <h3 class="panel-title">
+                    <span class="glyphicon glyphicon-shopping-cart"></span> Rentals
+                </h3>
+            </div>
+            <div class="panel-body">
+                <p><strong>@ViewBag.RentalCount</strong> rental records</p>
+                <p class="text-muted">Includes customer, movie, dates, status, and costs.</p>
+                <div class="btn-group btn-group-justified" style="margin-top: 15px;">
+                    <div class="btn-group">
+                        <a href="@Url.Action("Rentals", "Export", new { format = "csv" })" class="btn btn-default">
+                            <span class="glyphicon glyphicon-list-alt"></span> CSV
+                        </a>
+                    </div>
+                    <div class="btn-group">
+                        <a href="@Url.Action("Rentals", "Export", new { format = "json" })" class="btn btn-default">
+                            <span class="glyphicon glyphicon-transfer"></span> JSON
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="well" style="margin-top: 20px;">
+    <h4><span class="glyphicon glyphicon-info-sign"></span> About Exports</h4>
+    <ul>
+        <li><strong>CSV</strong> — Comma-separated values, opens in Excel, Google Sheets, or any spreadsheet app.</li>
+        <li><strong>JSON</strong> — Structured data format, ideal for developers and integrations.</li>
+    </ul>
+</div>
