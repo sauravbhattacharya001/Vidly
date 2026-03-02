@@ -171,8 +171,11 @@ namespace Vidly.Controllers
                                .Replace("\n", "\\n").Replace("\r", "\\r") + "\"";
 
             if (obj is bool b) return b ? "true" : "false";
-            if (obj is int || obj is long || obj is decimal || obj is double || obj is float)
-                return obj.ToString();
+            if (obj is int i) return i.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            if (obj is long l) return l.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            if (obj is decimal dec) return dec.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            if (obj is double dbl) return dbl.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            if (obj is float flt) return flt.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
             if (obj is DateTime dt) return "\"" + dt.ToString("o") + "\"";
             if (obj is DateTimeOffset dto) return "\"" + dto.ToString("o") + "\"";

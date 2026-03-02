@@ -63,7 +63,9 @@ namespace Vidly.Services
 
         /// <summary>
         /// Award points for a completed rental based on its total cost and
-        /// the customer's membership tier.
+        /// the customer's membership tier. Only returned rentals are eligible —
+        /// active/overdue rentals have a TotalCost that fluctuates with DateTime.Today
+        /// and may include unfinalized late fees.
         /// </summary>
         public PointsTransaction EarnPointsForRental(int rentalId)
         {
@@ -71,6 +73,14 @@ namespace Vidly.Services
                 .FirstOrDefault(r => r.Id == rentalId);
             if (rental == null)
                 throw new ArgumentException($"Rental {rentalId} not found.");
+
+            // Prevent awarding points on unreturned rentals — their TotalCost
+            // is computed from DateTime.Today and grows every day, which would
+            // let customers game the system by delaying returns.
+            if (rental.Status != RentalStatus.Returned)
+                throw new InvalidOperationException(
+                    $"Rental {rentalId} has not been returned yet. " +
+                    "Points can only be awarded for completed rentals.");
 
             // Don't double-award
             if (_ledger.Any(t => t.RentalId == rentalId && t.Type == TransactionType.Earned))

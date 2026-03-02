@@ -19,6 +19,9 @@ namespace Vidly.Tests
             public IReadOnlyList<Customer> GetAll() => _customers.Values.ToList().AsReadOnly();
             public void Update(Customer c) { if (_customers.ContainsKey(c.Id)) _customers[c.Id] = c; }
             public void Remove(int id) => _customers.Remove(id);
+            public IReadOnlyList<Customer> Search(string query, MembershipType? membershipType) => GetAll();
+            public IReadOnlyList<Customer> GetByMemberSince(int year, int month) => new List<Customer>().AsReadOnly();
+            public CustomerStats GetStats() => new CustomerStats { TotalCustomers = _customers.Count };
         }
 
         private class TestRentalRepository : IRentalRepository
@@ -29,6 +32,17 @@ namespace Vidly.Tests
             public IReadOnlyList<Rental> GetAll() => _rentals.AsReadOnly();
             public void Update(Rental r) { var i = _rentals.FindIndex(x => x.Id == r.Id); if (i >= 0) _rentals[i] = r; }
             public void Remove(int id) { _rentals.RemoveAll(r => r.Id == id); }
+            public IReadOnlyList<Rental> GetActiveByCustomer(int customerId) =>
+                _rentals.Where(r => r.CustomerId == customerId && r.Status != RentalStatus.Returned).ToList().AsReadOnly();
+            public IReadOnlyList<Rental> GetByMovie(int movieId) =>
+                _rentals.Where(r => r.MovieId == movieId).ToList().AsReadOnly();
+            public IReadOnlyList<Rental> GetOverdue() =>
+                _rentals.Where(r => r.Status == RentalStatus.Overdue).ToList().AsReadOnly();
+            public IReadOnlyList<Rental> Search(string query, RentalStatus? status) => GetAll();
+            public Rental ReturnRental(int rentalId) { var r = GetById(rentalId); if (r != null) { r.Status = RentalStatus.Returned; r.ReturnDate = DateTime.Today; } return r; }
+            public bool IsMovieRentedOut(int movieId) => _rentals.Any(r => r.MovieId == movieId && r.Status != RentalStatus.Returned);
+            public Rental Checkout(Rental rental) { Add(rental); return rental; }
+            public RentalStats GetStats() => new RentalStats { TotalRentals = _rentals.Count };
         }
 
         private TestCustomerRepository _customers;
@@ -143,6 +157,33 @@ namespace Vidly.Tests
         public void EarnPoints_InvalidRental_Throws()
         {
             _service.EarnPointsForRental(999);
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(InvalidOperationException))]
+        public void EarnPoints_ActiveRental_Throws()
+        {
+            MakeRental(1, 1, 3.99m, false, false);
+            _service.EarnPointsForRental(1); // active rental — should throw
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(InvalidOperationException))]
+        public void EarnPoints_OverdueRental_Throws()
+        {
+            var rental = new Rental
+            {
+                Id = 50,
+                CustomerId = 1,
+                MovieId = 1,
+                MovieName = "Test Movie",
+                RentalDate = DateTime.Today.AddDays(-20),
+                DueDate = DateTime.Today.AddDays(-13),
+                DailyRate = 3.99m,
+                Status = RentalStatus.Overdue
+            };
+            _rentals.Add(rental);
+            _service.EarnPointsForRental(50); // overdue, not returned — should throw
         }
 
         // ── Redeem points tests ──────────────────────────────────────
