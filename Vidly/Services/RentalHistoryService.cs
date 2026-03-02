@@ -309,9 +309,13 @@ namespace Vidly.Services
             var movies = _movieRepository.GetAll();
             var forecast = new InventoryForecast { DaysAhead = daysAhead };
 
+            // Pre-group rentals by movie ID for O(1) lookups instead of O(R) per movie
+            var rentalsByMovie = rentals.GroupBy(r => r.MovieId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
             foreach (var movie in movies)
             {
-                var movieRentals = rentals.Where(r => r.MovieId == movie.Id).ToList();
+                var movieRentals = rentalsByMovie.TryGetValue(movie.Id, out var grouped) ? grouped : new List<Rental>();
                 var returnedRentals = movieRentals.Where(r => r.ReturnDate.HasValue).ToList();
 
                 var avgDuration = returnedRentals.Any()
