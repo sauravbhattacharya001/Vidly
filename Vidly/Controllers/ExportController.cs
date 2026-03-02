@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Web.Mvc;
-using System.Web.Script.Serialization;
+using System.Reflection;
 using Vidly.Models;
 using Vidly.Repositories;
 
@@ -152,10 +152,48 @@ namespace Vidly.Controllers
 
         private ActionResult JsonFile(object data, string filename)
         {
-            var serializer = new JavaScriptSerializer();
-            var json = serializer.Serialize(data);
+            var json = SimpleJsonSerialize(data);
             var bytes = Encoding.UTF8.GetBytes(json);
             return File(bytes, "application/json", filename);
+        }
+
+        /// <summary>
+        /// Lightweight JSON serializer for export data (handles anonymous types
+        /// and IEnumerable). Replaces System.Web.Script.Serialization which is
+        /// unavailable in the SDK-style test project.
+        /// </summary>
+        private static string SimpleJsonSerialize(object obj)
+        {
+            if (obj == null) return "null";
+
+            if (obj is string s)
+                return "\"" + s.Replace("\\", "\\\\").Replace("\"", "\\\"")
+                               .Replace("\n", "\\n").Replace("\r", "\\r") + "\"";
+
+            if (obj is bool b) return b ? "true" : "false";
+            if (obj is int || obj is long || obj is decimal || obj is double || obj is float)
+                return obj.ToString();
+
+            if (obj is DateTime dt) return "\"" + dt.ToString("o") + "\"";
+            if (obj is DateTimeOffset dto) return "\"" + dto.ToString("o") + "\"";
+
+            if (obj is System.Collections.IEnumerable enumerable)
+            {
+                var items = new List<string>();
+                foreach (var item in enumerable)
+                    items.Add(SimpleJsonSerialize(item));
+                return "[" + string.Join(",", items) + "]";
+            }
+
+            // Object (anonymous type or POCO) — serialize public properties
+            var props = obj.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            var pairs = new List<string>();
+            foreach (var prop in props)
+            {
+                var val = prop.GetValue(obj);
+                pairs.Add("\"" + prop.Name + "\":" + SimpleJsonSerialize(val));
+            }
+            return "{" + string.Join(",", pairs) + "}";
         }
 
         private ActionResult CsvFile(StringBuilder csv, string filename)
