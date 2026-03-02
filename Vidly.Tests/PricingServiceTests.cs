@@ -91,7 +91,8 @@ namespace Vidly.Tests
             // Customer 3 (Bob Wilson) is Basic
             var quote = _service.CalculateRentalPrice(movieId: 1, customerId: 3);
 
-            Assert.AreEqual(PricingService.DefaultDailyRate, quote.BaseDailyRate);
+            // Movie 1 (Shrek, 2001) is a catalog title → CatalogDailyRate
+            Assert.AreEqual(PricingService.CatalogDailyRate, quote.BaseDailyRate);
             Assert.AreEqual(0, quote.DiscountPercent);
             Assert.AreEqual(quote.BaseDailyRate, quote.DiscountedDailyRate);
             Assert.AreEqual(PricingService.DefaultRentalDays, quote.RentalDays);
@@ -106,7 +107,7 @@ namespace Vidly.Tests
             var quote = _service.CalculateRentalPrice(movieId: 1, customerId: 1);
 
             Assert.AreEqual(20, quote.DiscountPercent);
-            var expectedRate = PricingService.DefaultDailyRate * 0.80m;
+            var expectedRate = PricingService.CatalogDailyRate * 0.80m;
             Assert.AreEqual(expectedRate, quote.DiscountedDailyRate);
             // Gold gets +2 extended days = 9 total
             Assert.AreEqual(PricingService.DefaultRentalDays + 2, quote.RentalDays);
@@ -394,11 +395,57 @@ namespace Vidly.Tests
         public void Constants_AreReasonable()
         {
             Assert.IsTrue(PricingService.DefaultDailyRate > 0);
+            Assert.IsTrue(PricingService.NewReleaseDailyRate > PricingService.DefaultDailyRate);
+            Assert.IsTrue(PricingService.CatalogDailyRate < PricingService.DefaultDailyRate);
             Assert.IsTrue(PricingService.DefaultRentalDays > 0);
             Assert.IsTrue(PricingService.MaxLateFeeCap > 0);
             Assert.IsTrue(PricingService.LateFeePerDay > 0);
             Assert.IsTrue(PricingService.MaxLateFeeCap > PricingService.LateFeePerDay,
                 "Max cap should be greater than one day's fee.");
+        }
+
+        // ── Movie-specific pricing ──────────────────────────────────
+
+        [TestMethod]
+        public void GetMovieDailyRate_ExplicitOverride_TakesPriority()
+        {
+            var movie = new Movie { Id = 99, Name = "Custom", DailyRate = 7.99m };
+            Assert.AreEqual(7.99m, PricingService.GetMovieDailyRate(movie));
+        }
+
+        [TestMethod]
+        public void GetMovieDailyRate_NewRelease_PremiumRate()
+        {
+            var movie = new Movie { Id = 99, Name = "New Film", ReleaseDate = DateTime.Today.AddDays(-30) };
+            Assert.AreEqual(PricingService.NewReleaseDailyRate, PricingService.GetMovieDailyRate(movie));
+        }
+
+        [TestMethod]
+        public void GetMovieDailyRate_CatalogTitle_DiscountRate()
+        {
+            var movie = new Movie { Id = 99, Name = "Old Classic", ReleaseDate = DateTime.Today.AddDays(-400) };
+            Assert.AreEqual(PricingService.CatalogDailyRate, PricingService.GetMovieDailyRate(movie));
+        }
+
+        [TestMethod]
+        public void GetMovieDailyRate_MidRangeTitle_DefaultRate()
+        {
+            var movie = new Movie { Id = 99, Name = "Recent", ReleaseDate = DateTime.Today.AddDays(-200) };
+            Assert.AreEqual(PricingService.DefaultDailyRate, PricingService.GetMovieDailyRate(movie));
+        }
+
+        [TestMethod]
+        public void GetMovieDailyRate_NoReleaseDate_DefaultRate()
+        {
+            var movie = new Movie { Id = 99, Name = "Unknown" };
+            Assert.AreEqual(PricingService.DefaultDailyRate, PricingService.GetMovieDailyRate(movie));
+        }
+
+        [TestMethod]
+        public void GetMovieDailyRate_ExplicitOverride_OverridesNewRelease()
+        {
+            var movie = new Movie { Id = 99, Name = "New", ReleaseDate = DateTime.Today.AddDays(-10), DailyRate = 1.99m };
+            Assert.AreEqual(1.99m, PricingService.GetMovieDailyRate(movie));
         }
     }
 }

@@ -21,5 +21,20 @@ namespace Vidly.Models
         [Display(Name = "Rating")]
         [Range(1, 5, ErrorMessage = "Rating must be between 1 and 5.")]
         public int? Rating { get; set; }
+
+        /// <summary>
+        /// Optional per-movie daily rate override. When null, pricing is
+        /// determined automatically based on release date and genre.
+        /// </summary>
+        [Display(Name = "Daily Rate")]
+        [Range(0.01, 99.99, ErrorMessage = "Daily rate must be between $0.01 and $99.99.")]
+        public decimal? DailyRate { get; set; }
+
+        /// <summary>
+        /// Whether this movie is considered a new release (within 90 days).
+        /// </summary>
+        public bool IsNewRelease =>
+            ReleaseDate.HasValue &&
+            (DateTime.Today - ReleaseDate.Value).TotalDays <= 90;
     }
 }

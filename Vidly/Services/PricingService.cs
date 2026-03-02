@@ -24,6 +24,16 @@ namespace Vidly.Services
         public const decimal DefaultDailyRate = 3.99m;
 
         /// <summary>
+        /// Premium daily rate for new releases (within 90 days of release).
+        /// </summary>
+        public const decimal NewReleaseDailyRate = 5.99m;
+
+        /// <summary>
+        /// Discounted daily rate for catalog titles older than 1 year.
+        /// </summary>
+        public const decimal CatalogDailyRate = 2.99m;
+
+        /// <summary>
         /// Default rental period in days.
         /// </summary>
         public const int DefaultRentalDays = 7;
@@ -131,7 +141,7 @@ namespace Vidly.Services
                 throw new ArgumentException($"Customer {customerId} not found.");
 
             var benefits = GetBenefits(customer.MembershipType);
-            var baseDailyRate = DefaultDailyRate;
+            var baseDailyRate = GetMovieDailyRate(movie);
             var days = rentalDays ?? (DefaultRentalDays + benefits.ExtendedRentalDays);
 
             // Apply membership discount
@@ -249,7 +259,7 @@ namespace Vidly.Services
             if (movie == null)
                 throw new ArgumentException($"Movie {movieId} not found.");
 
-            var baseDailyRate = DefaultDailyRate;
+            var baseDailyRate = GetMovieDailyRate(movie);
             var comparisons = new List<TierComparison>();
 
             foreach (MembershipType tier in Enum.GetValues(typeof(MembershipType)))
@@ -353,6 +363,29 @@ namespace Vidly.Services
             return _rentalRepository.GetAll()
                 .Count(r => r.CustomerId == customerId
                     && r.RentalDate >= firstOfMonth);
+        }
+
+        /// <summary>
+        /// Determine the daily rate for a movie based on its properties.
+        /// Priority: explicit DailyRate override > new release premium > catalog discount > default.
+        /// </summary>
+        internal static decimal GetMovieDailyRate(Movie movie)
+        {
+            // 1. Explicit per-movie rate override takes highest priority
+            if (movie.DailyRate.HasValue)
+                return movie.DailyRate.Value;
+
+            // 2. New releases (within 90 days) get premium pricing
+            if (movie.IsNewRelease)
+                return NewReleaseDailyRate;
+
+            // 3. Catalog titles (older than 1 year) get a discount
+            if (movie.ReleaseDate.HasValue &&
+                (DateTime.Today - movie.ReleaseDate.Value).TotalDays > 365)
+                return CatalogDailyRate;
+
+            // 4. Everything else uses the default rate
+            return DefaultDailyRate;
         }
     }
 
