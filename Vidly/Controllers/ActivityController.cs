@@ -18,11 +18,11 @@ namespace Vidly.Controllers
 
         public ActivityController()
         {
-            _customerRepository = new InMemoryCustomerRepository();
-            _activityService = new CustomerActivityService(
-                new InMemoryCustomerRepository(),
-                new InMemoryMovieRepository(),
-                new InMemoryRentalRepository());
+            var customerRepo = new InMemoryCustomerRepository();
+            var movieRepo = new InMemoryMovieRepository();
+            var rentalRepo = new InMemoryRentalRepository();
+            _customerRepository = customerRepo;
+            _activityService = new CustomerActivityService(customerRepo, movieRepo, rentalRepo);
         }
 
         // For testing
