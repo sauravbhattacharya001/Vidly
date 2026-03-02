@@ -120,7 +120,7 @@ namespace Vidly.Controllers
                 {
                     RentalDate = DateTime.Today,
                     DueDate = DateTime.Today.AddDays(InMemoryRentalRepository.DefaultRentalDays),
-                    DailyRate = InMemoryRentalRepository.DefaultDailyRate
+                    DailyRate = Services.PricingService.DefaultDailyRate
                 },
                 Customers = _customerRepository.GetAll(),
                 AvailableMovies = availableMovies
@@ -170,12 +170,20 @@ namespace Vidly.Controllers
             // Security: enforce server-side daily rate — never trust client-submitted pricing.
             // This prevents price manipulation attacks where a user modifies the form to
             // submit a lower DailyRate (e.g., $0.01 instead of $3.99).
-            rental.DailyRate = InMemoryRentalRepository.DefaultDailyRate;
+            // Uses PricingService logic: new releases get premium rate ($5.99),
+            // catalog titles (>1 year old) get discount ($2.99), per-movie overrides
+            // take priority, and membership discounts are applied.
+            var baseDailyRate = Services.PricingService.GetMovieDailyRate(movie);
+            var benefits = Services.PricingService.GetBenefits(customer.MembershipType);
+            var discountAmount = baseDailyRate * benefits.DiscountPercent / 100m;
+            rental.DailyRate = baseDailyRate - discountAmount;
 
             // Security: enforce server-side rental period — prevent users from extending
             // due dates via form manipulation to avoid late fees.
+            // Membership tiers grant extended rental periods (Silver +1, Gold +2, Platinum +3).
+            var rentalDays = InMemoryRentalRepository.DefaultRentalDays + benefits.ExtendedRentalDays;
             rental.RentalDate = DateTime.Today;
-            rental.DueDate = DateTime.Today.AddDays(InMemoryRentalRepository.DefaultRentalDays);
+            rental.DueDate = DateTime.Today.AddDays(rentalDays);
 
             // Use atomic Checkout to prevent TOCTOU race: availability check
             // and rental creation happen in a single lock acquisition
