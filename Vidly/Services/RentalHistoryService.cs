@@ -467,19 +467,44 @@ namespace Vidly.Services
 
         /// <summary>
         /// Generates overview section with total/active/overdue/returned counts and revenue.
+        /// Single-pass aggregation: computes all 6 metrics in one iteration
+        /// instead of 5 separate LINQ passes (3× Count + 2× Sum).
         /// </summary>
         private List<ReportSection> GenerateSummaryReport()
         {
-            var rentals = _rentalRepository.GetAll();
-            var sections = new List<ReportSection>();
-            var sb = new StringBuilder();
+            return GenerateSummaryReport(_rentalRepository.GetAll());
+        }
 
+        /// <summary>
+        /// Internal overload that accepts a pre-fetched rental list to avoid
+        /// redundant GetAll() calls from GenerateDetailedReport.
+        /// </summary>
+        private static List<ReportSection> GenerateSummaryReport(IReadOnlyList<Rental> rentals)
+        {
+            var sections = new List<ReportSection>();
+
+            int active = 0, overdue = 0, returned = 0;
+            decimal totalRevenue = 0m, totalLateFees = 0m;
+
+            foreach (var r in rentals)
+            {
+                switch (r.Status)
+                {
+                    case RentalStatus.Active: active++; break;
+                    case RentalStatus.Overdue: overdue++; break;
+                    case RentalStatus.Returned: returned++; break;
+                }
+                totalRevenue += r.TotalCost;
+                totalLateFees += r.LateFee;
+            }
+
+            var sb = new StringBuilder();
             sb.AppendLine($"Total Rentals: {rentals.Count}");
-            sb.AppendLine($"Active: {rentals.Count(r => r.Status == RentalStatus.Active)}");
-            sb.AppendLine($"Overdue: {rentals.Count(r => r.Status == RentalStatus.Overdue)}");
-            sb.AppendLine($"Returned: {rentals.Count(r => r.Status == RentalStatus.Returned)}");
-            sb.AppendLine($"Total Revenue: {rentals.Sum(r => r.TotalCost):C}");
-            sb.AppendLine($"Total Late Fees: {rentals.Sum(r => r.LateFee):C}");
+            sb.AppendLine($"Active: {active}");
+            sb.AppendLine($"Overdue: {overdue}");
+            sb.AppendLine($"Returned: {returned}");
+            sb.AppendLine($"Total Revenue: {totalRevenue:C}");
+            sb.AppendLine($"Total Late Fees: {totalLateFees:C}");
 
             sections.Add(new ReportSection { Heading = "Overview", Content = sb.ToString() });
             return sections;
@@ -487,11 +512,13 @@ namespace Vidly.Services
 
         /// <summary>
         /// Extends the summary report with popular-times and retention sections.
+        /// Shares the rental list with GenerateSummaryReport to avoid a redundant
+        /// GetAll() call.
         /// </summary>
         private List<ReportSection> GenerateDetailedReport()
         {
-            var sections = GenerateSummaryReport();
             var rentals = _rentalRepository.GetAll();
+            var sections = GenerateSummaryReport(rentals);
 
             // Popular times
             var popular = GetPopularTimes();
@@ -515,6 +542,7 @@ namespace Vidly.Services
 
         /// <summary>
         /// Generates customer-centric report with total counts and top-5 by rental count.
+        /// Uses dictionary lookup for customer names instead of O(C) FirstOrDefault per group.
         /// </summary>
         private List<ReportSection> GenerateCustomerReport()
         {
@@ -528,6 +556,11 @@ namespace Vidly.Services
             sb.AppendLine($"Customers with Rentals: {customersWithRentals}");
             sections.Add(new ReportSection { Heading = "Customer Overview", Content = sb.ToString() });
 
+            // Build O(1) lookup instead of O(C) FirstOrDefault per group
+            var customerLookup = new Dictionary<int, Customer>();
+            foreach (var c in customers)
+                customerLookup[c.Id] = c;
+
             // Top customers by rental count
             var topCustomers = rentals.GroupBy(r => r.CustomerId)
                 .OrderByDescending(g => g.Count())
@@ -537,8 +570,8 @@ namespace Vidly.Services
             sb = new StringBuilder();
             foreach (var g in topCustomers)
             {
-                var c = customers.FirstOrDefault(x => x.Id == g.Key);
-                sb.AppendLine($"{c?.Name ?? "Unknown"}: {g.Count()} rentals, {g.Sum(r => r.TotalCost):C} spent");
+                var name = customerLookup.TryGetValue(g.Key, out var c) ? c.Name : "Unknown";
+                sb.AppendLine($"{name}: {g.Count()} rentals, {g.Sum(r => r.TotalCost):C} spent");
             }
             sections.Add(new ReportSection { Heading = "Top Customers", Content = sb.ToString() });
 
@@ -547,6 +580,7 @@ namespace Vidly.Services
 
         /// <summary>
         /// Generates movie-centric report with inventory overview, top-5 movies, and seasonal trends.
+        /// Uses dictionary lookup for movie names instead of O(M) FirstOrDefault per group.
         /// </summary>
         private List<ReportSection> GenerateMovieReport()
         {
@@ -560,6 +594,11 @@ namespace Vidly.Services
             sb.AppendLine($"Movies Rented at Least Once: {rentedMovies}");
             sections.Add(new ReportSection { Heading = "Movie Overview", Content = sb.ToString() });
 
+            // Build O(1) lookup instead of O(M) FirstOrDefault per group
+            var movieLookup = new Dictionary<int, Movie>();
+            foreach (var m in movies)
+                movieLookup[m.Id] = m;
+
             // Top movies by rental count
             var topMovies = rentals.GroupBy(r => r.MovieId)
                 .OrderByDescending(g => g.Count())
@@ -569,8 +608,8 @@ namespace Vidly.Services
             sb = new StringBuilder();
             foreach (var g in topMovies)
             {
-                var m = movies.FirstOrDefault(x => x.Id == g.Key);
-                sb.AppendLine($"{m?.Name ?? "Unknown"}: {g.Count()} rentals, {g.Sum(r => r.TotalCost):C} revenue");
+                var name = movieLookup.TryGetValue(g.Key, out var m) ? m.Name : "Unknown";
+                sb.AppendLine($"{name}: {g.Count()} rentals, {g.Sum(r => r.TotalCost):C} revenue");
             }
             sections.Add(new ReportSection { Heading = "Top Movies", Content = sb.ToString() });
 
