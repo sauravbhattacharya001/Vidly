@@ -207,8 +207,21 @@ namespace Vidly.Controllers
             if (string.IsNullOrEmpty(value))
                 return "";
 
-            if (value.Contains(",") || value.Contains("\"") || value.Contains("\n"))
-                return "\"" + value.Replace("\"", "\"\"") + "\"";
+            // Guard against CSV injection (formula injection). Values starting
+            // with =, +, -, @, tab, or carriage-return can trigger formula
+            // execution in spreadsheet applications such as Excel, Google
+            // Sheets, and LibreOffice Calc. Prefix with a single-quote to
+            // neutralize them and always quote the field.
+            bool needsQuote = value.Contains(",") || value.Contains("\"") || value.Contains("\n");
+            string escaped = value.Replace("\"", "\"\"");
+
+            if (escaped.Length > 0 && "=+-@\t\r".IndexOf(escaped[0]) >= 0)
+            {
+                return "\"'" + escaped + "\"";
+            }
+
+            if (needsQuote)
+                return "\"" + escaped + "\"";
 
             return value;
         }
