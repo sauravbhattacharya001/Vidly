@@ -62,6 +62,9 @@ namespace Vidly.Services
 
         /// <summary>
         /// Get insights for all movies, sorted by performance score descending.
+        /// Pre-computes global max rental count and max revenue in one pass so
+        /// that per-movie performance scoring uses O(1) lookups instead of
+        /// re-scanning all rentals per movie (eliminates O(M×R×2) overhead).
         /// </summary>
         public IReadOnlyList<MovieInsight> GetAllInsights()
         {
@@ -76,6 +79,21 @@ namespace Vidly.Services
                 if (!rentalsByMovie.ContainsKey(r.MovieId))
                     rentalsByMovie[r.MovieId] = new List<Rental>();
                 rentalsByMovie[r.MovieId].Add(r);
+            }
+
+            // Pre-compute global maximums once: O(number of movies with rentals)
+            int maxRentalCount = 0;
+            decimal maxRevenue = 0;
+            foreach (var kvp in rentalsByMovie)
+            {
+                if (kvp.Value.Count > maxRentalCount)
+                    maxRentalCount = kvp.Value.Count;
+
+                decimal movieRevenue = 0;
+                foreach (var r in kvp.Value)
+                    movieRevenue += r.TotalCost;
+                if (movieRevenue > maxRevenue)
+                    maxRevenue = movieRevenue;
             }
 
             var insights = new List<MovieInsight>();
@@ -96,7 +114,7 @@ namespace Vidly.Services
                     Revenue = BuildRevenue(movieRentals),
                     CustomerDemographics = BuildDemographics(movieRentals, customerLookup),
                     MonthlyTrend = BuildMonthlyTrend(movieRentals),
-                    PerformanceScore = ComputePerformanceScore(movieRentals, allRentals, movies, movie),
+                    PerformanceScore = ComputePerformanceScore(movieRentals, movie, maxRentalCount, maxRevenue),
                 });
             }
 
@@ -299,51 +317,61 @@ namespace Vidly.Services
         /// Computes a multi-factor performance score (0–100) using weighted averages
         /// of popularity (35%), revenue (30%), retention (20%), and rating (15%).
         /// Assigns a letter grade (A–F).
+        /// This overload scans all rentals to find global maximums — use the
+        /// pre-computed overload when scoring multiple movies.
         /// </summary>
         internal static PerformanceScore ComputePerformanceScore(
             List<Rental> movieRentals, IReadOnlyList<Rental> allRentals,
             IReadOnlyList<Movie> allMovies, Movie movie)
         {
-            // Popularity score (0-100): based on rental count relative to the most-rented movie
-            double popularityScore = 0;
+            // Compute global maximums from all rentals
+            int maxRentalCount = 0;
+            decimal maxRevenue = 0;
+
             if (allRentals.Count > 0)
             {
                 var rentalCounts = new Dictionary<int, int>();
-                foreach (var r in allRentals)
-                {
-                    if (!rentalCounts.ContainsKey(r.MovieId))
-                        rentalCounts[r.MovieId] = 0;
-                    rentalCounts[r.MovieId]++;
-                }
-                int maxRentals = 0;
-                foreach (var count in rentalCounts.Values)
-                    if (count > maxRentals) maxRentals = count;
-
-                popularityScore = maxRentals > 0
-                    ? (double)movieRentals.Count / maxRentals * 100 : 0;
-            }
-
-            // Revenue score (0-100): relative to top revenue movie
-            double revenueScore = 0;
-            if (allRentals.Count > 0)
-            {
                 var revenueByMovie = new Dictionary<int, decimal>();
                 foreach (var r in allRentals)
                 {
-                    if (!revenueByMovie.ContainsKey(r.MovieId))
+                    if (!rentalCounts.ContainsKey(r.MovieId))
+                    {
+                        rentalCounts[r.MovieId] = 0;
                         revenueByMovie[r.MovieId] = 0;
+                    }
+                    rentalCounts[r.MovieId]++;
                     revenueByMovie[r.MovieId] += r.TotalCost;
                 }
-                decimal maxRevenue = 0;
+                foreach (var count in rentalCounts.Values)
+                    if (count > maxRentalCount) maxRentalCount = count;
                 foreach (var rev in revenueByMovie.Values)
                     if (rev > maxRevenue) maxRevenue = rev;
+            }
 
+            return ComputePerformanceScore(movieRentals, movie, maxRentalCount, maxRevenue);
+        }
+
+        /// <summary>
+        /// Computes a multi-factor performance score (0–100) using pre-computed
+        /// global maximums. Avoids re-scanning all rentals per movie — O(movieRentals)
+        /// instead of O(allRentals).
+        /// </summary>
+        internal static PerformanceScore ComputePerformanceScore(
+            List<Rental> movieRentals, Movie movie,
+            int maxRentalCount, decimal maxRevenue)
+        {
+            // Popularity score (0-100): rental count relative to the most-rented movie
+            double popularityScore = maxRentalCount > 0
+                ? (double)movieRentals.Count / maxRentalCount * 100 : 0;
+
+            // Revenue score (0-100): relative to top revenue movie
+            double revenueScore = 0;
+            if (maxRevenue > 0)
+            {
                 decimal movieRevenue = 0;
                 foreach (var r in movieRentals)
                     movieRevenue += r.TotalCost;
-
-                revenueScore = maxRevenue > 0
-                    ? (double)(movieRevenue / maxRevenue) * 100 : 0;
+                revenueScore = (double)(movieRevenue / maxRevenue) * 100;
             }
 
             // Retention score (0-100): % of customers who rented this movie more than once
