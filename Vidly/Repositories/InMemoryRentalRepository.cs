@@ -398,13 +398,21 @@ namespace Vidly.Repositories
         }
 
         /// <summary>
-        /// Auto-update status based on dates (Active → Overdue if past due).
+        /// Auto-update status and accruing late fee based on dates.
+        /// Previously only flipped Active → Overdue but left LateFee at 0,
+        /// causing GetStats(), dashboard summaries, and billing views to
+        /// undercount late fees for unreturned overdue rentals (bug fix).
         /// </summary>
         private static void RefreshStatus(Rental rental)
         {
-            if (rental.Status != RentalStatus.Returned && DateTime.Today > rental.DueDate)
+            if (rental.Status == RentalStatus.Returned)
+                return;
+
+            if (DateTime.Today > rental.DueDate)
             {
                 rental.Status = RentalStatus.Overdue;
+                var overdueDays = (int)Math.Ceiling((DateTime.Today - rental.DueDate).TotalDays);
+                rental.LateFee = overdueDays * LateFeePerDay;
             }
         }
 
