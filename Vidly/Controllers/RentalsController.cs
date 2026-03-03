@@ -185,6 +185,22 @@ namespace Vidly.Controllers
             rental.RentalDate = DateTime.Today;
             rental.DueDate = DateTime.Today.AddDays(rentalDays);
 
+            // Apply coupon if provided
+            var couponDiscount = 0m;
+            if (!string.IsNullOrWhiteSpace(viewModel.CouponCode))
+            {
+                var couponService = new Services.CouponService();
+                var subtotal = rental.DailyRate * (decimal)(rental.DueDate - rental.RentalDate).TotalDays;
+                couponDiscount = couponService.Apply(viewModel.CouponCode, subtotal);
+                if (couponDiscount > 0)
+                {
+                    // Apply coupon discount by reducing the effective daily rate
+                    var rentalDaysCount = Math.Max(1, (decimal)(rental.DueDate - rental.RentalDate).TotalDays);
+                    rental.DailyRate = Math.Max(0.01m, rental.DailyRate - (couponDiscount / rentalDaysCount));
+                    rental.DailyRate = Math.Round(rental.DailyRate, 2);
+                }
+            }
+
             // Use atomic Checkout to prevent TOCTOU race: availability check
             // and rental creation happen in a single lock acquisition
             try
