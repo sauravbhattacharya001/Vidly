@@ -43,17 +43,25 @@ namespace Vidly.Services
         /// </summary>
         public NotificationResult GetNotifications(int customerId)
         {
-            var customer = _customerRepository.GetAll().FirstOrDefault(c => c.Id == customerId);
+            var customer = _customerRepository.GetById(customerId);
             if (customer == null)
                 return new NotificationResult { CustomerId = customerId, CustomerName = "Unknown" };
 
+            // Pre-fetch shared data once instead of each helper calling GetAll() independently.
+            // Before this refactor, GetNotifications made 5 × GetAll() on rentals and
+            // 3 × GetAll() on movies. Now it's 1 call each.
+            var allRentals = _rentalRepository.GetAll();
+            var allMovies = _movieRepository.GetAll();
+            var movieLookup = allMovies.ToDictionary(m => m.Id);
+            var customerRentals = allRentals.Where(r => r.CustomerId == customerId).ToList();
+
             var notifications = new List<Notification>();
 
-            notifications.AddRange(GetOverdueAlerts(customerId));
-            notifications.AddRange(GetDueSoonAlerts(customerId));
-            notifications.AddRange(GetNewArrivalAlerts(customerId));
-            notifications.AddRange(GetWatchlistAlerts(customerId));
-            notifications.AddRange(GetMembershipAlerts(customer));
+            notifications.AddRange(GetOverdueAlerts(customerRentals, movieLookup));
+            notifications.AddRange(GetDueSoonAlerts(customerRentals, movieLookup));
+            notifications.AddRange(GetNewArrivalAlerts(customerRentals, allMovies, movieLookup));
+            notifications.AddRange(GetWatchlistAlerts(customerId, allRentals));
+            notifications.AddRange(GetMembershipAlerts(customer, customerRentals));
 
             return new NotificationResult
             {
@@ -69,16 +77,35 @@ namespace Vidly.Services
 
         /// <summary>
         /// Gets a notification summary across all customers (admin view).
+        /// Pre-fetches all data once and shares it across per-customer
+        /// notification generation to avoid O(C × R) repository calls.
         /// </summary>
         public NotificationSummary GetSummary()
         {
             var customers = _customerRepository.GetAll();
+            var allRentals = _rentalRepository.GetAll();
+            var allMovies = _movieRepository.GetAll();
+            var movieLookup = allMovies.ToDictionary(m => m.Id);
+            var rentalsByCustomer = allRentals
+                .GroupBy(r => r.CustomerId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
             var allNotifications = new List<Notification>();
 
             foreach (var customer in customers)
             {
-                var result = GetNotifications(customer.Id);
-                foreach (var n in result.Notifications)
+                var customerRentals = rentalsByCustomer.TryGetValue(customer.Id, out var rlist)
+                    ? rlist
+                    : new List<Rental>();
+
+                var notifications = new List<Notification>();
+                notifications.AddRange(GetOverdueAlerts(customerRentals, movieLookup));
+                notifications.AddRange(GetDueSoonAlerts(customerRentals, movieLookup));
+                notifications.AddRange(GetNewArrivalAlerts(customerRentals, allMovies, movieLookup));
+                notifications.AddRange(GetWatchlistAlerts(customer.Id, allRentals));
+                notifications.AddRange(GetMembershipAlerts(customer, customerRentals));
+
+                foreach (var n in notifications)
                 {
                     n.CustomerName = customer.Name;
                     allNotifications.Add(n);
@@ -106,20 +133,15 @@ namespace Vidly.Services
             };
         }
 
-        private IEnumerable<Notification> GetOverdueAlerts(int customerId)
+        private IEnumerable<Notification> GetOverdueAlerts(
+            List<Rental> customerRentals, Dictionary<int, Movie> movieLookup)
         {
-            var rentals = _rentalRepository.GetAll()
-                .Where(r => r.CustomerId == customerId && !r.ReturnDate.HasValue)
-                .ToList();
+            var unreturned = customerRentals.Where(r => !r.ReturnDate.HasValue);
 
-            // Build movie lookup once instead of calling GetAll() per rental (N+1 fix)
-            var movieLookup = _movieRepository.GetAll().ToDictionary(m => m.Id);
-
-            foreach (var rental in rentals)
+            foreach (var rental in unreturned)
             {
                 // Use the actual DueDate from the rental — it already accounts for
                 // membership-tier extended rental periods (Silver +1, Gold +2, Platinum +3).
-                // The previous hardcoded "7 days" logic was incorrect for non-Basic members.
                 if (DateTime.Today > rental.DueDate)
                 {
                     var daysOverdue = (int)(DateTime.Today - rental.DueDate).TotalDays;
@@ -138,16 +160,12 @@ namespace Vidly.Services
             }
         }
 
-        private IEnumerable<Notification> GetDueSoonAlerts(int customerId)
+        private IEnumerable<Notification> GetDueSoonAlerts(
+            List<Rental> customerRentals, Dictionary<int, Movie> movieLookup)
         {
-            var rentals = _rentalRepository.GetAll()
-                .Where(r => r.CustomerId == customerId && !r.ReturnDate.HasValue)
-                .ToList();
+            var unreturned = customerRentals.Where(r => !r.ReturnDate.HasValue);
 
-            // Build movie lookup once instead of calling GetAll() per rental (N+1 fix)
-            var movieLookup = _movieRepository.GetAll().ToDictionary(m => m.Id);
-
-            foreach (var rental in rentals)
+            foreach (var rental in unreturned)
             {
                 // Use the actual DueDate — it already accounts for membership-tier
                 // extended rental periods. Alert when due within 2 days.
@@ -169,16 +187,11 @@ namespace Vidly.Services
             }
         }
 
-        private IEnumerable<Notification> GetNewArrivalAlerts(int customerId)
+        private IEnumerable<Notification> GetNewArrivalAlerts(
+            List<Rental> customerRentals,
+            IReadOnlyList<Movie> allMovies,
+            Dictionary<int, Movie> movieLookup)
         {
-            // Find customer's preferred genres from rental history
-            var customerRentals = _rentalRepository.GetAll()
-                .Where(r => r.CustomerId == customerId)
-                .ToList();
-
-            var allMovies = _movieRepository.GetAll();
-            var movieLookup = allMovies.ToDictionary(m => m.Id);
-
             var preferredGenres = customerRentals
                 .Where(r => movieLookup.ContainsKey(r.MovieId) && movieLookup[r.MovieId].Genre.HasValue)
                 .GroupBy(r => movieLookup[r.MovieId].Genre.Value)
@@ -210,15 +223,15 @@ namespace Vidly.Services
             }
         }
 
-        private IEnumerable<Notification> GetWatchlistAlerts(int customerId)
+        private IEnumerable<Notification> GetWatchlistAlerts(
+            int customerId, IReadOnlyList<Rental> allRentals)
         {
             var watchlistItems = _watchlistRepository.GetByCustomer(customerId);
-            var rentals = _rentalRepository.GetAll();
 
             foreach (var item in watchlistItems.Where(w => w.Priority == WatchlistPriority.MustWatch))
             {
                 // Check if the movie is currently available (not rented out by someone else)
-                var activeRentals = rentals.Count(r => r.MovieId == item.MovieId && !r.ReturnDate.HasValue);
+                var activeRentals = allRentals.Count(r => r.MovieId == item.MovieId && !r.ReturnDate.HasValue);
                 if (activeRentals == 0)
                 {
                     yield return new Notification
@@ -235,7 +248,8 @@ namespace Vidly.Services
             }
         }
 
-        private IEnumerable<Notification> GetMembershipAlerts(Customer customer)
+        private IEnumerable<Notification> GetMembershipAlerts(
+            Customer customer, List<Rental> customerRentals)
         {
             if (!customer.MemberSince.HasValue)
                 yield break;
@@ -265,7 +279,7 @@ namespace Vidly.Services
             // Upgrade suggestion based on rental count
             if (customer.MembershipType < MembershipType.Platinum)
             {
-                var rentalCount = _rentalRepository.GetAll().Count(r => r.CustomerId == customer.Id);
+                var rentalCount = customerRentals.Count;
                 var nextTier = (MembershipType)((int)customer.MembershipType + 1);
                 int threshold = (int)customer.MembershipType * 10;
 
