@@ -625,30 +625,35 @@ namespace Vidly.Tests
             Assert.AreEqual(0.0, score);
         }
 
-        // ========== BuildCoRentalIndex ==========
+        // ========== BuildCoRentalFromIndex ==========
 
         [TestMethod]
-        public void BuildCoRentalIndex_NoRentalsReturnsEmpty()
+        public void BuildCoRentalFromIndex_NoRentalsReturnsEmpty()
         {
-            var result = MovieSimilarityService.BuildCoRentalIndex(
-                1, new List<Rental>().AsReadOnly());
+            var rentals = new List<Rental>().AsReadOnly();
+            var customerMovies = MovieSimilarityService.BuildCustomerMovieIndex(rentals);
+            var movieRenters = MovieSimilarityService.BuildMovieRentersIndex(customerMovies);
+            var result = MovieSimilarityService.BuildCoRentalFromIndex(
+                1, customerMovies, movieRenters);
             Assert.AreEqual(0, result.Count);
         }
 
         [TestMethod]
-        public void BuildCoRentalIndex_NoRentersForMovieReturnsEmpty()
+        public void BuildCoRentalFromIndex_NoRentersForMovieReturnsEmpty()
         {
             var rentals = new List<Rental>
             {
                 CreateRental(1, 100, 2) // Rental for a different movie
             }.AsReadOnly();
 
-            var result = MovieSimilarityService.BuildCoRentalIndex(1, rentals);
+            var customerMovies = MovieSimilarityService.BuildCustomerMovieIndex(rentals);
+            var movieRenters = MovieSimilarityService.BuildMovieRentersIndex(customerMovies);
+            var result = MovieSimilarityService.BuildCoRentalFromIndex(1, customerMovies, movieRenters);
             Assert.AreEqual(0, result.Count);
         }
 
         [TestMethod]
-        public void BuildCoRentalIndex_SingleSharedCustomerScores1()
+        public void BuildCoRentalFromIndex_SingleSharedCustomerScores1()
         {
             var rentals = new List<Rental>
             {
@@ -656,14 +661,16 @@ namespace Vidly.Tests
                 CreateRental(2, 100, 2)  // Customer 100 also rented movie 2
             }.AsReadOnly();
 
-            var result = MovieSimilarityService.BuildCoRentalIndex(1, rentals);
+            var customerMovies = MovieSimilarityService.BuildCustomerMovieIndex(rentals);
+            var movieRenters = MovieSimilarityService.BuildMovieRentersIndex(customerMovies);
+            var result = MovieSimilarityService.BuildCoRentalFromIndex(1, customerMovies, movieRenters);
 
             Assert.AreEqual(1, result.Count);
             Assert.AreEqual(1.0, result[2]);
         }
 
         [TestMethod]
-        public void BuildCoRentalIndex_NormalizesByMaxCount()
+        public void BuildCoRentalFromIndex_NormalizesByMaxCount()
         {
             var rentals = new List<Rental>
             {
@@ -674,14 +681,16 @@ namespace Vidly.Tests
                 CreateRental(5, 100, 3)  // movie 3: 1 shared customer
             }.AsReadOnly();
 
-            var result = MovieSimilarityService.BuildCoRentalIndex(1, rentals);
+            var customerMovies = MovieSimilarityService.BuildCustomerMovieIndex(rentals);
+            var movieRenters = MovieSimilarityService.BuildMovieRentersIndex(customerMovies);
+            var result = MovieSimilarityService.BuildCoRentalFromIndex(1, customerMovies, movieRenters);
 
             Assert.AreEqual(1.0, result[2]); // max = 2/2
             Assert.AreEqual(0.5, result[3]); // 1/2
         }
 
         [TestMethod]
-        public void BuildCoRentalIndex_ExcludesSourceMovieFromResults()
+        public void BuildCoRentalFromIndex_ExcludesSourceMovieFromResults()
         {
             var rentals = new List<Rental>
             {
@@ -689,7 +698,9 @@ namespace Vidly.Tests
                 CreateRental(2, 100, 2)
             }.AsReadOnly();
 
-            var result = MovieSimilarityService.BuildCoRentalIndex(1, rentals);
+            var customerMovies = MovieSimilarityService.BuildCustomerMovieIndex(rentals);
+            var movieRenters = MovieSimilarityService.BuildMovieRentersIndex(customerMovies);
+            var result = MovieSimilarityService.BuildCoRentalFromIndex(1, customerMovies, movieRenters);
 
             Assert.IsFalse(result.ContainsKey(1));
         }
