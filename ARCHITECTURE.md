@@ -17,27 +17,33 @@ Vidly follows the classic **ASP.NET MVC 5** architectural pattern with a layered
 └──────────────────┬──────────────────────────┘
                    │
 ┌──────────────────▼──────────────────────────┐
-│              Controllers (10)                │
-│   MoviesController   RentalsController       │
-│   CustomersController  WatchlistController   │
-│   CollectionsController  ReviewsController   │
-│   DashboardController  ActivityController    │
-│   RecommendationsController  HomeController  │
+│              Controllers (12)                │
+│   MoviesController    RentalsController      │
+│   CustomersController WatchlistController    │
+│   CollectionsController ReviewsController    │
+│   DashboardController ActivityController     │
+│   RecommendationsController HomeController   │
+│   NotificationsController ExportController   │
 └──────────────────┬──────────────────────────┘
                    │
 ┌──────────────────▼──────────────────────────┐
-│              Services (8)                    │
-│   DashboardService   RentalHistoryService    │
+│              Services (12)                   │
+│   DashboardService      RentalHistoryService │
 │   MovieInsightsService  RecommendationService│
 │   MovieSimilarityService  ReviewService      │
 │   CollectionService  CustomerActivityService │
+│   NotificationService   PricingService       │
+│   InventoryService      LoyaltyPointsService │
 └──────────────────┬──────────────────────────┘
                    │
 ┌──────────────────▼──────────────────────────┐
-│              Repositories (3)                │
+│              Repositories (6)                │
 │   InMemoryMovieRepository                    │
 │   InMemoryCustomerRepository                 │
 │   InMemoryRentalRepository                   │
+│   InMemoryWatchlistRepository                │
+│   InMemoryCollectionRepository               │
+│   InMemoryReviewRepository                   │
 │   (Dictionary + lock, defensive cloning)     │
 └──────────────────┬──────────────────────────┘
                    │
@@ -80,6 +86,8 @@ Controllers are **thin** — they orchestrate but don't contain business logic.
 | `DashboardController` | Revenue/analytics dashboard (read-only) |
 | `ActivityController` | Customer activity history and rental analytics |
 | `RecommendationsController` | Movie recommendations for customers |
+| `NotificationsController` | Customer notification center — overdue alerts, watchlist availability, membership milestones |
+| `ExportController` | Data export — CSV/JSON downloads for rentals, customers, movies |
 
 **Key patterns across all controllers:**
 - **Constructor injection**: Accept repository/service interfaces for testability
@@ -103,6 +111,10 @@ Services contain business logic extracted from controllers.
 | `ReviewService` | Review CRUD, rating aggregation, helpful-vote tracking |
 | `CollectionService` | Movie collection management with privacy controls |
 | `CustomerActivityService` | Customer engagement metrics, spending analytics, rental patterns |
+| `NotificationService` | Customer alerts — overdue rentals (urgent), due-soon (high), watchlist availability, new arrivals, membership milestones, upgrade suggestions |
+| `PricingService` | Membership tier benefits, rental cost calculation with discounts, late fee computation, promotional pricing |
+| `InventoryService` | Movie availability tracking, stock level management, demand forecasting |
+| `LoyaltyPointsService` | Points accumulation from rentals, tier-based multipliers, rewards catalog, points history |
 
 **Service construction:**
 All services accept repository interfaces via constructor injection and use `ArgumentNullException` guards. Services are stateless — they compute everything from repository data on each call.
@@ -144,7 +156,10 @@ The repository layer abstracts data access behind interfaces:
 IRepository<T>                — Generic CRUD (GetAll, GetById, Add, Update, Remove)
     ├── IMovieRepository      — Search, GetByReleaseDate, GetRandom
     ├── ICustomerRepository   — Search by name/membership, GetStats
-    └── IRentalRepository     — Checkout, Return, Search, GetOverdue, GetStats, IsMovieRentedOut
+    ├── IRentalRepository     — Checkout, Return, Search, GetOverdue, GetStats, IsMovieRentedOut
+    ├── IWatchlistRepository  — GetByCustomer, priority tracking, stats, most-watchlisted
+    ├── ICollectionRepository — Named movie collections with privacy controls
+    └── IReviewRepository     — Movie reviews, rating aggregation, helpful votes
 ```
 
 Each has an `InMemory*Repository` implementation using:
@@ -225,7 +240,9 @@ Vidly.Tests/
 ├── Controller tests
 │   ├── MoviesControllerTests.cs
 │   ├── CustomersControllerTests.cs
-│   └── RentalsControllerTests.cs
+│   ├── RentalsControllerTests.cs
+│   ├── RecommendationsControllerTests.cs
+│   └── ExportControllerTests.cs
 ├── Service tests
 │   ├── DashboardTests.cs
 │   ├── MovieInsightsServiceTests.cs
@@ -233,9 +250,17 @@ Vidly.Tests/
 │   ├── RecommendationServiceTests.cs
 │   ├── RentalHistoryServiceTests.cs
 │   ├── CustomerActivityServiceTests.cs
+│   ├── InventoryServiceTests.cs
+│   ├── LoyaltyPointsServiceTests.cs
+│   ├── PricingServiceTests.cs
+│   ├── NotificationServiceTests.cs
 │   ├── ReviewTests.cs
 │   ├── CollectionTests.cs
 │   └── WatchlistTests.cs
+├── Security tests
+│   └── SecurityHeadersTests.cs
+└── Activity tests
+    └── ActivityControllerTests.cs
 ```
 
 **Testing strategy:**
@@ -247,7 +272,7 @@ Vidly.Tests/
 
 All tests use MSTest (`[TestClass]`, `[TestMethod]`). Coverage is collected via Coverlet in Cobertura format.
 
-**Known test issues:** 16 pre-existing failures due to date-dependent assertions and seed data assumptions (e.g., overdue date thresholds, average revenue calculations).
+**Known test issues:** 29 pre-existing failures due to date-dependent assertions and seed data assumptions (e.g., overdue date thresholds, average revenue calculations, month boundaries).
 
 ## Performance Patterns
 
