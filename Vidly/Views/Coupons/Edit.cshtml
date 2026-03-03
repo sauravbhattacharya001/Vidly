@@ -1,0 +1,111 @@
+@model Vidly.Models.Coupon
+@{
+    ViewBag.Title = "Edit Coupon";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2><span class="glyphicon glyphicon-edit"></span> Edit Coupon: <code>@Model.Code</code></h2>
+
+@using (Html.BeginForm("Edit", "Coupons", FormMethod.Post, new { @class = "form-horizontal" }))
+{
+    @Html.AntiForgeryToken()
+    @Html.HiddenFor(m => m.Id)
+    @Html.HiddenFor(m => m.TimesUsed)
+    @Html.HiddenFor(m => m.CreatedDate)
+    @Html.ValidationSummary(true, "", new { @class = "text-danger" })
+
+    <div class="panel panel-primary">
+        <div class="panel-heading">
+            <h3 class="panel-title">Coupon Details</h3>
+        </div>
+        <div class="panel-body">
+            <div class="form-group">
+                <label class="col-md-3 control-label">Code</label>
+                <div class="col-md-4">
+                    @Html.TextBoxFor(m => m.Code, new { @class = "form-control", style = "text-transform:uppercase" })
+                    @Html.ValidationMessageFor(m => m.Code, "", new { @class = "text-danger" })
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-md-3 control-label">Description</label>
+                <div class="col-md-6">
+                    @Html.TextBoxFor(m => m.Description, new { @class = "form-control" })
+                    @Html.ValidationMessageFor(m => m.Description, "", new { @class = "text-danger" })
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-md-3 control-label">Discount Type</label>
+                <div class="col-md-4">
+                    @Html.DropDownListFor(m => m.DiscountType,
+                        new SelectList(new[] {
+                            new { Value = "Percentage", Text = "Percentage Off (%)" },
+                            new { Value = "FixedAmount", Text = "Fixed Amount Off ($)" }
+                        }, "Value", "Text"),
+                        new { @class = "form-control" })
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-md-3 control-label">Discount Value</label>
+                <div class="col-md-3">
+                    @Html.TextBoxFor(m => m.DiscountValue, new { @class = "form-control", type = "number", step = "0.01", min = "0.01", max = "100" })
+                    @Html.ValidationMessageFor(m => m.DiscountValue, "", new { @class = "text-danger" })
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-md-3 control-label">Min Order ($)</label>
+                <div class="col-md-3">
+                    @Html.TextBoxFor(m => m.MinimumOrderAmount, new { @class = "form-control", type = "number", step = "0.01", min = "0" })
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-md-3 control-label">Max Discount ($)</label>
+                <div class="col-md-3">
+                    @Html.TextBoxFor(m => m.MaxDiscountAmount, new { @class = "form-control", type = "number", step = "0.01", min = "0.01", placeholder = "No cap" })
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-md-3 control-label">Valid From</label>
+                <div class="col-md-3">
+                    @Html.TextBoxFor(m => m.ValidFrom, "{0:yyyy-MM-dd}", new { @class = "form-control", type = "date" })
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-md-3 control-label">Valid Until</label>
+                <div class="col-md-3">
+                    @Html.TextBoxFor(m => m.ValidUntil, "{0:yyyy-MM-dd}", new { @class = "form-control", type = "date" })
+                    @Html.ValidationMessageFor(m => m.ValidUntil, "", new { @class = "text-danger" })
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-md-3 control-label">Max Redemptions</label>
+                <div class="col-md-3">
+                    @Html.TextBoxFor(m => m.MaxRedemptions, new { @class = "form-control", type = "number", min = "1", placeholder = "Unlimited" })
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-md-3 control-label">Times Used</label>
+                <div class="col-md-3">
+                    <p class="form-control-static"><strong>@Model.TimesUsed</strong></p>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-md-3 control-label">Active</label>
+                <div class="col-md-6">
+                    <div class="checkbox">
+                        <label>
+                            @Html.CheckBoxFor(m => m.IsActive) Coupon is active
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="panel-footer">
+            <div class="col-md-offset-3 col-md-6">
+                <button type="submit" class="btn btn-primary">
+                    <span class="glyphicon glyphicon-ok"></span> Save Changes
+                </button>
+                @Html.ActionLink("Cancel", "Index", null, new { @class = "btn btn-default" })
+            </div>
+        </div>
+    </div>
+}

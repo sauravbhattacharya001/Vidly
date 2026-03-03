@@ -1,0 +1,131 @@
+@model Vidly.ViewModels.CouponIndexViewModel
+@{
+    ViewBag.Title = "Coupons";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>
+    <span class="glyphicon glyphicon-tags"></span> Promotional Coupons
+    <small class="text-muted">(@Model.TotalCount total)</small>
+</h2>
+
+@if (TempData["Message"] != null)
+{
+    <div class="alert alert-success alert-dismissible">
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+        @TempData["Message"]
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible">
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+        @TempData["Error"]
+    </div>
+}
+
+<div class="row" style="margin-bottom: 15px;">
+    <div class="col-md-8">
+        <div class="btn-group">
+            <a href="@Url.Action("Index")" class="btn btn-default @(string.IsNullOrEmpty(Model.StatusFilter) ? "active" : "")">
+                All <span class="badge">@Model.TotalCount</span>
+            </a>
+            <a href="@Url.Action("Index", new { status = "Active" })" class="btn btn-default @(Model.StatusFilter == "Active" ? "active" : "")">
+                <span class="text-success">●</span> Active <span class="badge">@Model.ActiveCount</span>
+            </a>
+            <a href="@Url.Action("Index", new { status = "Expired" })" class="btn btn-default @(Model.StatusFilter == "Expired" ? "active" : "")">
+                <span class="text-muted">●</span> Expired <span class="badge">@Model.ExpiredCount</span>
+            </a>
+            <a href="@Url.Action("Index", new { status = "Exhausted" })" class="btn btn-default @(Model.StatusFilter == "Exhausted" ? "active" : "")">
+                <span class="text-warning">●</span> Exhausted <span class="badge">@Model.ExhaustedCount</span>
+            </a>
+        </div>
+    </div>
+    <div class="col-md-4 text-right">
+        @Html.ActionLink("+ New Coupon", "Create", null, new { @class = "btn btn-primary" })
+    </div>
+</div>
+
+@if (!Model.Coupons.Any())
+{
+    <div class="alert alert-info">
+        <span class="glyphicon glyphicon-info-sign"></span>
+        No coupons found. @Html.ActionLink("Create one", "Create") to get started!
+    </div>
+}
+else
+{
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>Code</th>
+                <th>Description</th>
+                <th>Discount</th>
+                <th>Valid Period</th>
+                <th>Usage</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var coupon in Model.Coupons)
+            {
+                var statusClass = coupon.StatusDisplay == "Active" ? "success"
+                    : coupon.StatusDisplay == "Scheduled" ? "info"
+                    : coupon.StatusDisplay == "Disabled" ? "default"
+                    : "warning";
+                <tr>
+                    <td><code>@coupon.Code</code></td>
+                    <td>@coupon.Description</td>
+                    <td>
+                        @if (coupon.DiscountType == Vidly.Models.DiscountType.Percentage)
+                        {
+                            <span>@coupon.DiscountValue% off</span>
+                            if (coupon.MaxDiscountAmount.HasValue)
+                            {
+                                <br /><small class="text-muted">max $@coupon.MaxDiscountAmount.Value.ToString("F2")</small>
+                            }
+                        }
+                        else
+                        {
+                            <span>$@coupon.DiscountValue.ToString("F2") off</span>
+                        }
+                        @if (coupon.MinimumOrderAmount > 0)
+                        {
+                            <br /><small class="text-muted">min $@coupon.MinimumOrderAmount.ToString("F2")</small>
+                        }
+                    </td>
+                    <td>
+                        <small>
+                            @coupon.ValidFrom.ToString("MMM d, yyyy") —
+                            @coupon.ValidUntil.ToString("MMM d, yyyy")
+                        </small>
+                    </td>
+                    <td>
+                        @coupon.TimesUsed@(coupon.MaxRedemptions.HasValue ? " / " + coupon.MaxRedemptions : " / ∞")
+                    </td>
+                    <td><span class="label label-@statusClass">@coupon.StatusDisplay</span></td>
+                    <td>
+                        @Html.ActionLink("Edit", "Edit", new { id = coupon.Id }, new { @class = "btn btn-xs btn-default" })
+                        @using (Html.BeginForm("Toggle", "Coupons", new { id = coupon.Id }, FormMethod.Post, new { style = "display:inline" }))
+                        {
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-xs btn-@(coupon.IsActive ? "warning" : "success")"
+                                    title="@(coupon.IsActive ? "Disable" : "Enable")">
+                                <span class="glyphicon glyphicon-@(coupon.IsActive ? "pause" : "play")"></span>
+                            </button>
+                        }
+                        @using (Html.BeginForm("Delete", "Coupons", new { id = coupon.Id }, FormMethod.Post, new { style = "display:inline" }))
+                        {
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-xs btn-danger"
+                                    onclick="return confirm('Delete coupon @coupon.Code?');">
+                                <span class="glyphicon glyphicon-trash"></span>
+                            </button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

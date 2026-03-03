@@ -23,5 +23,25 @@ namespace Vidly.ViewModels
         /// Available movies for the dropdown (excludes currently rented-out movies).
         /// </summary>
         public IReadOnlyList<Movie> AvailableMovies { get; set; } = new List<Movie>();
+
+        /// <summary>
+        /// Optional coupon code entered by the customer.
+        /// </summary>
+        public string CouponCode { get; set; }
+
+        /// <summary>
+        /// Coupon validation message to display (set after validation).
+        /// </summary>
+        public string CouponMessage { get; set; }
+
+        /// <summary>
+        /// Whether the coupon was successfully applied.
+        /// </summary>
+        public bool CouponApplied { get; set; }
+
+        /// <summary>
+        /// The discount amount from the applied coupon.
+        /// </summary>
+        public decimal CouponDiscount { get; set; }
     }
 }
