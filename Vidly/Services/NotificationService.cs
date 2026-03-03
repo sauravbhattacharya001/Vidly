@@ -112,6 +112,9 @@ namespace Vidly.Services
                 .Where(r => r.CustomerId == customerId && !r.ReturnDate.HasValue)
                 .ToList();
 
+            // Build movie lookup once instead of calling GetAll() per rental (N+1 fix)
+            var movieLookup = _movieRepository.GetAll().ToDictionary(m => m.Id);
+
             foreach (var rental in rentals)
             {
                 // Use the actual DueDate from the rental — it already accounts for
@@ -120,7 +123,7 @@ namespace Vidly.Services
                 if (DateTime.Today > rental.DueDate)
                 {
                     var daysOverdue = (int)(DateTime.Today - rental.DueDate).TotalDays;
-                    var movie = _movieRepository.GetAll().FirstOrDefault(m => m.Id == rental.MovieId);
+                    movieLookup.TryGetValue(rental.MovieId, out var movie);
                     yield return new Notification
                     {
                         Type = NotificationType.OverdueRental,
@@ -141,6 +144,9 @@ namespace Vidly.Services
                 .Where(r => r.CustomerId == customerId && !r.ReturnDate.HasValue)
                 .ToList();
 
+            // Build movie lookup once instead of calling GetAll() per rental (N+1 fix)
+            var movieLookup = _movieRepository.GetAll().ToDictionary(m => m.Id);
+
             foreach (var rental in rentals)
             {
                 // Use the actual DueDate — it already accounts for membership-tier
@@ -148,7 +154,7 @@ namespace Vidly.Services
                 var daysUntilDue = (int)(rental.DueDate - DateTime.Today).TotalDays;
                 if (daysUntilDue >= 0 && daysUntilDue <= 2)
                 {
-                    var movie = _movieRepository.GetAll().FirstOrDefault(m => m.Id == rental.MovieId);
+                    movieLookup.TryGetValue(rental.MovieId, out var movie);
                     yield return new Notification
                     {
                         Type = NotificationType.DueSoon,
