@@ -67,13 +67,14 @@ namespace Vidly.Controllers
         // POST: Collections/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Create([Bind(Exclude = "Id")] MovieCollection collection)
+        public ActionResult Create([Bind(Include = "Name,Description,IsPublished")] MovieCollection collection)
         {
             if (!ModelState.IsValid)
                 return View(collection);
 
             try
             {
+                // Server-side timestamps — never trust client-submitted values
                 collection.CreatedAt = DateTime.Now;
                 collection.UpdatedAt = DateTime.Now;
                 _collectionRepository.Add(collection);
@@ -99,15 +100,21 @@ namespace Vidly.Controllers
         // POST: Collections/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Edit(MovieCollection collection)
+        public ActionResult Edit(int id, [Bind(Include = "Name,Description,IsPublished")] MovieCollection collection)
         {
+            // Security: Use route ID as authoritative — prevents over-posting via
+            // manipulated hidden Id field that could update a different collection.
+            // This matches the pattern used by MoviesController and CustomersController.
+            collection.Id = id;
+
             if (!ModelState.IsValid)
                 return View(collection);
 
             try
             {
+                collection.UpdatedAt = DateTime.Now;
                 _collectionRepository.Update(collection);
-                return RedirectToAction("Details", new { id = collection.Id });
+                return RedirectToAction("Details", new { id });
             }
             catch (KeyNotFoundException)
             {
