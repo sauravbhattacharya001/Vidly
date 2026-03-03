@@ -1,0 +1,188 @@
+@model Vidly.Models.GiftCard
+@{
+    ViewBag.Title = "Gift Card Details";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>
+    <span class="glyphicon glyphicon-gift"></span> Gift Card
+    <code>@Model.Code</code>
+    @{
+        var statusClass = Model.StatusDisplay == "Active" ? "success"
+            : Model.StatusDisplay == "Empty" ? "default"
+            : "warning";
+    }
+    <span class="label label-@statusClass">@Model.StatusDisplay</span>
+</h2>
+
+@if (TempData["Message"] != null)
+{
+    <div class="alert alert-success alert-dismissible">
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+        @TempData["Message"]
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible">
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+        @TempData["Error"]
+    </div>
+}
+
+<div class="row">
+    <div class="col-md-5">
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong>Card Information</strong></div>
+            <div class="panel-body">
+                <dl class="dl-horizontal">
+                    <dt>Original Value</dt>
+                    <dd>$@Model.OriginalValue.ToString("F2")</dd>
+
+                    <dt>Current Balance</dt>
+                    <dd>
+                        <strong class="@(Model.Balance > 0 ? "text-success" : "text-muted")">
+                            $@Model.Balance.ToString("F2")
+                        </strong>
+                        @{
+                            var pct = Model.OriginalValue > 0
+                                ? (int)(Model.Balance / Model.OriginalValue * 100)
+                                : 0;
+                        }
+                        <div class="progress" style="margin-bottom:0; margin-top:5px;">
+                            <div class="progress-bar progress-bar-@(pct > 50 ? "success" : pct > 20 ? "warning" : "danger")"
+                                 style="width: @pct%; min-width: 2em;">
+                                @pct%
+                            </div>
+                        </div>
+                    </dd>
+
+                    <dt>Purchased By</dt>
+                    <dd>@Model.PurchaserName</dd>
+
+                    <dt>Recipient</dt>
+                    <dd>@(Model.RecipientName ?? "—")</dd>
+
+                    @if (!string.IsNullOrEmpty(Model.Message))
+                    {
+                        <dt>Message</dt>
+                        <dd><em>"@Model.Message"</em></dd>
+                    }
+
+                    <dt>Created</dt>
+                    <dd>@Model.CreatedDate.ToString("MMM d, yyyy")</dd>
+
+                    <dt>Expires</dt>
+                    <dd>
+                        @if (Model.ExpirationDate.HasValue)
+                        {
+                            @Model.ExpirationDate.Value.ToString("MMM d, yyyy")
+                        }
+                        else
+                        {
+                            <span class="text-muted">Never</span>
+                        }
+                    </dd>
+                </dl>
+            </div>
+            <div class="panel-footer">
+                @using (Html.BeginForm("Toggle", "GiftCards", new { id = Model.Id }, FormMethod.Post, new { style = "display:inline" }))
+                {
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm btn-@(Model.IsActive ? "warning" : "success")">
+                        <span class="glyphicon glyphicon-@(Model.IsActive ? "pause" : "play")"></span>
+                        @(Model.IsActive ? "Disable" : "Enable")
+                    </button>
+                }
+                @if (Model.IsActive && Model.IsRedeemable)
+                {
+                    <button type="button" class="btn btn-sm btn-info" data-toggle="collapse" data-target="#topUpForm">
+                        <span class="glyphicon glyphicon-plus"></span> Top Up
+                    </button>
+                }
+                @Html.ActionLink("← Back to List", "Index", null, new { @class = "btn btn-sm btn-default pull-right" })
+            </div>
+        </div>
+
+        <div id="topUpForm" class="collapse panel panel-info">
+            <div class="panel-heading"><strong>Top Up Balance</strong></div>
+            <div class="panel-body">
+                @using (Html.BeginForm("TopUp", "GiftCards", FormMethod.Post))
+                {
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="code" value="@Model.Code" />
+                    <div class="input-group">
+                        <span class="input-group-addon">$</span>
+                        <input type="number" name="amount" class="form-control"
+                               min="5" max="500" step="0.01" value="25.00" />
+                        <span class="input-group-btn">
+                            <button type="submit" class="btn btn-info">Add Funds</button>
+                        </span>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-7">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <strong>Transaction History</strong>
+                <span class="badge pull-right">@Model.Transactions.Count</span>
+            </div>
+            @if (!Model.Transactions.Any())
+            {
+                <div class="panel-body">
+                    <p class="text-muted">No transactions yet.</p>
+                </div>
+            }
+            else
+            {
+                <table class="table table-condensed">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Amount</th>
+                            <th>Balance After</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var tx in Model.Transactions.OrderByDescending(t => t.Date))
+                        {
+                            var isDebit = tx.Type == Vidly.Models.GiftCardTransactionType.Redemption;
+                            <tr class="@(isDebit ? "danger" : "success")">
+                                <td><small>@tx.Date.ToString("MMM d, yyyy h:mm tt")</small></td>
+                                <td>
+                                    @switch (tx.Type)
+                                    {
+                                        case Vidly.Models.GiftCardTransactionType.InitialLoad:
+                                            <span class="label label-success">Load</span>
+                                            break;
+                                        case Vidly.Models.GiftCardTransactionType.Redemption:
+                                            <span class="label label-danger">Redeem</span>
+                                            break;
+                                        case Vidly.Models.GiftCardTransactionType.Refund:
+                                            <span class="label label-info">Refund</span>
+                                            break;
+                                        case Vidly.Models.GiftCardTransactionType.TopUp:
+                                            <span class="label label-primary">Top-Up</span>
+                                            break;
+                                    }
+                                </td>
+                                <td>
+                                    <strong class="@(isDebit ? "text-danger" : "text-success")">
+                                        @(isDebit ? "-" : "+")$@tx.Amount.ToString("F2")
+                                    </strong>
+                                </td>
+                                <td>$@tx.BalanceAfter.ToString("F2")</td>
+                                <td><small>@tx.Description</small></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+</div>

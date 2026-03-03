@@ -1,0 +1,124 @@
+@model Vidly.ViewModels.GiftCardIndexViewModel
+@{
+    ViewBag.Title = "Gift Cards";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>
+    <span class="glyphicon glyphicon-gift"></span> Gift Cards
+    <small class="text-muted">(@Model.TotalCount total — $@Model.TotalOutstandingBalance.ToString("F2") outstanding)</small>
+</h2>
+
+@if (TempData["Message"] != null)
+{
+    <div class="alert alert-success alert-dismissible">
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+        @TempData["Message"]
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible">
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+        @TempData["Error"]
+    </div>
+}
+
+<div class="row" style="margin-bottom: 15px;">
+    <div class="col-md-8">
+        <div class="btn-group">
+            <a href="@Url.Action("Index")" class="btn btn-default @(string.IsNullOrEmpty(Model.StatusFilter) ? "active" : "")">
+                All <span class="badge">@Model.TotalCount</span>
+            </a>
+            <a href="@Url.Action("Index", new { status = "Active" })" class="btn btn-default @(Model.StatusFilter == "Active" ? "active" : "")">
+                <span class="text-success">●</span> Active <span class="badge">@Model.ActiveCount</span>
+            </a>
+            <a href="@Url.Action("Index", new { status = "Empty" })" class="btn btn-default @(Model.StatusFilter == "Empty" ? "active" : "")">
+                <span class="text-muted">●</span> Empty <span class="badge">@Model.EmptyCount</span>
+            </a>
+            <a href="@Url.Action("Index", new { status = "Expired" })" class="btn btn-default @(Model.StatusFilter == "Expired" ? "active" : "")">
+                <span class="text-warning">●</span> Expired <span class="badge">@Model.ExpiredCount</span>
+            </a>
+        </div>
+    </div>
+    <div class="col-md-4 text-right">
+        @Html.ActionLink("Check Balance", "Balance", null, new { @class = "btn btn-info" })
+        @Html.ActionLink("+ New Gift Card", "Create", null, new { @class = "btn btn-primary" })
+    </div>
+</div>
+
+@if (!Model.GiftCards.Any())
+{
+    <div class="alert alert-info">
+        <span class="glyphicon glyphicon-info-sign"></span>
+        No gift cards found. @Html.ActionLink("Create one", "Create") to get started!
+    </div>
+}
+else
+{
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>Code</th>
+                <th>Purchaser</th>
+                <th>Recipient</th>
+                <th>Value</th>
+                <th>Balance</th>
+                <th>Expires</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var card in Model.GiftCards)
+            {
+                var statusClass = card.StatusDisplay == "Active" ? "success"
+                    : card.StatusDisplay == "Empty" ? "default"
+                    : card.StatusDisplay == "Disabled" ? "default"
+                    : "warning";
+                var balancePct = card.OriginalValue > 0
+                    ? (int)(card.Balance / card.OriginalValue * 100)
+                    : 0;
+                <tr>
+                    <td>
+                        <a href="@Url.Action("Details", new { id = card.Id })">
+                            <code>@card.Code</code>
+                        </a>
+                    </td>
+                    <td>@card.PurchaserName</td>
+                    <td>@(card.RecipientName ?? "—")</td>
+                    <td>$@card.OriginalValue.ToString("F2")</td>
+                    <td>
+                        <strong>$@card.Balance.ToString("F2")</strong>
+                        <div class="progress" style="margin-bottom:0; height:4px; min-width:60px;">
+                            <div class="progress-bar progress-bar-@(balancePct > 50 ? "success" : balancePct > 20 ? "warning" : "danger")"
+                                 style="width: @balancePct%"></div>
+                        </div>
+                    </td>
+                    <td>
+                        @if (card.ExpirationDate.HasValue)
+                        {
+                            <small>@card.ExpirationDate.Value.ToString("MMM d, yyyy")</small>
+                        }
+                        else
+                        {
+                            <small class="text-muted">Never</small>
+                        }
+                    </td>
+                    <td><span class="label label-@statusClass">@card.StatusDisplay</span></td>
+                    <td>
+                        @Html.ActionLink("Details", "Details", new { id = card.Id }, new { @class = "btn btn-xs btn-default" })
+                        @using (Html.BeginForm("Toggle", "GiftCards", new { id = card.Id }, FormMethod.Post, new { style = "display:inline" }))
+                        {
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-xs btn-@(card.IsActive ? "warning" : "success")"
+                                    title="@(card.IsActive ? "Disable" : "Enable")">
+                                <span class="glyphicon glyphicon-@(card.IsActive ? "pause" : "play")"></span>
+                            </button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
