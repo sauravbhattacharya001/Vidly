@@ -33,8 +33,7 @@ namespace Vidly.Services
         /// <summary>
         /// Find movies similar to the given movie.
         /// Builds customer-movie and movie-renters indexes once, then derives
-        /// co-rental scores and unique renter count from them — avoids
-        /// redundant O(R) scans from BuildCoRentalIndex + GetUniqueRenters.
+        /// co-rental scores and unique renter count via O(1) lookups.
         /// </summary>
         /// <param name="movieId">The source movie to find similarities for.</param>
         /// <param name="maxResults">Maximum similar movies to return (default 10).</param>
@@ -233,44 +232,6 @@ namespace Vidly.Services
             return 1.0 - (diff / 4.0);
         }
 
-        internal static Dictionary<int, double> BuildCoRentalIndex(
-            int movieId, IReadOnlyList<Rental> allRentals)
-        {
-            // Find all customers who rented this movie
-            var renters = new HashSet<int>(
-                allRentals.Where(r => r.MovieId == movieId).Select(r => r.CustomerId));
-
-            if (renters.Count == 0) return new Dictionary<int, double>();
-
-            // For each renter, find what other movies they rented
-            var coRentalCounts = new Dictionary<int, int>();
-            foreach (var rental in allRentals)
-            {
-                if (rental.MovieId == movieId) continue;
-                if (!renters.Contains(rental.CustomerId)) continue;
-
-                if (!coRentalCounts.ContainsKey(rental.MovieId))
-                    coRentalCounts[rental.MovieId] = 0;
-                coRentalCounts[rental.MovieId]++;
-            }
-
-            if (coRentalCounts.Count == 0) return new Dictionary<int, double>();
-
-            // Normalize: divide by max count to get 0-1 score
-            var maxCount = coRentalCounts.Values.Max();
-            return coRentalCounts.ToDictionary(
-                kvp => kvp.Key,
-                kvp => (double)kvp.Value / maxCount);
-        }
-
-        private static int GetUniqueRenters(int movieId, IReadOnlyList<Rental> allRentals)
-        {
-            return allRentals.Where(r => r.MovieId == movieId)
-                .Select(r => r.CustomerId)
-                .Distinct()
-                .Count();
-        }
-
         /// <summary>
         /// Build an index mapping each customer to the set of movies they rented.
         /// Single O(R) pass over all rentals.
@@ -348,19 +309,6 @@ namespace Vidly.Services
             return coRentalCounts.ToDictionary(
                 kvp => kvp.Key,
                 kvp => (double)kvp.Value / maxCount);
-        }
-
-        /// <summary>
-        /// Legacy overload: builds movie-renters index from allRentals when no
-        /// pre-built index is available. Preserves backward compatibility.
-        /// </summary>
-        internal static Dictionary<int, double> BuildCoRentalFromIndex(
-            int movieId,
-            Dictionary<int, HashSet<int>> customerMovies,
-            IReadOnlyList<Rental> allRentals)
-        {
-            var movieRenters = BuildMovieRentersIndex(customerMovies);
-            return BuildCoRentalFromIndex(movieId, customerMovies, movieRenters);
         }
 
         internal static List<string> BuildReasons(Movie source, Movie candidate,
