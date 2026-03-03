@@ -1,0 +1,82 @@
+@model Vidly.ViewModels.GiftCardBalanceViewModel
+@{
+    ViewBag.Title = "Check Gift Card Balance";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2><span class="glyphicon glyphicon-search"></span> Check Gift Card Balance</h2>
+
+<div class="row">
+    <div class="col-md-6 col-md-offset-3">
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong>Enter Gift Card Code</strong></div>
+            <div class="panel-body">
+                @using (Html.BeginForm("Balance", "GiftCards", FormMethod.Post))
+                {
+                    @Html.AntiForgeryToken()
+                    <div class="input-group input-group-lg">
+                        @Html.TextBoxFor(m => m.Code, new {
+                            @class = "form-control",
+                            placeholder = "GIFT-XXXX-XXXX-XXXX",
+                            style = "text-transform: uppercase; letter-spacing: 2px; font-family: monospace;"
+                        })
+                        <span class="input-group-btn">
+                            <button type="submit" class="btn btn-primary">Check</button>
+                        </span>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @if (Model.Result != null)
+        {
+            if (Model.Result.Found)
+            {
+                var pct = Model.Result.OriginalValue > 0
+                    ? (int)(Model.Result.Balance / Model.Result.OriginalValue * 100)
+                    : 0;
+                <div class="panel panel-@(Model.Result.IsRedeemable ? "success" : "warning")">
+                    <div class="panel-heading">
+                        <strong>@Model.Result.Code</strong>
+                        <span class="label label-@(Model.Result.Status == "Active" ? "success" : "warning") pull-right">
+                            @Model.Result.Status
+                        </span>
+                    </div>
+                    <div class="panel-body text-center">
+                        <h1 class="@(Model.Result.Balance > 0 ? "text-success" : "text-muted")">
+                            $@Model.Result.Balance.ToString("F2")
+                        </h1>
+                        <p class="text-muted">
+                            of $@Model.Result.OriginalValue.ToString("F2") original value
+                        </p>
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-@(pct > 50 ? "success" : pct > 20 ? "warning" : "danger")"
+                                 style="width: @pct%; min-width: 2em;">
+                                @pct%
+                            </div>
+                        </div>
+                        @if (Model.Result.ExpirationDate.HasValue)
+                        {
+                            <p>
+                                <small class="text-muted">
+                                    Expires @Model.Result.ExpirationDate.Value.ToString("MMMM d, yyyy")
+                                </small>
+                            </p>
+                        }
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-danger">
+                    <span class="glyphicon glyphicon-exclamation-sign"></span>
+                    @Model.Result.ErrorMessage
+                </div>
+            }
+        }
+
+        <p class="text-center">
+            @Html.ActionLink("← Back to Gift Cards", "Index", null, new { @class = "btn btn-default" })
+        </p>
+    </div>
+</div>
