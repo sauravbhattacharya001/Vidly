@@ -298,8 +298,9 @@ namespace Vidly.Services
             if (customer == null)
                 throw new ArgumentException($"Customer {customerId} not found.");
 
-            var allRentals = _rentalRepository.GetAll().ToList();
-            var customerRentals = allRentals
+            // Filter directly from GetAll() — allRentals was only used to
+            // derive customerRentals, so the intermediate variable was unnecessary.
+            var customerRentals = _rentalRepository.GetAll()
                 .Where(r => r.CustomerId == customerId)
                 .ToList();
 
@@ -335,6 +336,10 @@ namespace Vidly.Services
                 .Where(r => r.Status == RentalStatus.Returned)
                 .Sum(r => r.TotalCost);
 
+            // Cache the count — previously called CountRentalsThisMonth() twice,
+            // each triggering a full GetAll() + LINQ scan.
+            var freeRentalsUsed = CountRentalsThisMonth(customerId);
+
             return new CustomerBillingSummary
             {
                 CustomerId = customer.Id,
@@ -349,9 +354,9 @@ namespace Vidly.Services
                 TotalProjectedLateFees = totalProjectedLateFees,
                 LifetimeSpend = totalSpent,
                 Rentals = rentalDetails,
-                FreeRentalsUsedThisMonth = CountRentalsThisMonth(customerId),
+                FreeRentalsUsedThisMonth = freeRentalsUsed,
                 FreeRentalsRemaining = Math.Max(0,
-                    benefits.FreeRentalsPerMonth - CountRentalsThisMonth(customerId))
+                    benefits.FreeRentalsPerMonth - freeRentalsUsed)
             };
         }
 
