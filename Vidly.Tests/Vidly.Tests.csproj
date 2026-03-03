@@ -45,6 +45,7 @@
     <Compile Include="..\Vidly\App_Start\FilterConfig.cs" Link="Source\App_Start\FilterConfig.cs" />
     <Compile Include="..\Vidly\App_Start\BundleConfig.cs" Link="Source\App_Start\BundleConfig.cs" />
     <Compile Include="..\Vidly\Global.asax.cs" Link="Source\Global.asax.cs" />
+    <Compile Include="..\Vidly\Utilities\*.cs" Link="Source\Utilities\%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>
