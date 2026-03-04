@@ -127,6 +127,18 @@ namespace Vidly.Services
                 .Where(r => movies.ContainsKey(r.MovieId) && movies[r.MovieId].Genre.HasValue)
                 .GroupBy(r => movies[r.MovieId].Genre.Value);
 
+            // Pre-compute the overall date span once. Previously rentals.Max()
+            // and rentals.Min() were called inside the per-genre loop, making
+            // each O(N) — total O(G*N) where G = number of genres. Now O(N) once.
+            var minDate = rentals[0].RentalDate;
+            var maxDate = rentals[0].RentalDate;
+            for (int i = 1; i < rentals.Count; i++)
+            {
+                if (rentals[i].RentalDate < minDate) minDate = rentals[i].RentalDate;
+                if (rentals[i].RentalDate > maxDate) maxDate = rentals[i].RentalDate;
+            }
+            var overallSpanDays = (maxDate - minDate).TotalDays;
+
             var results = new List<GenrePopularity>();
             foreach (var group in rentalsByGenre)
             {
@@ -141,9 +153,7 @@ namespace Vidly.Services
                 else
                 {
                     var recentRate = (double)recent / recentDays;
-                    var totalDays = rentals.Max(r => r.RentalDate)
-                        .Subtract(rentals.Min(r => r.RentalDate)).TotalDays;
-                    var overallRate = totalDays > 0 ? (double)all.Count / totalDays : 1.0;
+                    var overallRate = overallSpanDays > 0 ? (double)all.Count / overallSpanDays : 1.0;
                     momentum = overallRate > 0 ? Math.Round(recentRate / overallRate, 2) : 0;
                 }
 
