@@ -39,25 +39,12 @@ namespace Vidly.Services
             var movie = _movieRepository.GetById(movieId);
             if (movie == null) return null;
 
-            var allRentals = _rentalRepository.GetAll();
-            var movieRentals = allRentals.Where(r => r.MovieId == movieId).ToList();
-            var customers = _customerRepository.GetAll();
-            var customerLookup = customers.ToDictionary(c => c.Id, c => c);
-            var allMovies = _movieRepository.GetAll();
+            var ctx = LoadSharedContext();
+            List<Rental> movieRentals;
+            ctx.RentalsByMovie.TryGetValue(movieId, out movieRentals);
+            if (movieRentals == null) movieRentals = new List<Rental>();
 
-            return new MovieInsight
-            {
-                MovieId = movie.Id,
-                MovieName = movie.Name,
-                Genre = movie.Genre,
-                Rating = movie.Rating,
-                ReleaseDate = movie.ReleaseDate,
-                RentalSummary = BuildRentalSummary(movieRentals),
-                Revenue = BuildRevenue(movieRentals),
-                CustomerDemographics = BuildDemographics(movieRentals, customerLookup),
-                MonthlyTrend = BuildMonthlyTrend(movieRentals),
-                PerformanceScore = ComputePerformanceScore(movieRentals, allRentals, allMovies, movie),
-            };
+            return BuildInsightFromContext(movie, movieRentals, ctx);
         }
 
         /// <summary>
@@ -68,54 +55,17 @@ namespace Vidly.Services
         /// </summary>
         public IReadOnlyList<MovieInsight> GetAllInsights()
         {
-            var allRentals = _rentalRepository.GetAll();
+            var ctx = LoadSharedContext();
             var movies = _movieRepository.GetAll();
-            var customers = _customerRepository.GetAll();
-            var customerLookup = customers.ToDictionary(c => c.Id, c => c);
-
-            var rentalsByMovie = new Dictionary<int, List<Rental>>();
-            foreach (var r in allRentals)
-            {
-                if (!rentalsByMovie.ContainsKey(r.MovieId))
-                    rentalsByMovie[r.MovieId] = new List<Rental>();
-                rentalsByMovie[r.MovieId].Add(r);
-            }
-
-            // Pre-compute global maximums once: O(number of movies with rentals)
-            int maxRentalCount = 0;
-            decimal maxRevenue = 0;
-            foreach (var kvp in rentalsByMovie)
-            {
-                if (kvp.Value.Count > maxRentalCount)
-                    maxRentalCount = kvp.Value.Count;
-
-                decimal movieRevenue = 0;
-                foreach (var r in kvp.Value)
-                    movieRevenue += r.TotalCost;
-                if (movieRevenue > maxRevenue)
-                    maxRevenue = movieRevenue;
-            }
 
             var insights = new List<MovieInsight>();
             foreach (var movie in movies)
             {
                 List<Rental> movieRentals;
-                rentalsByMovie.TryGetValue(movie.Id, out movieRentals);
+                ctx.RentalsByMovie.TryGetValue(movie.Id, out movieRentals);
                 if (movieRentals == null) movieRentals = new List<Rental>();
 
-                insights.Add(new MovieInsight
-                {
-                    MovieId = movie.Id,
-                    MovieName = movie.Name,
-                    Genre = movie.Genre,
-                    Rating = movie.Rating,
-                    ReleaseDate = movie.ReleaseDate,
-                    RentalSummary = BuildRentalSummary(movieRentals),
-                    Revenue = BuildRevenue(movieRentals),
-                    CustomerDemographics = BuildDemographics(movieRentals, customerLookup),
-                    MonthlyTrend = BuildMonthlyTrend(movieRentals),
-                    PerformanceScore = ComputePerformanceScore(movieRentals, movie, maxRentalCount, maxRevenue),
-                });
+                insights.Add(BuildInsightFromContext(movie, movieRentals, ctx));
             }
 
             insights.Sort((a, b) => b.PerformanceScore.Overall.CompareTo(a.PerformanceScore.Overall));
@@ -123,13 +73,26 @@ namespace Vidly.Services
         }
 
         /// <summary>
-        /// Compare two movies side by side.
+        /// Compare two movies side by side. Loads shared context once
+        /// so both movies use consistent global maximums for scoring.
         /// </summary>
         public MovieInsightComparison Compare(int movieIdA, int movieIdB)
         {
-            var insightA = GetInsight(movieIdA);
-            var insightB = GetInsight(movieIdB);
-            if (insightA == null || insightB == null) return null;
+            var movieA = _movieRepository.GetById(movieIdA);
+            var movieB = _movieRepository.GetById(movieIdB);
+            if (movieA == null || movieB == null) return null;
+
+            // Single shared context: consistent global maximums, one data load
+            var ctx = LoadSharedContext();
+
+            List<Rental> rentalsA, rentalsB;
+            ctx.RentalsByMovie.TryGetValue(movieIdA, out rentalsA);
+            ctx.RentalsByMovie.TryGetValue(movieIdB, out rentalsB);
+            if (rentalsA == null) rentalsA = new List<Rental>();
+            if (rentalsB == null) rentalsB = new List<Rental>();
+
+            var insightA = BuildInsightFromContext(movieA, rentalsA, ctx);
+            var insightB = BuildInsightFromContext(movieB, rentalsB, ctx);
 
             return new MovieInsightComparison
             {
@@ -145,7 +108,85 @@ namespace Vidly.Services
             };
         }
 
-        // ── Internal builders (static for testability) ──
+        // ── Shared context (loaded once, reused across methods) ──
+
+        /// <summary>
+        /// Pre-loaded shared data context to avoid redundant repository calls.
+        /// GetInsight, Compare, and GetAllInsights all need the same base data;
+        /// this struct lets them share a single load.
+        /// </summary>
+        private struct InsightContext
+        {
+            public Dictionary<int, List<Rental>> RentalsByMovie;
+            public Dictionary<int, Customer> CustomerLookup;
+            public int MaxRentalCount;
+            public decimal MaxRevenue;
+        }
+
+        /// <summary>
+        /// Loads all rentals, customers, and pre-computes per-movie rental groups
+        /// plus global maximums in a single pass.
+        /// </summary>
+        private InsightContext LoadSharedContext()
+        {
+            var allRentals = _rentalRepository.GetAll();
+            var customers = _customerRepository.GetAll();
+
+            var rentalsByMovie = new Dictionary<int, List<Rental>>();
+            foreach (var r in allRentals)
+            {
+                if (!rentalsByMovie.ContainsKey(r.MovieId))
+                    rentalsByMovie[r.MovieId] = new List<Rental>();
+                rentalsByMovie[r.MovieId].Add(r);
+            }
+
+            int maxRentalCount = 0;
+            decimal maxRevenue = 0;
+            foreach (var kvp in rentalsByMovie)
+            {
+                if (kvp.Value.Count > maxRentalCount)
+                    maxRentalCount = kvp.Value.Count;
+
+                decimal movieRevenue = 0;
+                foreach (var r in kvp.Value)
+                    movieRevenue += r.TotalCost;
+                if (movieRevenue > maxRevenue)
+                    maxRevenue = movieRevenue;
+            }
+
+            return new InsightContext
+            {
+                RentalsByMovie = rentalsByMovie,
+                CustomerLookup = customers.ToDictionary(c => c.Id, c => c),
+                MaxRentalCount = maxRentalCount,
+                MaxRevenue = maxRevenue,
+            };
+        }
+
+        /// <summary>
+        /// Builds a MovieInsight from pre-loaded context, avoiding redundant
+        /// data fetching and ensuring consistent global maximums.
+        /// </summary>
+        private static MovieInsight BuildInsightFromContext(
+            Movie movie, List<Rental> movieRentals, InsightContext ctx)
+        {
+            return new MovieInsight
+            {
+                MovieId = movie.Id,
+                MovieName = movie.Name,
+                Genre = movie.Genre,
+                Rating = movie.Rating,
+                ReleaseDate = movie.ReleaseDate,
+                RentalSummary = BuildRentalSummary(movieRentals),
+                Revenue = BuildRevenue(movieRentals),
+                CustomerDemographics = BuildDemographics(movieRentals, ctx.CustomerLookup),
+                MonthlyTrend = BuildMonthlyTrend(movieRentals),
+                PerformanceScore = ComputePerformanceScore(
+                    movieRentals, movie, ctx.MaxRentalCount, ctx.MaxRevenue),
+            };
+        }
+
+                // ── Internal builders (static for testability) ──
 
         /// <summary>
         /// Builds a rental summary from a list of rentals, including counts by status,
@@ -313,45 +354,7 @@ namespace Vidly.Services
             return result;
         }
 
-        /// <summary>
-        /// Computes a multi-factor performance score (0–100) using weighted averages
-        /// of popularity (35%), revenue (30%), retention (20%), and rating (15%).
-        /// Assigns a letter grade (A–F).
-        /// This overload scans all rentals to find global maximums — use the
-        /// pre-computed overload when scoring multiple movies.
-        /// </summary>
-        internal static PerformanceScore ComputePerformanceScore(
-            List<Rental> movieRentals, IReadOnlyList<Rental> allRentals,
-            IReadOnlyList<Movie> allMovies, Movie movie)
-        {
-            // Compute global maximums from all rentals
-            int maxRentalCount = 0;
-            decimal maxRevenue = 0;
-
-            if (allRentals.Count > 0)
-            {
-                var rentalCounts = new Dictionary<int, int>();
-                var revenueByMovie = new Dictionary<int, decimal>();
-                foreach (var r in allRentals)
-                {
-                    if (!rentalCounts.ContainsKey(r.MovieId))
-                    {
-                        rentalCounts[r.MovieId] = 0;
-                        revenueByMovie[r.MovieId] = 0;
-                    }
-                    rentalCounts[r.MovieId]++;
-                    revenueByMovie[r.MovieId] += r.TotalCost;
-                }
-                foreach (var count in rentalCounts.Values)
-                    if (count > maxRentalCount) maxRentalCount = count;
-                foreach (var rev in revenueByMovie.Values)
-                    if (rev > maxRevenue) maxRevenue = rev;
-            }
-
-            return ComputePerformanceScore(movieRentals, movie, maxRentalCount, maxRevenue);
-        }
-
-        /// <summary>
+/// <summary>
         /// Computes a multi-factor performance score (0–100) using pre-computed
         /// global maximums. Avoids re-scanning all rentals per movie — O(movieRentals)
         /// instead of O(allRentals).

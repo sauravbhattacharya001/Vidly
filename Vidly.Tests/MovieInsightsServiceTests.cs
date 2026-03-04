@@ -647,7 +647,8 @@ namespace Vidly.Tests
             }.AsReadOnly();
             var allMovies = new List<Movie> { movie, CreateMovie(2, "Other") }.AsReadOnly();
 
-            var result = MovieInsightsService.ComputePerformanceScore(movieRentals, allRentals, allMovies, movie);
+            // Pre-compute global maximums (allRentals has 1 rental for movie 2)
+            var result = MovieInsightsService.ComputePerformanceScore(movieRentals, movie, 1, allRentals[0].TotalCost);
 
             Assert.AreEqual(0, result.Popularity);
         }
@@ -668,7 +669,13 @@ namespace Vidly.Tests
             var allRentals = movieRentals.Concat(new[] { otherRental }).ToList().AsReadOnly();
             var allMovies = new List<Movie> { movie, CreateMovie(2, "Other") }.AsReadOnly();
 
-            var result = MovieInsightsService.ComputePerformanceScore(movieRentals, allRentals, allMovies, movie);
+            // movie 1 has 3 rentals (top), so maxRentalCount=3
+            decimal maxRev = 0;
+            foreach (var r in allRentals) maxRev = Math.Max(maxRev, r.TotalCost);
+            var rentalGroups = allRentals.GroupBy(r => r.MovieId);
+            int maxCount = rentalGroups.Max(g => g.Count());
+            decimal maxRevenue = rentalGroups.Max(g => g.Sum(r => r.TotalCost));
+            var result = MovieInsightsService.ComputePerformanceScore(movieRentals, movie, maxCount, maxRevenue);
 
             Assert.AreEqual(100, result.Popularity);
         }
@@ -688,7 +695,11 @@ namespace Vidly.Tests
             var allRentals = movieRentals.Concat(new[] { otherRental }).ToList().AsReadOnly();
             var allMovies = new List<Movie> { movie, CreateMovie(2, "Other") }.AsReadOnly();
 
-            var result = MovieInsightsService.ComputePerformanceScore(movieRentals, allRentals, allMovies, movie);
+            // Compute from allRentals: movie2 has top revenue (20)
+            var groups = allRentals.GroupBy(r => r.MovieId);
+            int maxCnt = groups.Max(g => g.Count());
+            decimal topRev = groups.Max(g => g.Sum(r => r.TotalCost));
+            var result = MovieInsightsService.ComputePerformanceScore(movieRentals, movie, maxCnt, topRev);
 
             Assert.AreEqual(50, result.Revenue); // 10/20 * 100
         }
@@ -708,7 +719,9 @@ namespace Vidly.Tests
             var allRentals = movieRentals.ToList().AsReadOnly();
             var allMovies = new List<Movie> { movie }.AsReadOnly();
 
-            var result = MovieInsightsService.ComputePerformanceScore(movieRentals, allRentals, allMovies, movie);
+            // Only one movie, so it has max rentals and max revenue
+            decimal topRevenue = movieRentals.Sum(r => r.TotalCost);
+            var result = MovieInsightsService.ComputePerformanceScore(movieRentals, movie, movieRentals.Count, topRevenue);
 
             Assert.AreEqual(50, result.Retention);
         }
@@ -718,10 +731,8 @@ namespace Vidly.Tests
         {
             var movie = CreateMovie(1, "Mid Rating", rating: 3);
             var movieRentals = new List<Rental>();
-            var allRentals = new List<Rental>().AsReadOnly();
-            var allMovies = new List<Movie> { movie }.AsReadOnly();
 
-            var result = MovieInsightsService.ComputePerformanceScore(movieRentals, allRentals, allMovies, movie);
+            var result = MovieInsightsService.ComputePerformanceScore(movieRentals, movie, 0, 0m);
 
             Assert.AreEqual(60, result.Rating); // 3 * 20
         }
@@ -731,10 +742,8 @@ namespace Vidly.Tests
         {
             var movie = CreateMovie(1, "No Rating", rating: null);
             var movieRentals = new List<Rental>();
-            var allRentals = new List<Rental>().AsReadOnly();
-            var allMovies = new List<Movie> { movie }.AsReadOnly();
 
-            var result = MovieInsightsService.ComputePerformanceScore(movieRentals, allRentals, allMovies, movie);
+            var result = MovieInsightsService.ComputePerformanceScore(movieRentals, movie, 0, 0m);
 
             Assert.AreEqual(50, result.Rating);
         }
@@ -747,8 +756,7 @@ namespace Vidly.Tests
             // overall = 0*0.35 + 0*0.30 + 0*0.20 + 100*0.15 = 15 → "F"
             var movieF = CreateMovie(1, "F Movie", rating: 5);
             var resultF = MovieInsightsService.ComputePerformanceScore(
-                new List<Rental>(), new List<Rental>().AsReadOnly(),
-                new List<Movie> { movieF }.AsReadOnly(), movieF);
+                new List<Rental>(), movieF, 0, 0m);
             Assert.AreEqual("F", resultF.Grade);
 
             // Verify GetGrade directly for boundaries
@@ -773,7 +781,9 @@ namespace Vidly.Tests
             var allRentals = movieRentals.ToList().AsReadOnly();
             var allMovies = new List<Movie> { movie }.AsReadOnly();
 
-            var result = MovieInsightsService.ComputePerformanceScore(movieRentals, allRentals, allMovies, movie);
+            // Only one movie, so it has max rentals and revenue
+            decimal topRev = movieRentals.Sum(r => r.TotalCost);
+            var result = MovieInsightsService.ComputePerformanceScore(movieRentals, movie, movieRentals.Count, topRev);
 
             // 100*0.35 + 100*0.30 + 0*0.20 + 80*0.15 = 35 + 30 + 0 + 12 = 77
             Assert.AreEqual(77, result.Overall);
