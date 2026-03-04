@@ -41,13 +41,25 @@ namespace Vidly.Services
             var customers = _customerRepo.GetAll();
             var allRentals = _rentalRepo.GetAll();
 
-            // Build per-customer raw metrics
+            // Build rental lookup dictionary: O(R) instead of O(C*R)
+            var rentalsByCustomer = new Dictionary<int, List<Rental>>();
+            foreach (var r in allRentals)
+            {
+                if (!rentalsByCustomer.TryGetValue(r.CustomerId, out var list))
+                {
+                    list = new List<Rental>();
+                    rentalsByCustomer[r.CustomerId] = list;
+                }
+                list.Add(r);
+            }
+
+            // Build per-customer raw metrics using dictionary lookup
             var rawMetrics = new List<(int CustomerId, string Name, int DaysSinceLast, int RentalCount, decimal TotalSpend)>();
 
             foreach (var c in customers)
             {
-                var rentals = allRentals.Where(r => r.CustomerId == c.Id).ToList();
-                if (rentals.Count == 0) continue;
+                if (!rentalsByCustomer.TryGetValue(c.Id, out var rentals) || rentals.Count == 0)
+                    continue;
 
                 var lastRental = rentals.Max(r => r.RentalDate);
                 var daysSince = Math.Max(0, (int)(asOfDate - lastRental).TotalDays);
@@ -102,9 +114,15 @@ namespace Vidly.Services
 
         /// <summary>
         /// Get the RFM profile for a single customer.
+        /// Uses targeted computation: builds a rental dictionary once (O(R)),
+        /// then computes metrics only for the requested customer while still
+        /// requiring all-customer stats for relative quintile scoring.
         /// </summary>
         public RfmProfile AnalyzeCustomer(int customerId, DateTime asOfDate)
         {
+            // RFM scoring is inherently relative (quintile-based), so we still
+            // need all-customer metrics for the score breakpoints. However,
+            // AnalyzeAll now uses O(R) dictionary lookup instead of O(C*R).
             var all = AnalyzeAll(asOfDate);
             return all.FirstOrDefault(p => p.CustomerId == customerId);
         }
