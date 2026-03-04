@@ -98,6 +98,9 @@ namespace Vidly.Tests
             public void Update(Customer entity) { _customers[entity.Id] = entity; }
             public void Remove(int id) { _customers.Remove(id); }
             public int Count => _customers.Count;
+            public IReadOnlyList<Customer> Search(string query, MembershipType? membershipType) => GetAll();
+            public IReadOnlyList<Customer> GetByMemberSince(int year, int month) => new List<Customer>();
+            public CustomerStats GetStats() => new CustomerStats();
         }
 
         private class StubMovieRepository : IMovieRepository
@@ -117,6 +120,9 @@ namespace Vidly.Tests
             public void Add(Movie entity) { entity.Id = _nextId++; _movies[entity.Id] = entity; }
             public void Update(Movie entity) { _movies[entity.Id] = entity; }
             public void Remove(int id) { _movies.Remove(id); }
+            public IReadOnlyList<Movie> GetByReleaseDate(int year, int month) => new List<Movie>();
+            public Movie GetRandom() => _movies.Values.FirstOrDefault();
+            public IReadOnlyList<Movie> Search(string query, Genre? genre, int? year) => GetAll();
             public int Count => _movies.Count;
             public IReadOnlyList<Movie> GetByGenre(Genre genre) => _movies.Values.Where(m => m.Genre == genre).ToList();
             public IReadOnlyList<Movie> Search(string query) => _movies.Values.ToList();
@@ -141,7 +147,7 @@ namespace Vidly.Tests
             _customerRepo.Seed(2, "Bob");
             _customerRepo.Seed(3, "Charlie");
             _movieRepo.Seed(1, "The Matrix", Genre.Action);
-            _movieRepo.Seed(2, "Inception", Genre.ScienceFiction);
+            _movieRepo.Seed(2, "Inception", Genre.SciFi);
             _movieRepo.Seed(3, "Amelie", Genre.Romance);
         }
 
