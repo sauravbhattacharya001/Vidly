@@ -45,11 +45,11 @@ namespace Vidly.Services
             // Build the set of movie IDs this customer has already rented
             var rentedMovieIds = new HashSet<int>(customerRentals.Select(r => r.MovieId));
 
-            // Analyze genre preferences from rental history
-            var genrePreferences = AnalyzeGenrePreferences(customerRentals, _movieRepository);
-
-            // Get all available movies
+            // Load movies once and reuse for both genre analysis and scoring
             var allMovies = _movieRepository.GetAll();
+
+            // Analyze genre preferences from rental history (reuses allMovies)
+            var genrePreferences = AnalyzeGenrePreferences(customerRentals, allMovies);
 
             // Score and rank unwatched movies
             var recommendations = ScoreMovies(allMovies, rentedMovieIds, genrePreferences)
@@ -110,14 +110,13 @@ namespace Vidly.Services
         /// </summary>
         internal static Dictionary<Genre, double> AnalyzeGenrePreferences(
             IList<Rental> customerRentals,
-            IMovieRepository movieRepository)
+            IReadOnlyList<Movie> allMovies)
         {
             var preferences = new Dictionary<Genre, double>();
 
             if (customerRentals == null || customerRentals.Count == 0)
                 return preferences;
 
-            var allMovies = movieRepository.GetAll();
             var movieLookup = allMovies.ToDictionary(m => m.Id);
 
             foreach (var rental in customerRentals)

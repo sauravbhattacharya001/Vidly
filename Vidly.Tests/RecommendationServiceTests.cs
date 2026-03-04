@@ -298,7 +298,7 @@ namespace Vidly.Tests
         {
             var movies = new TestMovieRepository();
             var prefs = RecommendationService.AnalyzeGenrePreferences(
-                new List<Rental>(), movies);
+                new List<Rental>(), movies.GetAll());
 
             Assert.AreEqual(0, prefs.Count);
         }
@@ -307,7 +307,7 @@ namespace Vidly.Tests
         public void AnalyzeGenrePreferences_NullRentals_ReturnsEmpty()
         {
             var movies = new TestMovieRepository();
-            var prefs = RecommendationService.AnalyzeGenrePreferences(null, movies);
+            var prefs = RecommendationService.AnalyzeGenrePreferences(null, movies.GetAll());
 
             Assert.AreEqual(0, prefs.Count);
         }
@@ -319,7 +319,7 @@ namespace Vidly.Tests
             movies.Add(CreateMovie(1, "Action Movie", Genre.Action, 4));
             var rentals = new List<Rental> { CreateRental(1, 1) };
 
-            var prefs = RecommendationService.AnalyzeGenrePreferences(rentals, movies);
+            var prefs = RecommendationService.AnalyzeGenrePreferences(rentals, movies.GetAll());
 
             Assert.IsTrue(prefs.ContainsKey(Genre.Action));
             Assert.IsTrue(prefs[Genre.Action] > 0, "Score should be positive.");
@@ -339,7 +339,7 @@ namespace Vidly.Tests
                 CreateRental(1, 3)
             };
 
-            var prefs = RecommendationService.AnalyzeGenrePreferences(rentals, movies);
+            var prefs = RecommendationService.AnalyzeGenrePreferences(rentals, movies.GetAll());
 
             Assert.AreEqual(3, prefs.Count, "Should track all 3 genres.");
             Assert.IsTrue(prefs.ContainsKey(Genre.Action));
@@ -362,7 +362,7 @@ namespace Vidly.Tests
                 CreateRental(1, 3, 5)
             };
 
-            var prefs = RecommendationService.AnalyzeGenrePreferences(rentals, movies);
+            var prefs = RecommendationService.AnalyzeGenrePreferences(rentals, movies.GetAll());
 
             Assert.IsTrue(prefs[Genre.Action] > prefs[Genre.Comedy],
                 "Genre rented twice should score higher than once.");
@@ -381,7 +381,7 @@ namespace Vidly.Tests
                 CreateRental(1, 2, 60)   // 60 days ago — no recency bonus
             };
 
-            var prefs = RecommendationService.AnalyzeGenrePreferences(rentals, movies);
+            var prefs = RecommendationService.AnalyzeGenrePreferences(rentals, movies.GetAll());
 
             Assert.IsTrue(prefs[Genre.Action] > prefs[Genre.Comedy],
                 "Recent rental should get recency bonus.");
@@ -394,7 +394,7 @@ namespace Vidly.Tests
             movies.Add(CreateMovie(1, "No Genre Movie", null, 4));
             var rentals = new List<Rental> { CreateRental(1, 1) };
 
-            var prefs = RecommendationService.AnalyzeGenrePreferences(rentals, movies);
+            var prefs = RecommendationService.AnalyzeGenrePreferences(rentals, movies.GetAll());
 
             Assert.AreEqual(0, prefs.Count,
                 "Movies without genre should not generate preferences.");
@@ -407,7 +407,7 @@ namespace Vidly.Tests
             // Movie ID 999 does not exist
             var rentals = new List<Rental> { CreateRental(1, 999) };
 
-            var prefs = RecommendationService.AnalyzeGenrePreferences(rentals, movies);
+            var prefs = RecommendationService.AnalyzeGenrePreferences(rentals, movies.GetAll());
 
             Assert.AreEqual(0, prefs.Count,
                 "Rentals referencing unknown movies should be skipped.");
@@ -842,3 +842,4 @@ namespace Vidly.Tests
         #endregion
     }
 }
+
