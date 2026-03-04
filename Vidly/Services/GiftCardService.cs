@@ -1,4 +1,5 @@
 using System;
+using System.Security.Cryptography;
 using System.Text;
 using Vidly.Models;
 using Vidly.Repositories;
@@ -11,7 +12,11 @@ namespace Vidly.Services
     public class GiftCardService
     {
         private readonly IGiftCardRepository _giftCardRepository;
-        private static readonly Random _random = new Random();
+        /// <summary>
+        /// Maximum retry attempts for code generation to prevent unbounded
+        /// recursion if the code space becomes saturated.
+        /// </summary>
+        private const int MaxCodeGenerationAttempts = 10;
 
         public GiftCardService() : this(new InMemoryGiftCardRepository()) { }
 
@@ -23,28 +28,51 @@ namespace Vidly.Services
 
         /// <summary>
         /// Generate a unique gift card code in format GIFT-XXXX-XXXX-XXXX.
+        /// Uses cryptographically secure random number generation to prevent
+        /// code prediction attacks. System.Random is deterministic and not
+        /// thread-safe — an attacker observing generated codes could predict
+        /// future ones and redeem other customers' gift cards.
         /// </summary>
         public string GenerateCode()
         {
             const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-            var sb = new StringBuilder("GIFT-");
+            const int codeCharCount = 12; // 3 groups of 4
 
-            for (int group = 0; group < 3; group++)
+            for (int attempt = 0; attempt < MaxCodeGenerationAttempts; attempt++)
             {
-                if (group > 0) sb.Append('-');
-                for (int i = 0; i < 4; i++)
+                var sb = new StringBuilder("GIFT-", 19); // "GIFT-" + 12 chars + 2 dashes
+
+                // Generate all random bytes at once (one syscall) instead of
+                // per-character to minimize CSPRNG overhead.
+                var randomBytes = new byte[codeCharCount];
+                using (var rng = RandomNumberGenerator.Create())
                 {
-                    sb.Append(chars[_random.Next(chars.Length)]);
+                    rng.GetBytes(randomBytes);
                 }
+
+                int byteIndex = 0;
+                for (int group = 0; group < 3; group++)
+                {
+                    if (group > 0) sb.Append('-');
+                    for (int i = 0; i < 4; i++)
+                    {
+                        // Modulo bias: 256 % 36 = 4, so indices 0-3 are ~0.4%
+                        // more likely than 4-35. For a 12-char code from a 36-char
+                        // alphabet this is negligible (total bias < 0.05 bits of
+                        // entropy loss from the ~62-bit ideal).
+                        sb.Append(chars[randomBytes[byteIndex++] % chars.Length]);
+                    }
+                }
+
+                var code = sb.ToString();
+
+                // Check uniqueness with bounded retry instead of unbounded recursion
+                if (_giftCardRepository.GetByCode(code) == null)
+                    return code;
             }
 
-            var code = sb.ToString();
-
-            // Ensure uniqueness
-            if (_giftCardRepository.GetByCode(code) != null)
-                return GenerateCode(); // Retry (collision extremely unlikely)
-
-            return code;
+            throw new InvalidOperationException(
+                $"Failed to generate a unique gift card code after {MaxCodeGenerationAttempts} attempts.");
         }
 
         /// <summary>
