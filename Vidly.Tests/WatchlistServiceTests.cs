@@ -112,6 +112,11 @@ namespace Vidly.Tests
                 _movies.Values.Where(m => m.Genre == genre).ToList().AsReadOnly();
             public IReadOnlyList<Movie> Search(string query) =>
                 _movies.Values.Where(m => m.Name.Contains(query)).ToList().AsReadOnly();
+            public IReadOnlyList<Movie> GetByReleaseDate(int year, int month) =>
+                _movies.Values.Where(m => m.ReleaseDate.HasValue && m.ReleaseDate.Value.Year == year && m.ReleaseDate.Value.Month == month).ToList().AsReadOnly();
+            public Movie GetRandom() => _movies.Values.FirstOrDefault();
+            public IReadOnlyList<Movie> Search(string query, Genre? genre, int? minRating) =>
+                _movies.Values.Where(m => (query == null || m.Name.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0) && (!genre.HasValue || m.Genre == genre) && (!minRating.HasValue || (m.Rating ?? 0) >= minRating.Value)).ToList().AsReadOnly();
         }
 
         private class StubCustomerRepository : ICustomerRepository
@@ -133,6 +138,9 @@ namespace Vidly.Tests
 
             public IReadOnlyList<Customer> Search(string query, MembershipType? membershipType = null) =>
                 _customers.Values.Where(c => c.Name.Contains(query)).ToList().AsReadOnly();
+            public IReadOnlyList<Customer> GetByMemberSince(int year, int month) =>
+                _customers.Values.Where(c => c.MemberSince.HasValue && c.MemberSince.Value.Year == year && c.MemberSince.Value.Month == month).ToList().AsReadOnly();
+            public CustomerStats GetStats() => new CustomerStats { TotalCustomers = _customers.Count };
         }
 
         private class StubRentalRepository : IRentalRepository
