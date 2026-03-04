@@ -66,6 +66,7 @@ namespace Vidly.Repositories
                 existing.ReleaseDate = movie.ReleaseDate;
                 existing.Genre = movie.Genre;
                 existing.Rating = movie.Rating;
+                existing.DailyRate = movie.DailyRate;
             }
         }
 
@@ -151,7 +152,8 @@ namespace Vidly.Repositories
                 Name = source.Name,
                 ReleaseDate = source.ReleaseDate,
                 Genre = source.Genre,
-                Rating = source.Rating
+                Rating = source.Rating,
+                DailyRate = source.DailyRate
             };
         }
     }
