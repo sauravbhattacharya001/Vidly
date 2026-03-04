@@ -38,16 +38,56 @@ namespace Vidly.Services
         /// <returns>RFM profiles sorted by composite score descending.</returns>
         public IReadOnlyList<RfmProfile> AnalyzeAll(DateTime asOfDate)
         {
+            var rawMetrics = BuildRawMetrics(asOfDate);
+
+            if (rawMetrics.Count == 0)
+                return Array.Empty<RfmProfile>();
+
+            return ScoreAndBuildProfiles(rawMetrics);
+        }
+
+        /// <summary>
+        /// Get the RFM profile for a single customer.
+        /// Computes metrics for the target customer directly (O(R) amortized)
+        /// while still requiring all-customer data for relative quintile scoring.
+        /// </summary>
+        public RfmProfile AnalyzeCustomer(int customerId, DateTime asOfDate)
+        {
+            var rawMetrics = BuildRawMetrics(asOfDate);
+            if (rawMetrics.Count == 0 || !rawMetrics.Any(m => m.CustomerId == customerId))
+                return null;
+
+            var profiles = ScoreAndBuildProfiles(rawMetrics);
+            return profiles.FirstOrDefault(p => p.CustomerId == customerId);
+        }
+
+        /// <summary>
+        /// Build raw per-customer metrics using a rental-by-customer dictionary.
+        /// O(C + R) instead of O(C * R).
+        /// </summary>
+        private List<(int CustomerId, string Name, int DaysSinceLast, int RentalCount, decimal TotalSpend)> BuildRawMetrics(DateTime asOfDate)
+        {
             var customers = _customerRepo.GetAll();
             var allRentals = _rentalRepo.GetAll();
 
-            // Build per-customer raw metrics
+            // Pre-index rentals by customer: O(R) instead of O(C*R) nested filtering
+            var rentalsByCustomer = new Dictionary<int, List<Rental>>();
+            foreach (var r in allRentals)
+            {
+                if (!rentalsByCustomer.TryGetValue(r.CustomerId, out var list))
+                {
+                    list = new List<Rental>();
+                    rentalsByCustomer[r.CustomerId] = list;
+                }
+                list.Add(r);
+            }
+
             var rawMetrics = new List<(int CustomerId, string Name, int DaysSinceLast, int RentalCount, decimal TotalSpend)>();
 
             foreach (var c in customers)
             {
-                var rentals = allRentals.Where(r => r.CustomerId == c.Id).ToList();
-                if (rentals.Count == 0) continue;
+                if (!rentalsByCustomer.TryGetValue(c.Id, out var rentals) || rentals.Count == 0)
+                    continue;
 
                 var lastRental = rentals.Max(r => r.RentalDate);
                 var daysSince = Math.Max(0, (int)(asOfDate - lastRental).TotalDays);
@@ -56,10 +96,15 @@ namespace Vidly.Services
                 rawMetrics.Add((c.Id, c.Name, daysSince, rentals.Count, totalSpend));
             }
 
-            if (rawMetrics.Count == 0)
-                return Array.Empty<RfmProfile>();
+            return rawMetrics;
+        }
 
-            // Assign quintile scores (1-5)
+        /// <summary>
+        /// Score raw metrics and build RFM profiles with quintile-based scoring.
+        /// </summary>
+        private static IReadOnlyList<RfmProfile> ScoreAndBuildProfiles(
+            List<(int CustomerId, string Name, int DaysSinceLast, int RentalCount, decimal TotalSpend)> rawMetrics)
+        {
             var recencyValues = rawMetrics.Select(m => (double)m.DaysSinceLast).ToList();
             var frequencyValues = rawMetrics.Select(m => (double)m.RentalCount).ToList();
             var monetaryValues = rawMetrics.Select(m => (double)m.TotalSpend).ToList();
@@ -98,15 +143,6 @@ namespace Vidly.Services
             return profiles.OrderByDescending(p => p.CompositeScore)
                            .ThenBy(p => p.CustomerName)
                            .ToList();
-        }
-
-        /// <summary>
-        /// Get the RFM profile for a single customer.
-        /// </summary>
-        public RfmProfile AnalyzeCustomer(int customerId, DateTime asOfDate)
-        {
-            var all = AnalyzeAll(asOfDate);
-            return all.FirstOrDefault(p => p.CustomerId == customerId);
         }
 
         // ── Segment Queries ─────────────────────────────────────────
