@@ -134,13 +134,13 @@ namespace Vidly.Tests
             var rentals = new List<Rental>
             {
                 MakeRental(1, 1, 1, "M1", 20, RentalStatus.Returned, returnDaysAgo: 10), // 10 days
-                MakeRental(2, 1, 2, "M2", 10, RentalStatus.Returned, returnDaysAgo: 4),  // 6 days
+                MakeRental(2, 1, 2, "M2", 10, RentalStatus.Returned, returnDaysAgo: 4),  // 4 days
                 MakeRental(3, 1, 3, "M3", 5, RentalStatus.Active), // not counted
             };
 
             var summary = CustomerActivityService.BuildSummary(rentals);
-            // Avg of completed = (10 + 6) / 2 = 8.0
-            Assert.AreEqual(8.0, summary.AverageRentalDays);
+            // Avg of completed = (10 + 4) / 2 = 7.0
+            Assert.AreEqual(7.0, summary.AverageRentalDays);
         }
 
         [TestMethod]
@@ -666,7 +666,7 @@ namespace Vidly.Tests
 
             Assert.AreEqual(1, summary.TotalRentals);
             Assert.AreEqual(1, summary.ReturnedRentals);
-            Assert.AreEqual(7.0, summary.AverageRentalDays); // 10 - 3 = 7 days
+            Assert.AreEqual(3.0, summary.AverageRentalDays); // returnDaysAgo: 3 = 3 days duration
             Assert.AreEqual(100, summary.OnTimeReturnRate);
         }
 

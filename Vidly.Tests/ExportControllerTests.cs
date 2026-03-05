@@ -14,6 +14,9 @@ namespace Vidly.Tests
         [TestInitialize]
         public void Setup()
         {
+            InMemoryMovieRepository.Reset();
+            InMemoryCustomerRepository.Reset();
+            InMemoryRentalRepository.Reset();
             _controller = new ExportController(
                 new InMemoryMovieRepository(),
                 new InMemoryCustomerRepository(),

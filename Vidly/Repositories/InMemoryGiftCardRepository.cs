@@ -218,5 +218,19 @@ namespace Vidly.Repositories
                 card.Transactions.Add(transaction);
             }
         }
+
+        /// <summary>
+        /// Resets the repository to its initial seed state for test isolation.
+        /// </summary>
+        public static void Reset()
+        {
+            lock (_lock)
+            {
+                _giftCards.Clear();
+                _nextId = 1;
+                _nextTxId = 1;
+                _seeded = false;
+            }
+        }
     }
 }

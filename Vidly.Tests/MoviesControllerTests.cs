@@ -5,6 +5,7 @@ using System.Web.Mvc;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Vidly.Controllers;
 using Vidly.Models;
+using Vidly.Repositories;
 using Vidly.ViewModels;
 
 namespace Vidly.Tests
@@ -12,6 +13,12 @@ namespace Vidly.Tests
     [TestClass]
     public class MoviesControllerTests
     {
+        [TestInitialize]
+        public void Setup()
+        {
+            InMemoryMovieRepository.Reset();
+        }
+
         /// <summary>
         /// Verifies that Index returns a ViewResult with a MovieSearchViewModel.
         /// </summary>

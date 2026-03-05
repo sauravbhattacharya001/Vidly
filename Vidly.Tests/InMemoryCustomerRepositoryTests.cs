@@ -15,6 +15,7 @@ namespace Vidly.Tests
         [TestInitialize]
         public void Setup()
         {
+            InMemoryCustomerRepository.Reset();
             _repo = new InMemoryCustomerRepository();
         }
 

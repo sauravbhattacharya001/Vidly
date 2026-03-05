@@ -233,6 +233,14 @@ namespace Vidly.Repositories
             }
         }
 
+        /// <summary>
+        /// Alias for Reset — reviews have no seed data by default.
+        /// </summary>
+        public static void ResetEmpty()
+        {
+            Reset();
+        }
+
         private static Review Clone(Review r) => new Review
         {
             Id = r.Id,

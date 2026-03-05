@@ -197,6 +197,23 @@ namespace Vidly.Repositories
         }
 
         /// <summary>
+        /// Resets the repository to its initial seed state for test isolation.
+        /// </summary>
+        public static void Reset()
+        {
+            lock (_lock)
+            {
+                _customers.Clear();
+                _customers[1] = new Customer { Id = 1, Name = "John Smith", Email = "john.smith@example.com", Phone = "555-0101", MemberSince = new DateTime(2024, 1, 15), MembershipType = MembershipType.Gold };
+                _customers[2] = new Customer { Id = 2, Name = "Jane Doe", Email = "jane.doe@example.com", Phone = "555-0102", MemberSince = new DateTime(2024, 6, 20), MembershipType = MembershipType.Silver };
+                _customers[3] = new Customer { Id = 3, Name = "Bob Wilson", Email = "bob.wilson@example.com", Phone = "555-0103", MemberSince = new DateTime(2025, 3, 10), MembershipType = MembershipType.Basic };
+                _customers[4] = new Customer { Id = 4, Name = "Alice Johnson", Email = "alice.j@example.com", Phone = "555-0104", MemberSince = new DateTime(2023, 11, 5), MembershipType = MembershipType.Platinum };
+                _customers[5] = new Customer { Id = 5, Name = "Charlie Brown", Email = "charlie.b@example.com", Phone = "555-0105", MemberSince = new DateTime(2025, 1, 1), MembershipType = MembershipType.Gold };
+                _nextId = 6;
+            }
+        }
+
+        /// <summary>
         /// Creates a defensive copy to prevent callers from
         /// mutating the internal store outside the lock.
         /// </summary>

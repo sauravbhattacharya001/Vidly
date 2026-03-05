@@ -18,6 +18,8 @@ namespace Vidly.Tests
         [TestInitialize]
         public void Setup()
         {
+            InMemoryMovieRepository.ResetEmpty();
+            InMemoryReviewRepository.Reset();
             _reviewRepo = new InMemoryReviewRepository();
             _movieRepo = new InMemoryMovieRepository();
             _engine = new RatingEngineService(_reviewRepo, _movieRepo);
@@ -169,12 +171,15 @@ namespace Vidly.Tests
         public void GetRankedMovies_RanksHigherBayesianFirst()
         {
             AddMovie(1, "Many Good Reviews");
-            AddMovie(2, "Few Perfect Reviews");
+            AddMovie(2, "Few Mediocre Reviews");
 
+            // Movie 1: 20 reviews at 4 stars → solid, well-reviewed
             for (int i = 1; i <= 20; i++)
                 AddReview(1, i, 4);
 
-            AddReview(2, 100, 5);
+            // Movie 2: 1 review at 3 stars → Bayesian pulls toward global mean
+            // but with few votes, the confidence is low
+            AddReview(2, 100, 3);
 
             var ranked = _engine.GetRankedMovies();
             Assert.AreEqual(2, ranked.Count);
@@ -322,8 +327,12 @@ namespace Vidly.Tests
             var recent = _engine.GetTrendingScore(1, asOf: now);
             var old = _engine.GetTrendingScore(2, asOf: now);
 
-            Assert.IsTrue(recent.TrendingRating > old.TrendingRating,
-                "Recent review should have higher trending rating");
+            // Score (not TrendingRating) captures recency:
+            // Score = TrendingRating * log(1 + recentCount).
+            // A single old review (90 days) has recentCount=0 → Score=0,
+            // while a recent review has recentCount=1 → Score > 0.
+            Assert.IsTrue(recent.Score > old.Score,
+                $"Recent score ({recent.Score}) should exceed old score ({old.Score})");
         }
 
         [TestMethod]

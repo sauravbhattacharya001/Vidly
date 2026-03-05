@@ -13,6 +13,14 @@ namespace Vidly.Tests
     [TestClass]
     public class RentalsControllerTests
     {
+        [TestInitialize]
+        public void Setup()
+        {
+            InMemoryRentalRepository.Reset();
+            InMemoryMovieRepository.Reset();
+            InMemoryCustomerRepository.Reset();
+        }
+
         private RentalsController CreateController()
         {
             return new RentalsController(

@@ -215,5 +215,18 @@ namespace Vidly.Repositories
                 return true;
             }
         }
+
+        /// <summary>
+        /// Resets the repository to its initial seed state for test isolation.
+        /// </summary>
+        public static void Reset()
+        {
+            lock (_lock)
+            {
+                _coupons.Clear();
+                _nextId = 1;
+                _seeded = false;
+            }
+        }
     }
 }

@@ -13,6 +13,12 @@ namespace Vidly.Tests
     [TestClass]
     public class CustomersControllerTests
     {
+        [TestInitialize]
+        public void Setup()
+        {
+            InMemoryCustomerRepository.Reset();
+        }
+
         /// <summary>
         /// Verifies that Index returns a ViewResult with a CustomerSearchViewModel.
         /// </summary>
