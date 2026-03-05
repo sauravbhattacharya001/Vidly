@@ -26,23 +26,30 @@ namespace Vidly.Controllers
         // GET: Coupons
         public ActionResult Index(string status)
         {
-            var coupons = _couponRepository.GetAll();
+            // Single GetAll() call — avoids 4 redundant repository round-trips
+            var allCoupons = _couponRepository.GetAll();
+            var totalCount = allCoupons.Count;
 
+            IReadOnlyList<Coupon> coupons;
             if (!string.IsNullOrWhiteSpace(status))
             {
-                coupons = coupons.Where(c =>
+                coupons = allCoupons.Where(c =>
                     string.Equals(c.StatusDisplay, status, StringComparison.OrdinalIgnoreCase))
                     .ToList().AsReadOnly();
+            }
+            else
+            {
+                coupons = allCoupons;
             }
 
             var viewModel = new CouponIndexViewModel
             {
                 Coupons = coupons,
                 StatusFilter = status,
-                TotalCount = _couponRepository.GetAll().Count,
-                ActiveCount = _couponRepository.GetAll().Count(c => c.StatusDisplay == "Active"),
-                ExpiredCount = _couponRepository.GetAll().Count(c => c.StatusDisplay == "Expired"),
-                ExhaustedCount = _couponRepository.GetAll().Count(c => c.StatusDisplay == "Exhausted")
+                TotalCount = totalCount,
+                ActiveCount = allCoupons.Count(c => c.StatusDisplay == "Active"),
+                ExpiredCount = allCoupons.Count(c => c.StatusDisplay == "Expired"),
+                ExhaustedCount = allCoupons.Count(c => c.StatusDisplay == "Exhausted")
             };
 
             return View(viewModel);
@@ -119,6 +126,10 @@ namespace Vidly.Controllers
 
             if (coupon.ValidUntil < coupon.ValidFrom)
                 ModelState.AddModelError("ValidUntil", "Expiration must be after start date.");
+
+            if (coupon.DiscountType == DiscountType.FixedAmount && coupon.DiscountValue > 100)
+                ModelState.AddModelError("DiscountValue",
+                    "Fixed discount cannot exceed $100.00.");
 
             if (!ModelState.IsValid)
                 return View(coupon);
