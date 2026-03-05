@@ -41,6 +41,8 @@ namespace Vidly.Utilities
             if (obj is double dbl) return dbl.ToString(CultureInfo.InvariantCulture);
             if (obj is float flt) return flt.ToString(CultureInfo.InvariantCulture);
 
+            if (obj is char ch) return "\"" + EscapeString(ch.ToString()) + "\"";
+
             if (obj is DateTime dt) return "\"" + dt.ToString("o") + "\"";
             if (obj is DateTimeOffset dto) return "\"" + dto.ToString("o") + "\"";
 
@@ -58,7 +60,7 @@ namespace Vidly.Utilities
             foreach (var prop in props)
             {
                 var val = prop.GetValue(obj);
-                pairs.Add("\"" + prop.Name + "\":" + Serialize(val));
+                pairs.Add("\"" + EscapeString(prop.Name) + "\":" + Serialize(val));
             }
             return "{" + string.Join(",", pairs) + "}";
         }
@@ -88,8 +90,14 @@ namespace Vidly.Utilities
                     case '/':  sb.Append("\\/");   break; // XSS prevention in HTML contexts
                     default:
                         // Escape remaining control characters (U+0000–U+001F)
+                        // and U+2028/U+2029 (LINE/PARAGRAPH SEPARATOR) which are
+                        // valid JSON but break JavaScript string literals.
                         if (c < ' ')
                             sb.AppendFormat("\\u{0:x4}", (int)c);
+                        else if (c == '\u2028')
+                            sb.Append("\\u2028");
+                        else if (c == '\u2029')
+                            sb.Append("\\u2029");
                         else
                             sb.Append(c);
                         break;
