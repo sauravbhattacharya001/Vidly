@@ -159,6 +159,10 @@ namespace Vidly.Services
             // First, expire any ready reservations that have timed out
             ExpireOverdueReservations(movieId);
 
+            // Compact queue after expiring reservations so remaining
+            // positions stay sequential (1, 2, 3…) with no gaps.
+            CompactQueue(movieId);
+
             var next = _reservationRepo.GetNextInQueue(movieId);
             if (next == null)
                 return null;
