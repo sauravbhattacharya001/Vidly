@@ -53,7 +53,9 @@ namespace Vidly.Services
 
             foreach (var r in periodRentals)
             {
-                totalRentalRevenue += r.TotalCost;
+                // TotalCost already includes LateFee (= days*DailyRate + LateFee),
+                // so extract base rental revenue by subtracting LateFee.
+                totalRentalRevenue += r.TotalCost - r.LateFee;
                 totalLateFees += r.LateFee;
 
                 if (r.Status == RentalStatus.Returned)
@@ -64,6 +66,7 @@ namespace Vidly.Services
                     active++;
             }
 
+            // TotalRevenue = base rental revenue + late fees (no double-counting)
             decimal totalRevenue = totalRentalRevenue + totalLateFees;
             int totalDays = Math.Max(1, (int)(periodEnd - periodStart).TotalDays);
 
@@ -187,7 +190,7 @@ namespace Vidly.Services
                 {
                     g.Key.Year,
                     g.Key.Month,
-                    Revenue = g.Sum(r => r.TotalCost + r.LateFee),
+                    Revenue = g.Sum(r => r.TotalCost),
                     Count = g.Count(),
                 })
                 .OrderBy(m => m.Year)
@@ -197,7 +200,7 @@ namespace Vidly.Services
             if (monthly.Count < 2)
             {
                 // Not enough data for regression — use average
-                decimal avgDailyRevenue = allRentals.Sum(r => r.TotalCost + r.LateFee);
+                decimal avgDailyRevenue = allRentals.Sum(r => r.TotalCost);
                 var firstDate = allRentals.Min(r => r.RentalDate);
                 int totalHistDays = Math.Max(1, (int)(end - firstDate).TotalDays);
                 avgDailyRevenue = avgDailyRevenue / totalHistDays;
@@ -299,7 +302,7 @@ namespace Vidly.Services
 
             var daily = rentals
                 .GroupBy(r => r.RentalDate.Date)
-                .ToDictionary(g => g.Key, g => g.Sum(r => r.TotalCost + r.LateFee));
+                .ToDictionary(g => g.Key, g => g.Sum(r => r.TotalCost));
 
             if (daily.Count == 0)
                 return new KeyValuePair<DateTime, decimal>(periodStart, 0m);
@@ -322,7 +325,7 @@ namespace Vidly.Services
 
             foreach (var r in rentals)
             {
-                result[r.RentalDate.DayOfWeek] += r.TotalCost + r.LateFee;
+                result[r.RentalDate.DayOfWeek] += r.TotalCost;
             }
 
             return result;
@@ -354,9 +357,9 @@ namespace Vidly.Services
             }
 
             var result = new List<GenreRevenue>();
-            foreach (var kv in genreGroups.OrderByDescending(kv => kv.Value.Sum(r => r.TotalCost + r.LateFee)))
+            foreach (var kv in genreGroups.OrderByDescending(kv => kv.Value.Sum(r => r.TotalCost)))
             {
-                decimal genreRev = kv.Value.Sum(r => r.TotalCost + r.LateFee);
+                decimal genreRev = kv.Value.Sum(r => r.TotalCost);
                 result.Add(new GenreRevenue
                 {
                     Genre = kv.Key,
@@ -389,7 +392,7 @@ namespace Vidly.Services
                     acc = new MembershipAccumulator();
                     groups[cust.MembershipType] = acc;
                 }
-                acc.Revenue += r.TotalCost + r.LateFee;
+                acc.Revenue += r.TotalCost;
                 acc.RentalCount++;
                 acc.CustomerIds.Add(cust.Id);
             }
@@ -419,7 +422,7 @@ namespace Vidly.Services
                 {
                     g.Key.Year,
                     g.Key.Month,
-                    Revenue = g.Sum(r => r.TotalCost + r.LateFee),
+                    Revenue = g.Sum(r => r.TotalCost),
                     Count = g.Count(),
                 })
                 .OrderBy(m => m.Year)
@@ -464,10 +467,10 @@ namespace Vidly.Services
                     {
                         CustomerId = g.Key,
                         CustomerName = cust != null ? cust.Name : ("Customer " + g.Key),
-                        TotalRevenue = g.Sum(r => r.TotalCost + r.LateFee),
+                        TotalRevenue = g.Sum(r => r.TotalCost),
                         RentalCount = g.Count(),
                         AverageSpend = g.Count() > 0
-                            ? g.Sum(r => r.TotalCost + r.LateFee) / g.Count() : 0m,
+                            ? g.Sum(r => r.TotalCost) / g.Count() : 0m,
                     };
                 })
                 .OrderByDescending(c => c.TotalRevenue)
@@ -490,7 +493,7 @@ namespace Vidly.Services
                     {
                         MovieId = g.Key,
                         MovieName = movie != null ? movie.Name : ("Movie " + g.Key),
-                        TotalRevenue = g.Sum(r => r.TotalCost + r.LateFee),
+                        TotalRevenue = g.Sum(r => r.TotalCost),
                         RentalCount = g.Count(),
                         AverageDailyRate = g.Count() > 0
                             ? g.Average(r => r.DailyRate) : 0m,
