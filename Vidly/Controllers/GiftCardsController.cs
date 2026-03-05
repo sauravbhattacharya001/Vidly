@@ -29,16 +29,14 @@ namespace Vidly.Controllers
         // GET: GiftCards
         public ActionResult Index(string status)
         {
-            var cards = _giftCardRepository.GetAll();
-
-            if (!string.IsNullOrWhiteSpace(status))
-            {
-                cards = cards.Where(c =>
-                    string.Equals(c.StatusDisplay, status, StringComparison.OrdinalIgnoreCase))
-                    .ToList().AsReadOnly();
-            }
-
             var allCards = _giftCardRepository.GetAll();
+
+            var cards = !string.IsNullOrWhiteSpace(status)
+                ? allCards.Where(c =>
+                    string.Equals(c.StatusDisplay, status, StringComparison.OrdinalIgnoreCase))
+                    .ToList().AsReadOnly()
+                : allCards;
+
             var viewModel = new GiftCardIndexViewModel
             {
                 GiftCards = cards,
