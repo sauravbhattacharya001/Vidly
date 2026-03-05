@@ -12,8 +12,11 @@ namespace Vidly.Tests
     [TestClass]
     public class InMemoryRentalRepositoryTests
     {
-        // Note: because InMemoryRentalRepository uses a static list, tests share state.
-        // We test against the pre-seeded data and additions/removals within each test.
+        [TestInitialize]
+        public void Setup()
+        {
+            InMemoryRentalRepository.Reset();
+        }
 
         [TestMethod]
         public void GetAll_ReturnsAllRentals()

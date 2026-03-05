@@ -22,6 +22,10 @@ namespace Vidly.Tests
         [TestInitialize]
         public void Setup()
         {
+            InMemoryMovieRepository.Reset();
+            InMemoryCustomerRepository.Reset();
+            InMemoryRentalRepository.Reset();
+            InMemoryGiftCardRepository.Reset();
             _movieRepo = new InMemoryMovieRepository();
             _customerRepo = new InMemoryCustomerRepository();
             _rentalRepo = new InMemoryRentalRepository();
@@ -340,6 +344,10 @@ namespace Vidly.Tests
         [TestInitialize]
         public void Setup()
         {
+            InMemoryMovieRepository.Reset();
+            InMemoryCustomerRepository.Reset();
+            InMemoryRentalRepository.Reset();
+            InMemoryGiftCardRepository.Reset();
             _repo = new InMemoryGiftCardRepository();
             _service = new GiftCardService(_repo);
         }

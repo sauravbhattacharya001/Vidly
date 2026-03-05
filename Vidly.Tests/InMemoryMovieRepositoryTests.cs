@@ -17,6 +17,7 @@ namespace Vidly.Tests
         [TestInitialize]
         public void SetUp()
         {
+            InMemoryMovieRepository.Reset();
             _repo = new InMemoryMovieRepository();
         }
 

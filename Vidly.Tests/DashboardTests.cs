@@ -249,7 +249,11 @@ namespace Vidly.Tests
         {
             var data = _service.GetDashboard();
             Assert.IsTrue(data.AverageRevenuePerRental > 0);
-            Assert.AreEqual(data.Stats.TotalRevenue / 5, data.AverageRevenuePerRental);
+            // Average is RealizedRevenue / ReturnedRentals (only returned rentals)
+            var expectedAvg = data.Stats.ReturnedRentals > 0
+                ? data.Stats.RealizedRevenue / data.Stats.ReturnedRentals
+                : 0m;
+            Assert.AreEqual(expectedAvg, data.AverageRevenuePerRental);
         }
 
         [TestMethod]

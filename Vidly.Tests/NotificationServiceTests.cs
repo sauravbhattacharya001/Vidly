@@ -15,6 +15,10 @@ namespace Vidly.Tests
         [TestInitialize]
         public void Setup()
         {
+            InMemoryMovieRepository.Reset();
+            InMemoryCustomerRepository.Reset();
+            InMemoryRentalRepository.Reset();
+            InMemoryWatchlistRepository.Reset();
             _service = new NotificationService(
                 new InMemoryRentalRepository(),
                 new InMemoryMovieRepository(),

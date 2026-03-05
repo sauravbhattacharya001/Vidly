@@ -311,5 +311,28 @@ namespace Vidly.Repositories
                 }).ToList() ?? new List<CollectionItem>()
             };
         }
+
+        /// <summary>
+        /// Resets the repository to its initial seed state for test isolation.
+        /// </summary>
+        public static void Reset()
+        {
+            lock (_lock)
+            {
+                _collections.Clear();
+
+                var seedData = new[]
+                {
+                    new MovieCollection { Id = 1, Name = "Classic Must-Watch", Description = "Timeless films everyone should see", CreatedAt = DateTime.Today.AddDays(-30), UpdatedAt = DateTime.Today.AddDays(-5), IsPublished = true, Items = new List<CollectionItem> { new CollectionItem { MovieId = 2, SortOrder = 1, Note = "The ultimate classic" } } },
+                    new MovieCollection { Id = 2, Name = "Family Favorites", Description = "Great movies for the whole family", CreatedAt = DateTime.Today.AddDays(-20), UpdatedAt = DateTime.Today.AddDays(-3), IsPublished = true, Items = new List<CollectionItem> { new CollectionItem { MovieId = 1, SortOrder = 1, Note = "Kids love it" }, new CollectionItem { MovieId = 3, SortOrder = 2, Note = "Animated classic" } } },
+                    new MovieCollection { Id = 3, Name = "Staff Picks Draft", Description = "Our staff recommendations - work in progress", CreatedAt = DateTime.Today.AddDays(-2), UpdatedAt = DateTime.Today.AddDays(-1), IsPublished = false, Items = new List<CollectionItem>() }
+                };
+
+                foreach (var c in seedData)
+                    _collections[c.Id] = c;
+
+                _nextId = 4;
+            }
+        }
     }
 }

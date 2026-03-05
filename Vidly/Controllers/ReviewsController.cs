@@ -143,8 +143,18 @@ namespace Vidly.Controllers
             bool deleted = _reviewService.DeleteReview(id);
             string message = deleted ? "Review deleted." : "Review not found.";
 
-            if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
-                return Redirect(returnUrl);
+            if (!string.IsNullOrEmpty(returnUrl))
+            {
+                // Only allow local URLs to prevent open redirect.
+                // Url helper may be null in unit tests; fall back to
+                // simple starts-with check.
+                bool isLocal = Url != null
+                    ? Url.IsLocalUrl(returnUrl)
+                    : returnUrl.StartsWith("/") && !returnUrl.StartsWith("//");
+
+                if (isLocal)
+                    return Redirect(returnUrl);
+            }
 
             return RedirectToAction("Index", new { message, error = !deleted });
         }

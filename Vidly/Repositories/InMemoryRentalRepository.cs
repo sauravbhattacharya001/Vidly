@@ -417,6 +417,34 @@ namespace Vidly.Repositories
         }
 
         /// <summary>
+        /// Resets the repository to its initial seed state for test isolation.
+        /// </summary>
+        public static void Reset()
+        {
+            lock (_lock)
+            {
+                _rentals.Clear();
+                _rentedMovieIds.Clear();
+
+                var seedData = new[]
+                {
+                    new Rental { Id = 1, CustomerId = 1, CustomerName = "John Smith", MovieId = 1, MovieName = "Shrek!", RentalDate = DateTime.Today.AddDays(-3), DueDate = DateTime.Today.AddDays(4), DailyRate = 3.99m, Status = RentalStatus.Active },
+                    new Rental { Id = 2, CustomerId = 2, CustomerName = "Jane Doe", MovieId = 2, MovieName = "The Godfather", RentalDate = DateTime.Today.AddDays(-10), DueDate = DateTime.Today.AddDays(-3), DailyRate = 3.99m, Status = RentalStatus.Active },
+                    new Rental { Id = 3, CustomerId = 4, CustomerName = "Alice Johnson", MovieId = 3, MovieName = "Toy Story", RentalDate = DateTime.Today.AddDays(-14), DueDate = DateTime.Today.AddDays(-7), ReturnDate = DateTime.Today.AddDays(-6), DailyRate = 3.99m, LateFee = 0m, Status = RentalStatus.Returned }
+                };
+
+                foreach (var r in seedData)
+                {
+                    _rentals[r.Id] = r;
+                    if (r.Status != RentalStatus.Returned)
+                        _rentedMovieIds.Add(r.MovieId);
+                }
+
+                _nextId = 4;
+            }
+        }
+
+        /// <summary>
         /// Creates a defensive copy.
         /// </summary>
         private static Rental Clone(Rental source)

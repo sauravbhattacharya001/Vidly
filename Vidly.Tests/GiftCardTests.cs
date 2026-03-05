@@ -273,7 +273,7 @@ namespace Vidly.Tests
 
             Assert.IsTrue(code.StartsWith("GIFT-"));
             Assert.AreEqual(19, code.Length); // GIFT-XXXX-XXXX-XXXX
-            Assert.AreEqual(3, code.Skip(5).Count(c => c == '-')); // 3 dashes after GIFT-
+            Assert.AreEqual(2, code.Skip(5).Count(c => c == '-')); // 2 dashes between 3 groups
         }
 
         [TestMethod]

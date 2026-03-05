@@ -18,6 +18,8 @@ namespace Vidly.Tests
         [TestInitialize]
         public void Setup()
         {
+            InMemoryMovieRepository.Reset();
+            InMemoryRentalRepository.Reset();
             _rentalRepo = new InMemoryRentalRepository();
             _movieRepo = new InMemoryMovieRepository();
             _service = new RentalForecastService(_rentalRepo, _movieRepo);

@@ -141,6 +141,34 @@ namespace Vidly.Repositories
         }
 
         /// <summary>
+        /// Resets the repository to its initial seed state for test isolation.
+        /// </summary>
+        public static void Reset()
+        {
+            lock (_lock)
+            {
+                _movies.Clear();
+                _movies[1] = new Movie { Id = 1, Name = "Shrek!", ReleaseDate = new DateTime(2001, 5, 18), Genre = Genre.Animation, Rating = 4 };
+                _movies[2] = new Movie { Id = 2, Name = "The Godfather", ReleaseDate = new DateTime(1972, 3, 24), Genre = Genre.Drama, Rating = 5 };
+                _movies[3] = new Movie { Id = 3, Name = "Toy Story", ReleaseDate = new DateTime(1995, 11, 22), Genre = Genre.Animation, Rating = 5 };
+                _nextId = 4;
+            }
+        }
+
+        /// <summary>
+        /// Clears the repository to empty state (no seed data) for test isolation.
+        /// Use when tests need to control all data from scratch.
+        /// </summary>
+        public static void ResetEmpty()
+        {
+            lock (_lock)
+            {
+                _movies.Clear();
+                _nextId = 1;
+            }
+        }
+
+        /// <summary>
         /// Creates a defensive copy of a Movie to prevent callers from
         /// mutating the internal store outside the lock.
         /// </summary>

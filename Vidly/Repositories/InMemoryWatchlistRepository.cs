@@ -271,6 +271,33 @@ namespace Vidly.Repositories
         /// <summary>
         /// Creates a composite key for the (customerId, movieId) pair.
         /// </summary>
+        /// <summary>
+        /// Resets the repository to its initial seed state for test isolation.
+        /// </summary>
+        public static void Reset()
+        {
+            lock (_lock)
+            {
+                _items.Clear();
+                _customerMoviePairs.Clear();
+
+                var seedData = new[]
+                {
+                    new WatchlistItem { Id = 1, CustomerId = 1, CustomerName = "John Smith", MovieId = 3, MovieName = "Toy Story", MovieGenre = Genre.Animation, MovieRating = 5, AddedDate = DateTime.Today.AddDays(-5), Note = "Kids want to see this", Priority = WatchlistPriority.High },
+                    new WatchlistItem { Id = 2, CustomerId = 2, CustomerName = "Jane Doe", MovieId = 1, MovieName = "Shrek!", MovieGenre = Genre.Animation, MovieRating = 4, AddedDate = DateTime.Today.AddDays(-2), Priority = WatchlistPriority.Normal },
+                    new WatchlistItem { Id = 3, CustomerId = 1, CustomerName = "John Smith", MovieId = 2, MovieName = "The Godfather", MovieGenre = Genre.Drama, MovieRating = 5, AddedDate = DateTime.Today.AddDays(-1), Note = "Classic must-see", Priority = WatchlistPriority.MustWatch }
+                };
+
+                foreach (var item in seedData)
+                {
+                    _items[item.Id] = item;
+                    _customerMoviePairs.Add(MakeKey(item.CustomerId, item.MovieId));
+                }
+
+                _nextId = 4;
+            }
+        }
+
         private static string MakeKey(int customerId, int movieId)
         {
             return $"{customerId}:{movieId}";
