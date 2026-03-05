@@ -19,14 +19,15 @@ namespace Vidly.Tests
         public void Setup()
         {
             _customerRepo = new InMemoryCustomerRepository();
-            _rentalRepo = new InMemoryRentalRepository(_customerRepo, new InMemoryMovieRepository());
+            _rentalRepo = new InMemoryRentalRepository();
             _service = new MembershipTierService(_customerRepo, _rentalRepo);
         }
 
         private Customer AddCustomer(string name, MembershipType tier = MembershipType.Basic)
         {
             var c = new Customer { Name = name, MembershipType = tier, MemberSince = DateTime.Today.AddYears(-1) };
-            return _customerRepo.Add(c);
+            _customerRepo.Add(c);
+            return c;
         }
 
         private void AddRentals(int customerId, int count, decimal dailyRate = 5m, bool allReturned = true, int lateDays = 0)

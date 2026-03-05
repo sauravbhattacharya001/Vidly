@@ -253,14 +253,14 @@ namespace Vidly.Services
         /// Compare what a customer would pay for a movie across all membership tiers.
         /// Useful for upsell prompts ("Upgrade to Gold and save $X!").
         /// </summary>
-        public List<TierComparison> CompareTiers(int movieId, int? rentalDays = null)
+        public List<PricingTierComparison> CompareTiers(int movieId, int? rentalDays = null)
         {
             var movie = _movieRepository.GetById(movieId);
             if (movie == null)
                 throw new ArgumentException($"Movie {movieId} not found.");
 
             var baseDailyRate = GetMovieDailyRate(movie);
-            var comparisons = new List<TierComparison>();
+            var comparisons = new List<PricingTierComparison>();
 
             foreach (MembershipType tier in Enum.GetValues(typeof(MembershipType)))
             {
@@ -270,7 +270,7 @@ namespace Vidly.Services
                 var total = discountedRate * days;
                 var baseCost = baseDailyRate * DefaultRentalDays;
 
-                comparisons.Add(new TierComparison
+                comparisons.Add(new PricingTierComparison
                 {
                     Tier = tier,
                     DailyRate = discountedRate,
@@ -450,7 +450,7 @@ namespace Vidly.Services
     /// <summary>
     /// Cost comparison across membership tiers.
     /// </summary>
-    public class TierComparison
+    public class PricingTierComparison
     {
         public MembershipType Tier { get; set; }
         public decimal DailyRate { get; set; }
@@ -499,3 +499,4 @@ namespace Vidly.Services
         public string LateFeeExplanation { get; set; }
     }
 }
+

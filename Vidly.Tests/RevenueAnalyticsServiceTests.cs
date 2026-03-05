@@ -23,9 +23,9 @@ namespace Vidly.Tests.Services
             _movieRepo = new InMemoryMovieRepository();
             _customerRepo = new InMemoryCustomerRepository();
 
-            _rentalRepo.Reset();
-            _movieRepo.ResetEmpty();
-            _customerRepo.Reset();
+            InMemoryRentalRepository.Reset();
+            InMemoryMovieRepository.ResetEmpty();
+            InMemoryCustomerRepository.Reset();
 
             _service = new RevenueAnalyticsService(_rentalRepo, _movieRepo, _customerRepo);
         }
@@ -293,7 +293,7 @@ namespace Vidly.Tests.Services
                 new DateTime(2025, 1, 1), new DateTime(2025, 2, 28));
 
             Assert.AreEqual(2, report.MonthlyTrend.Count);
-            Assert.AreEqual(0.0, report.MonthlyTrend[0].GrowthPercent);
+            Assert.AreEqual(0.0m, report.MonthlyTrend[0].GrowthPercent);
             Assert.IsTrue(report.MonthlyTrend[1].GrowthPercent > 0,
                 "Feb should show growth over Jan");
         }

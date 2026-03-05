@@ -444,7 +444,7 @@ namespace Vidly.Services
                     Month = m.Month,
                     Revenue = m.Revenue,
                     RentalCount = m.Count,
-                    GrowthPercent = growth,
+                    GrowthPercent = (decimal)growth,
                 });
 
                 prevRevenue = m.Revenue;
