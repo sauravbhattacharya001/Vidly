@@ -11,6 +11,7 @@ namespace Vidly.Controllers
         private readonly ICustomerRepository _customerRepository;
         private readonly IMovieRepository _movieRepository;
         private readonly IRentalRepository _rentalRepository;
+        private readonly ITagRepository _tagRepository;
         private readonly RecommendationService _recommendationService;
 
         /// <summary>
@@ -20,7 +21,8 @@ namespace Vidly.Controllers
             : this(
                 new InMemoryCustomerRepository(),
                 new InMemoryMovieRepository(),
-                new InMemoryRentalRepository())
+                new InMemoryRentalRepository(),
+                new InMemoryTagRepository())
         {
         }
 
@@ -30,7 +32,8 @@ namespace Vidly.Controllers
         public RecommendationsController(
             ICustomerRepository customerRepository,
             IMovieRepository movieRepository,
-            IRentalRepository rentalRepository)
+            IRentalRepository rentalRepository,
+            ITagRepository tagRepository = null)
         {
             _customerRepository = customerRepository
                 ?? throw new ArgumentNullException(nameof(customerRepository));
@@ -38,7 +41,9 @@ namespace Vidly.Controllers
                 ?? throw new ArgumentNullException(nameof(movieRepository));
             _rentalRepository = rentalRepository
                 ?? throw new ArgumentNullException(nameof(rentalRepository));
-            _recommendationService = new RecommendationService(movieRepository, rentalRepository);
+            _tagRepository = tagRepository;
+            _recommendationService = new RecommendationService(
+                movieRepository, rentalRepository, tagRepository);
         }
 
         // GET: Recommendations

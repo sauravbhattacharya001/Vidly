@@ -15,15 +15,21 @@ namespace Vidly.Services
     {
         private readonly IMovieRepository _movieRepository;
         private readonly IRentalRepository _rentalRepository;
+        private readonly ITagRepository _tagRepository;
 
+        /// <summary>
+        /// Creates a RecommendationService with tag-based recommendation support.
+        /// </summary>
         public RecommendationService(
             IMovieRepository movieRepository,
-            IRentalRepository rentalRepository)
+            IRentalRepository rentalRepository,
+            ITagRepository tagRepository = null)
         {
             _movieRepository = movieRepository
                 ?? throw new ArgumentNullException(nameof(movieRepository));
             _rentalRepository = rentalRepository
                 ?? throw new ArgumentNullException(nameof(rentalRepository));
+            _tagRepository = tagRepository;
         }
 
         /// <summary>
@@ -51,8 +57,20 @@ namespace Vidly.Services
             // Analyze genre preferences from rental history (reuses allMovies)
             var genrePreferences = AnalyzeGenrePreferences(customerRentals, allMovies);
 
+            // Build tag affinity from rental history
+            var tagAffinities = _tagRepository != null
+                ? AnalyzeTagAffinities(customerRentals, _tagRepository)
+                : new Dictionary<int, TagAffinity>();
+
+            // Get staff pick movie IDs for boosting
+            var staffPickMovieIds = _tagRepository != null
+                ? GetStaffPickMovieIds(_tagRepository)
+                : new HashSet<int>();
+
             // Score and rank unwatched movies
-            var recommendations = ScoreMovies(allMovies, rentedMovieIds, genrePreferences)
+            var recommendations = ScoreMovies(
+                    allMovies, rentedMovieIds, genrePreferences,
+                    tagAffinities, staffPickMovieIds, _tagRepository)
                 .Take(maxRecommendations)
                 .ToList();
 
@@ -62,6 +80,10 @@ namespace Vidly.Services
                 TotalRentals = customerRentals.Count,
                 GenrePreferences = BuildGenrePreferenceList(
                     genrePreferences, customerRentals, allMovies),
+                TopTagAffinities = tagAffinities.Values
+                    .OrderByDescending(ta => ta.Score)
+                    .Take(5)
+                    .ToList(),
                 Recommendations = recommendations,
                 TotalAvailableMovies = allMovies.Count(m => !rentedMovieIds.Contains(m.Id))
             };
@@ -146,14 +168,16 @@ namespace Vidly.Services
         }
 
         /// <summary>
-        /// Scores all unwatched movies based on genre preferences and movie rating.
-        /// Score = (genre preference score * 2) + (movie rating) + (rating bonus for 5-star movies).
-        /// Movies with no genre preference still get base score from their rating.
+        /// Scores all unwatched movies based on genre preferences, tag affinities,
+        /// staff pick status, and movie rating.
         /// </summary>
         internal static IEnumerable<MovieRecommendation> ScoreMovies(
             IReadOnlyList<Movie> allMovies,
             HashSet<int> rentedMovieIds,
-            Dictionary<Genre, double> genrePreferences)
+            Dictionary<Genre, double> genrePreferences,
+            Dictionary<int, TagAffinity> tagAffinities = null,
+            HashSet<int> staffPickMovieIds = null,
+            ITagRepository tagRepository = null)
         {
             var scored = new List<MovieRecommendation>();
 
@@ -164,13 +188,47 @@ namespace Vidly.Services
                     continue;
 
                 double score = 0;
-                string reason;
+                var reasons = new List<string>();
 
                 // Genre preference component
                 double genreScore = 0;
                 if (movie.Genre.HasValue && genrePreferences.TryGetValue(movie.Genre.Value, out genreScore))
                 {
                     score += genreScore * 2.0;
+                }
+
+                // Tag affinity component: sum affinity scores for matching tags
+                double tagScore = 0;
+                if (tagAffinities != null && tagAffinities.Count > 0 && tagRepository != null)
+                {
+                    var movieTags = tagRepository.GetAssignmentsByMovie(movie.Id);
+                    foreach (var tagAssignment in movieTags)
+                    {
+                        TagAffinity affinity;
+                        if (tagAffinities.TryGetValue(tagAssignment.TagId, out affinity))
+                        {
+                            tagScore += affinity.Score;
+                        }
+                    }
+                    score += tagScore * 1.5;
+
+                    if (tagScore > 0)
+                    {
+                        var topMatchingTag = movieTags
+                            .Where(a => tagAffinities.ContainsKey(a.TagId))
+                            .OrderByDescending(a => tagAffinities[a.TagId].Score)
+                            .FirstOrDefault();
+                        if (topMatchingTag != null)
+                            reasons.Add($"Because you liked movies tagged \"{topMatchingTag.TagName}\"");
+                    }
+                }
+
+                // Staff pick boost (+2.0)
+                bool isStaffPick = staffPickMovieIds != null && staffPickMovieIds.Contains(movie.Id);
+                if (isStaffPick)
+                {
+                    score += 2.0;
+                    reasons.Add("Staff Pick");
                 }
 
                 // Rating component
@@ -182,7 +240,17 @@ namespace Vidly.Services
                     score += 1.0;
 
                 // Build recommendation reason
-                if (genreScore > 0 && ratingScore >= 4)
+                string reason;
+                if (reasons.Count > 0)
+                {
+                    // Tag/staff pick reasons take priority
+                    if (genreScore > 0)
+                        reasons.Insert(0, $"Matches your love of {movie.Genre}");
+                    if (ratingScore >= 4)
+                        reasons.Add($"highly rated ({movie.Rating}★)");
+                    reason = string.Join(" · ", reasons);
+                }
+                else if (genreScore > 0 && ratingScore >= 4)
                 {
                     reason = $"Matches your love of {movie.Genre} + highly rated ({movie.Rating}★)";
                 }
@@ -213,6 +281,66 @@ namespace Vidly.Services
                 .ThenByDescending(r => r.Movie.Rating ?? 0)
                 .ThenBy(r => r.Movie.Name);
         }
+
+        /// <summary>
+        /// Analyzes a customer's rental history to compute tag affinity scores.
+        /// Each rental of a movie with a given tag adds 1.0, with recency bonus.
+        /// </summary>
+        internal static Dictionary<int, TagAffinity> AnalyzeTagAffinities(
+            IList<Rental> customerRentals,
+            ITagRepository tagRepository)
+        {
+            var affinities = new Dictionary<int, TagAffinity>();
+
+            if (customerRentals == null || customerRentals.Count == 0 || tagRepository == null)
+                return affinities;
+
+            foreach (var rental in customerRentals)
+            {
+                var movieTags = tagRepository.GetAssignmentsByMovie(rental.MovieId);
+                foreach (var tagAssignment in movieTags)
+                {
+                    TagAffinity aff;
+                    if (!affinities.TryGetValue(tagAssignment.TagId, out aff))
+                    {
+                        aff = new TagAffinity
+                        {
+                            TagId = tagAssignment.TagId,
+                            TagName = tagAssignment.TagName,
+                            Score = 0,
+                            RentalCount = 0
+                        };
+                        affinities[tagAssignment.TagId] = aff;
+                    }
+
+                    double score = 1.0;
+                    var daysSinceRental = (DateTime.Today - rental.RentalDate).TotalDays;
+                    if (daysSinceRental <= 30)
+                        score += 0.5 * (1.0 - (daysSinceRental / 30.0));
+
+                    aff.Score += score;
+                    aff.RentalCount++;
+                }
+            }
+
+            return affinities;
+        }
+
+        /// <summary>
+        /// Gets the set of movie IDs tagged with staff-pick tags.
+        /// </summary>
+        internal static HashSet<int> GetStaffPickMovieIds(ITagRepository tagRepository)
+        {
+            var movieIds = new HashSet<int>();
+            var allTags = tagRepository.GetAllTags(false);
+            foreach (var tag in allTags)
+            {
+                if (!tag.IsStaffPick) continue;
+                foreach (var a in tagRepository.GetAssignmentsByTag(tag.Id))
+                    movieIds.Add(a.MovieId);
+            }
+            return movieIds;
+        }
     }
 
     /// <summary>
@@ -223,8 +351,20 @@ namespace Vidly.Services
         public int CustomerId { get; set; }
         public int TotalRentals { get; set; }
         public List<GenrePreference> GenrePreferences { get; set; } = new List<GenrePreference>();
+        public List<TagAffinity> TopTagAffinities { get; set; } = new List<TagAffinity>();
         public List<MovieRecommendation> Recommendations { get; set; } = new List<MovieRecommendation>();
         public int TotalAvailableMovies { get; set; }
+    }
+
+    /// <summary>
+    /// A customer's affinity for a specific tag, derived from rental history.
+    /// </summary>
+    public class TagAffinity
+    {
+        public int TagId { get; set; }
+        public string TagName { get; set; }
+        public double Score { get; set; }
+        public int RentalCount { get; set; }
     }
 
     /// <summary>

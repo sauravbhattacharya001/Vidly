@@ -840,6 +840,144 @@ namespace Vidly.Tests
         }
 
         #endregion
+
+        #region Tag Affinity Integration Tests
+
+        /// <summary>
+        /// Simple in-memory tag repository for testing.
+        /// </summary>
+        private class TestTagRepository : ITagRepository
+        {
+            private readonly Dictionary<int, MovieTag> _tags = new Dictionary<int, MovieTag>();
+            private readonly Dictionary<int, MovieTagAssignment> _assignments = new Dictionary<int, MovieTagAssignment>();
+            private int _nextTagId = 1;
+            private int _nextAssignmentId = 1;
+
+            public MovieTag AddTag(MovieTag tag) { tag.Id = _nextTagId++; _tags[tag.Id] = tag; return tag; }
+            public MovieTag GetTagById(int id) => _tags.TryGetValue(id, out var t) ? t : null;
+            public MovieTag GetTagByName(string name) => _tags.Values.FirstOrDefault(t => t.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+            public IReadOnlyList<MovieTag> GetAllTags(bool includeInactive = false) => _tags.Values.Where(t => includeInactive || t.IsActive).ToList().AsReadOnly();
+            public void UpdateTag(MovieTag tag) { _tags[tag.Id] = tag; }
+            public void DeleteTag(int id) { _tags.Remove(id); }
+
+            public MovieTagAssignment AddAssignment(MovieTagAssignment a) { a.Id = _nextAssignmentId++; _assignments[a.Id] = a; return a; }
+            public MovieTagAssignment GetAssignmentById(int id) => _assignments.TryGetValue(id, out var a) ? a : null;
+            public IReadOnlyList<MovieTagAssignment> GetAssignmentsByMovie(int movieId) => _assignments.Values.Where(a => a.MovieId == movieId).ToList().AsReadOnly();
+            public IReadOnlyList<MovieTagAssignment> GetAssignmentsByTag(int tagId) => _assignments.Values.Where(a => a.TagId == tagId).ToList().AsReadOnly();
+            public void RemoveAssignment(int id) { _assignments.Remove(id); }
+            public bool HasAssignment(int tagId, int movieId) => _assignments.Values.Any(a => a.TagId == tagId && a.MovieId == movieId);
+            public int RemoveAllAssignmentsForTag(int tagId) { var ids = _assignments.Where(kv => kv.Value.TagId == tagId).Select(kv => kv.Key).ToList(); foreach (var id in ids) _assignments.Remove(id); return ids.Count; }
+            public int RemoveAllAssignmentsForMovie(int movieId) { var ids = _assignments.Where(kv => kv.Value.MovieId == movieId).Select(kv => kv.Key).ToList(); foreach (var id in ids) _assignments.Remove(id); return ids.Count; }
+        }
+
+        [TestMethod]
+        public void GetRecommendations_WithTagAffinity_BoostsTaggedMovies()
+        {
+            var movies = new TestMovieRepository();
+            movies.Add(CreateMovie(1, "Rented Movie", Genre.Action, 4));
+            movies.Add(CreateMovie(2, "Tagged Match", Genre.Comedy, 3));
+            movies.Add(CreateMovie(3, "Untagged", Genre.Comedy, 3));
+
+            var rentals = new TestRentalRepository();
+            rentals.Add(CreateRental(1, 1, 3));
+
+            var tags = new TestTagRepository();
+            var tag = tags.AddTag(new MovieTag { Name = "Mind Bending", IsActive = true, CreatedBy = "test", CreatedDate = DateTime.Now });
+            // Tag both the rented movie and candidate movie 2
+            tags.AddAssignment(new MovieTagAssignment { TagId = tag.Id, MovieId = 1, TagName = tag.Name, MovieName = "Rented Movie", AppliedBy = "test", AppliedDate = DateTime.Now });
+            tags.AddAssignment(new MovieTagAssignment { TagId = tag.Id, MovieId = 2, TagName = tag.Name, MovieName = "Tagged Match", AppliedBy = "test", AppliedDate = DateTime.Now });
+
+            var service = new RecommendationService(movies, rentals, tags);
+            var result = service.GetRecommendations(1);
+
+            var taggedRec = result.Recommendations.First(r => r.Movie.Id == 2);
+            var untaggedRec = result.Recommendations.First(r => r.Movie.Id == 3);
+
+            Assert.IsTrue(taggedRec.Score > untaggedRec.Score,
+                "Movie sharing tags with rented movies should score higher.");
+            Assert.IsTrue(taggedRec.Reason.Contains("Mind Bending"),
+                "Reason should mention the matching tag.");
+        }
+
+        [TestMethod]
+        public void GetRecommendations_StaffPicks_GetBoosted()
+        {
+            var movies = new TestMovieRepository();
+            movies.Add(CreateMovie(1, "Regular", Genre.Action, 3));
+            movies.Add(CreateMovie(2, "Staff Pick", Genre.Action, 3));
+
+            var rentals = new TestRentalRepository();
+
+            var tags = new TestTagRepository();
+            var staffTag = tags.AddTag(new MovieTag { Name = "Staff Pick", IsActive = true, IsStaffPick = true, CreatedBy = "test", CreatedDate = DateTime.Now });
+            tags.AddAssignment(new MovieTagAssignment { TagId = staffTag.Id, MovieId = 2, TagName = staffTag.Name, MovieName = "Staff Pick", AppliedBy = "test", AppliedDate = DateTime.Now });
+
+            var service = new RecommendationService(movies, rentals, tags);
+            var result = service.GetRecommendations(1);
+
+            Assert.AreEqual("Staff Pick", result.Recommendations[0].Movie.Name,
+                "Staff pick movie should rank first.");
+            Assert.IsTrue(result.Recommendations[0].Reason.Contains("Staff Pick"));
+        }
+
+        [TestMethod]
+        public void GetRecommendations_WithTags_PopulatesTopTagAffinities()
+        {
+            var movies = new TestMovieRepository();
+            movies.Add(CreateMovie(1, "A", Genre.Action, 4));
+            movies.Add(CreateMovie(2, "B", Genre.Action, 4));
+
+            var rentals = new TestRentalRepository();
+            rentals.Add(CreateRental(1, 1, 3));
+
+            var tags = new TestTagRepository();
+            var tag = tags.AddTag(new MovieTag { Name = "Epic", IsActive = true, CreatedBy = "test", CreatedDate = DateTime.Now });
+            tags.AddAssignment(new MovieTagAssignment { TagId = tag.Id, MovieId = 1, TagName = tag.Name, MovieName = "A", AppliedBy = "test", AppliedDate = DateTime.Now });
+
+            var service = new RecommendationService(movies, rentals, tags);
+            var result = service.GetRecommendations(1);
+
+            Assert.IsTrue(result.TopTagAffinities.Count > 0);
+            Assert.AreEqual("Epic", result.TopTagAffinities[0].TagName);
+        }
+
+        [TestMethod]
+        public void GetRecommendations_WithoutTagRepo_StillWorks()
+        {
+            var movies = new TestMovieRepository();
+            movies.Add(CreateMovie(1, "A", Genre.Action, 4));
+
+            var rentals = new TestRentalRepository();
+
+            var service = new RecommendationService(movies, rentals); // No tag repo
+            var result = service.GetRecommendations(1);
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(0, result.TopTagAffinities.Count);
+        }
+
+        [TestMethod]
+        public void AnalyzeTagAffinities_MultipleRentalsWithSameTag_AccumulatesScore()
+        {
+            var tags = new TestTagRepository();
+            var tag = tags.AddTag(new MovieTag { Name = "Thriller", IsActive = true, CreatedBy = "test", CreatedDate = DateTime.Now });
+            tags.AddAssignment(new MovieTagAssignment { TagId = tag.Id, MovieId = 1, TagName = tag.Name, MovieName = "M1", AppliedBy = "test", AppliedDate = DateTime.Now });
+            tags.AddAssignment(new MovieTagAssignment { TagId = tag.Id, MovieId = 2, TagName = tag.Name, MovieName = "M2", AppliedBy = "test", AppliedDate = DateTime.Now });
+
+            var rentals = new List<Rental>
+            {
+                CreateRental(1, 1, 5),
+                CreateRental(1, 2, 5)
+            };
+
+            var affinities = RecommendationService.AnalyzeTagAffinities(rentals, tags);
+
+            Assert.AreEqual(1, affinities.Count);
+            Assert.AreEqual(2, affinities[tag.Id].RentalCount);
+            Assert.IsTrue(affinities[tag.Id].Score > 1.0, "Two rentals should accumulate score.");
+        }
+
+        #endregion
     }
 }
 
