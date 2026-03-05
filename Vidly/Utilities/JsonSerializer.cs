@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Reflection;
+using System.Text;
 
 namespace Vidly.Utilities
 {
@@ -64,17 +65,37 @@ namespace Vidly.Utilities
 
         /// <summary>
         /// Escapes special characters in a string for JSON embedding.
+        /// Per RFC 8259, all control characters (U+0000–U+001F) must be
+        /// escaped.  We also escape backspace, form-feed, and forward
+        /// slash (the latter for safe embedding inside HTML script tags).
         /// </summary>
         internal static string EscapeString(string value)
         {
             if (string.IsNullOrEmpty(value)) return value ?? "";
 
-            return value
-                .Replace("\\", "\\\\")
-                .Replace("\"", "\\\"")
-                .Replace("\n", "\\n")
-                .Replace("\r", "\\r")
-                .Replace("\t", "\\t");
+            var sb = new StringBuilder(value.Length + 6);
+            foreach (char c in value)
+            {
+                switch (c)
+                {
+                    case '\\': sb.Append("\\\\"); break;
+                    case '"':  sb.Append("\\\""); break;
+                    case '\n': sb.Append("\\n");  break;
+                    case '\r': sb.Append("\\r");  break;
+                    case '\t': sb.Append("\\t");  break;
+                    case '\b': sb.Append("\\b");  break;
+                    case '\f': sb.Append("\\f");  break;
+                    case '/':  sb.Append("\\/");   break; // XSS prevention in HTML contexts
+                    default:
+                        // Escape remaining control characters (U+0000–U+001F)
+                        if (c < ' ')
+                            sb.AppendFormat("\\u{0:x4}", (int)c);
+                        else
+                            sb.Append(c);
+                        break;
+                }
+            }
+            return sb.ToString();
         }
     }
 }

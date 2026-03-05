@@ -127,6 +127,7 @@ namespace Vidly.Controllers
 
         // POST: Bundles/Calculator
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public ActionResult Calculator(BundleCalculatorViewModel viewModel)
         {
             var movies = _movieRepository.GetAll();
