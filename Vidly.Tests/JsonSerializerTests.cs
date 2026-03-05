@@ -211,5 +211,43 @@ namespace Vidly.Tests
             var expected = "a\\\\b\\\"c\\nd\\re\\tf";
             Assert.AreEqual(expected, JsonSerializer.EscapeString(input));
         }
+
+        [TestMethod]
+        public void EscapeString_LineSeparator()
+        {
+            Assert.AreEqual("a\\u2028b", JsonSerializer.EscapeString("a\u2028b"));
+        }
+
+        [TestMethod]
+        public void EscapeString_ParagraphSeparator()
+        {
+            Assert.AreEqual("a\\u2029b", JsonSerializer.EscapeString("a\u2029b"));
+        }
+
+        // ── Char ───────────────────────────────────────────────────
+
+        [TestMethod]
+        public void Serialize_Char()
+        {
+            Assert.AreEqual("\"A\"", JsonSerializer.Serialize('A'));
+        }
+
+        [TestMethod]
+        public void Serialize_Char_SpecialCharsEscaped()
+        {
+            Assert.AreEqual("\"\\n\"", JsonSerializer.Serialize('\n'));
+        }
+
+        // ── Property name escaping ─────────────────────────────────
+
+        [TestMethod]
+        public void Serialize_PropertyNamesAreEscaped()
+        {
+            // Property names from anonymous types are safe, but EscapeString
+            // is now applied to all names including reflection-generated ones.
+            var obj = new { Name = "test" };
+            var result = JsonSerializer.Serialize(obj);
+            Assert.IsTrue(result.Contains("\"Name\":\"test\""));
+        }
     }
 }
