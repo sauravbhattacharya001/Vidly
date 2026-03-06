@@ -87,6 +87,14 @@ namespace Vidly.Controllers
                 ModelState.AddModelError("DiscountValue",
                     "Fixed discount cannot exceed $100.00.");
 
+            if (coupon.DiscountType == DiscountType.Percentage && coupon.DiscountValue > 100)
+                ModelState.AddModelError("DiscountValue",
+                    "Percentage discount cannot exceed 100%.");
+
+            if (coupon.DiscountValue <= 0)
+                ModelState.AddModelError("DiscountValue",
+                    "Discount value must be greater than zero.");
+
             if (!ModelState.IsValid)
                 return View(coupon);
 
@@ -130,6 +138,14 @@ namespace Vidly.Controllers
             if (coupon.DiscountType == DiscountType.FixedAmount && coupon.DiscountValue > 100)
                 ModelState.AddModelError("DiscountValue",
                     "Fixed discount cannot exceed $100.00.");
+
+            if (coupon.DiscountType == DiscountType.Percentage && coupon.DiscountValue > 100)
+                ModelState.AddModelError("DiscountValue",
+                    "Percentage discount cannot exceed 100%.");
+
+            if (coupon.DiscountValue <= 0)
+                ModelState.AddModelError("DiscountValue",
+                    "Discount value must be greater than zero.");
 
             if (!ModelState.IsValid)
                 return View(coupon);
