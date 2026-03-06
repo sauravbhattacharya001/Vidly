@@ -17,42 +17,81 @@ Vidly follows the classic **ASP.NET MVC 5** architectural pattern with a layered
 └──────────────────┬──────────────────────────┘
                    │
 ┌──────────────────▼──────────────────────────┐
-│              Controllers (12)                │
+│              Controllers (15)                │
 │   MoviesController    RentalsController      │
 │   CustomersController WatchlistController    │
 │   CollectionsController ReviewsController    │
 │   DashboardController ActivityController     │
 │   RecommendationsController HomeController   │
 │   NotificationsController ExportController   │
+│   BundlesController   CouponsController      │
+│   GiftCardsController                        │
 └──────────────────┬──────────────────────────┘
                    │
 ┌──────────────────▼──────────────────────────┐
-│              Services (12)                   │
-│   DashboardService      RentalHistoryService │
-│   MovieInsightsService  RecommendationService│
-│   MovieSimilarityService  ReviewService      │
-│   CollectionService  CustomerActivityService │
-│   NotificationService   PricingService       │
-│   InventoryService      LoyaltyPointsService │
+│              Services (32)                   │
+│  ┌─ Core ─────────────────────────────────┐ │
+│  │ DashboardService  RentalHistoryService │ │
+│  │ MovieInsightsService  ReviewService    │ │
+│  │ CollectionService  PricingService      │ │
+│  │ InventoryService  LoyaltyPointsService │ │
+│  │ NotificationService  WatchlistService  │ │
+│  └────────────────────────────────────────┘ │
+│  ┌─ Analytics/ML ─────────────────────────┐ │
+│  │ MovieSimilarityService                 │ │
+│  │ RecommendationService                  │ │
+│  │ CustomerActivityService                │ │
+│  │ CustomerSegmentationService            │ │
+│  │ ChurnPredictorService                  │ │
+│  │ RatingEngineService                    │ │
+│  │ RevenueAnalyticsService                │ │
+│  │ RentalForecastService                  │ │
+│  └────────────────────────────────────────┘ │
+│  ┌─ Operations ───────────────────────────┐ │
+│  │ RentalReturnService  ReservationService│ │
+│  │ StaffPerformanceService                │ │
+│  │ DisputeResolutionService               │ │
+│  │ FranchiseTrackerService                │ │
+│  │ MovieLifecycleService                  │ │
+│  │ MovieNightPlannerService               │ │
+│  └────────────────────────────────────────┘ │
+│  ┌─ Commerce ─────────────────────────────┐ │
+│  │ BundleService   CouponService          │ │
+│  │ GiftCardService  MembershipTierService │ │
+│  │ SeasonalPromotionService               │ │
+│  └────────────────────────────────────────┘ │
+│  ┌─ Content ──────────────────────────────┐ │
+│  │ TaggingService  ParentalControlService │ │
+│  └────────────────────────────────────────┘ │
 └──────────────────┬──────────────────────────┘
                    │
 ┌──────────────────▼──────────────────────────┐
-│              Repositories (6)                │
+│              Repositories (12)               │
 │   InMemoryMovieRepository                    │
 │   InMemoryCustomerRepository                 │
 │   InMemoryRentalRepository                   │
 │   InMemoryWatchlistRepository                │
 │   InMemoryCollectionRepository               │
 │   InMemoryReviewRepository                   │
+│   InMemoryCouponRepository                   │
+│   InMemoryGiftCardRepository                 │
+│   InMemoryDisputeRepository                  │
+│   InMemoryReservationRepository              │
+│   InMemoryTagRepository                      │
 │   (Dictionary + lock, defensive cloning)     │
 └──────────────────┬──────────────────────────┘
                    │
 ┌──────────────────▼──────────────────────────┐
 │         Models / ViewModels                  │
 │   Movie  Customer  Rental  Review            │
-│   WatchlistItem  MovieCollection             │
-│   DashboardModels  MovieInsightModels         │
-│   RentalHistoryModels  9 ViewModels          │
+│   WatchlistItem  MovieCollection  MovieTag   │
+│   BundleDeal  Coupon  GiftCard  Reservation  │
+│   DashboardModels  MovieInsightModels        │
+│   RentalHistoryModels  ChurnModels           │
+│   DisputeModels  FranchiseModels             │
+│   StaffModels  RevenueModels                 │
+│   MembershipTierModels  MovieNightModels     │
+│   InventoryModels  11 ViewModels             │
 └─────────────────────────────────────────────┘
 ```
 
@@ -88,6 +127,9 @@ Controllers are **thin** — they orchestrate but don't contain business logic.
 | `RecommendationsController` | Movie recommendations for customers |
 | `NotificationsController` | Customer notification center — overdue alerts, watchlist availability, membership milestones |
 | `ExportController` | Data export — CSV/JSON downloads for rentals, customers, movies |
+| `BundlesController` | Bundle deal management — create/edit/delete movie bundles with discounts |
+| `CouponsController` | Coupon code management — create/validate/apply promotional coupons |
+| `GiftCardsController` | Gift card system — create/activate/redeem/check balance |
 
 **Key patterns across all controllers:**
 - **Constructor injection**: Accept repository/service interfaces for testability
@@ -99,22 +141,64 @@ Controllers are **thin** — they orchestrate but don't contain business logic.
 
 ### Services (`/Services/`)
 
-Services contain business logic extracted from controllers.
+Services contain business logic extracted from controllers. They are organized into five categories:
+
+#### Core Services
 
 | Service | Responsibility |
 |---------|---------------|
 | `DashboardService` | Top movies/customers, revenue by genre/membership, monthly trends |
 | `RentalHistoryService` | Filtered history, timelines, popular times, retention, loyalty, seasonal trends, reports |
 | `MovieInsightsService` | Per-movie analytics: rental summary, revenue, demographics, performance scoring, comparison |
-| `MovieSimilarityService` | Cosine-similarity based movie recommendations using genre, rating, and rental patterns |
-| `RecommendationService` | Customer-specific recommendations using watch history and similar-user preferences |
 | `ReviewService` | Review CRUD, rating aggregation, helpful-vote tracking |
 | `CollectionService` | Movie collection management with privacy controls |
-| `CustomerActivityService` | Customer engagement metrics, spending analytics, rental patterns |
 | `NotificationService` | Customer alerts — overdue rentals (urgent), due-soon (high), watchlist availability, new arrivals, membership milestones, upgrade suggestions |
 | `PricingService` | Membership tier benefits, rental cost calculation with discounts, late fee computation, promotional pricing |
 | `InventoryService` | Movie availability tracking, stock level management, demand forecasting |
 | `LoyaltyPointsService` | Points accumulation from rentals, tier-based multipliers, rewards catalog, points history |
+| `WatchlistService` | Watchlist management, cross-customer comparison, genre/preference insights |
+
+#### Analytics & ML Services
+
+| Service | Responsibility |
+|---------|---------------|
+| `MovieSimilarityService` | Cosine-similarity based movie recommendations using genre, rating, and rental patterns |
+| `RecommendationService` | Customer-specific recommendations using watch history and similar-user preferences |
+| `CustomerActivityService` | Customer engagement metrics, spending analytics, rental patterns |
+| `CustomerSegmentationService` | RFM analysis (Recency/Frequency/Monetary), automated customer tier classification |
+| `ChurnPredictorService` | Customer churn risk scoring with multi-factor analysis (recency, frequency, monetary, engagement) |
+| `RatingEngineService` | Bayesian rating with configurable prior, trending scores (time-decay weighted), controversy detection |
+| `RevenueAnalyticsService` | Period-based revenue reports, genre/membership breakdown, period-over-period comparison |
+| `RentalForecastService` | Day-of-week demand distribution, inventory recommendations, forecast summary generation |
+
+#### Operations Services
+
+| Service | Responsibility |
+|---------|---------------|
+| `RentalReturnService` | Single and batch rental returns, late fee calculation with grace periods and damage assessment |
+| `ReservationService` | Reservation queue management — place/cancel/fulfill, waitlist with auto-notify on availability |
+| `StaffPerformanceService` | Staff member tracking, KPI computation (rentals processed, revenue, satisfaction), team analytics |
+| `DisputeResolutionService` | Dispute lifecycle management — submit/review/approve/reject/escalate with status tracking |
+| `FranchiseTrackerService` | Movie franchise management — group movies into franchises, completeness tracking, watch-order recommendations |
+| `MovieLifecycleService` | Movie lifecycle phase detection (new/growing/peak/declining/catalog), pricing recommendations by phase |
+| `MovieNightPlannerService` | Curated movie night plans — genre mixing, runtime budgeting, group compatibility, snack pairing suggestions |
+
+#### Commerce Services
+
+| Service | Responsibility |
+|---------|---------------|
+| `BundleService` | Bundle deal CRUD — multi-movie discount packages with validation and availability checking |
+| `CouponService` | Coupon validation and application — percentage/fixed discounts, minimum spend, expiry, usage limits |
+| `GiftCardService` | Gift card lifecycle — generation, activation, redemption, balance tracking, transaction history |
+| `MembershipTierService` | Tier benefits comparison, customer tier evaluation with upgrade/downgrade recommendations |
+| `SeasonalPromotionService` | Seasonal promotion management — create/schedule/activate/deactivate with date-range targeting |
+
+#### Content Services
+
+| Service | Responsibility |
+|---------|---------------|
+| `TaggingService` | Movie tagging system — create/update/deactivate tags, tag movies, find movies by tags |
+| `ParentalControlService` | Content rating management — set/suggest age ratings, content warnings, genre-based rating heuristics |
 
 **Service construction:**
 All services accept repository interfaces via constructor injection and use `ArgumentNullException` guards. Services are stateless — they compute everything from repository data on each call.
@@ -133,6 +217,11 @@ Models are plain C# classes with data annotation attributes for validation.
 | `Review` | Movie review with star rating (1–5), text, helpful votes |
 | `WatchlistItem` | Customer's watchlist entry with priority, notes, watched flag |
 | `MovieCollection` | Named collection of movies with privacy setting |
+| `BundleDeal` | Multi-movie discount package with pricing rules |
+| `Coupon` | Promotional coupon with code, discount type, expiry, usage limits |
+| `GiftCard` | Prepaid gift card with balance, activation status, transaction history |
+| `Reservation` | Movie reservation queue entry with position and status |
+| `MovieTag` | Categorization tag for movies with active/inactive state |
 
 **Analytics models (separated from services):**
 
@@ -141,6 +230,14 @@ Models are plain C# classes with data annotation attributes for validation.
 | `DashboardModels.cs` | `DashboardData`, `MovieRankEntry`, `CustomerRankEntry`, `GenreRevenueEntry`, `MembershipRevenueEntry`, `MonthlyRevenueEntry` |
 | `MovieInsightModels.cs` | `MovieInsight`, `RentalSummary`, `RevenueBreakdown`, `CustomerDemographicBreakdown`, `MonthlyRentalPoint`, `PerformanceScore`, `MovieInsightComparison` |
 | `RentalHistoryModels.cs` | `RentalHistoryEntry`, `TimelineEvent`, `PopularTimesResult`, `RetentionMetrics`, `CustomerChurnRisk`, `InventoryForecast`, `LoyaltyResult`, `SeasonalTrend`, `RentalReport` |
+| `ChurnModels.cs` | `ChurnProfile`, `ChurnSummary` — customer churn risk factor breakdown |
+| `DisputeModels.cs` | `Dispute`, `DisputeResult` — dispute lifecycle state machine models |
+| `FranchiseModels.cs` | `Franchise`, `FranchiseEntry` — movie franchise grouping and ordering |
+| `StaffModels.cs` | `StaffMember`, `StaffPerformance`, `StaffRole` — staff tracking and KPIs |
+| `RevenueModels.cs` | `RevenueReport`, `PeriodComparison` — financial reporting models |
+| `MembershipTierModels.cs` | `TierBenefits`, `TierComparison`, `TierEvaluation` — membership tier analysis |
+| `MovieNightModels.cs` | `MovieNightPlan`, `MovieNightRequest` — curated movie night planning |
+| `InventoryModels.cs` | Inventory tracking and demand forecasting models |
 
 **Design decisions:**
 - `ReleaseDate` is nullable — movies can exist without a known release date
@@ -153,13 +250,19 @@ Models are plain C# classes with data annotation attributes for validation.
 The repository layer abstracts data access behind interfaces:
 
 ```
-IRepository<T>                — Generic CRUD (GetAll, GetById, Add, Update, Remove)
-    ├── IMovieRepository      — Search, GetByReleaseDate, GetRandom
-    ├── ICustomerRepository   — Search by name/membership, GetStats
-    ├── IRentalRepository     — Checkout, Return, Search, GetOverdue, GetStats, IsMovieRentedOut
-    ├── IWatchlistRepository  — GetByCustomer, priority tracking, stats, most-watchlisted
-    ├── ICollectionRepository — Named movie collections with privacy controls
-    └── IReviewRepository     — Movie reviews, rating aggregation, helpful votes
+IRepository<T>                    — Generic CRUD (GetAll, GetById, Add, Update, Remove)
+    ├── IMovieRepository          — Search, GetByReleaseDate, GetRandom
+    ├── ICustomerRepository       — Search by name/membership, GetStats
+    ├── IRentalRepository         — Checkout, Return, Search, GetOverdue, GetStats, IsMovieRentedOut
+    ├── IWatchlistRepository      — GetByCustomer, priority tracking, stats, most-watchlisted
+    ├── ICollectionRepository     — Named movie collections with privacy controls
+    ├── IReviewRepository         — Movie reviews, rating aggregation, helpful votes
+    ├── ICouponRepository         — Coupon storage, lookup by code, usage tracking
+    ├── IGiftCardRepository       — Gift card storage, lookup by code, balance tracking
+    ├── IDisputeRepository        — Dispute records, lookup by customer/rental/status
+    ├── IReservationRepository    — Reservation queue, lookup by customer/movie, position tracking
+    ├── ITagRepository            — Movie tag storage, lookup by name, tag-movie associations
+    └── (no explicit interface)   — Some services manage their own in-memory state (e.g., StaffPerformanceService)
 ```
 
 Each has an `InMemory*Repository` implementation using:
@@ -185,6 +288,17 @@ ViewModels compose data for complex views:
 | `ReviewIndexViewModel` | `Reviews/Index` | Reviews list + aggregated ratings |
 | `WatchlistViewModel` | `Watchlist/Index` | Customer's watchlist with status tracking |
 | `RecommendationViewModel` | `Recommendations/Index` | Recommended movies for a customer |
+| `CouponIndexViewModel` | `Coupons/Index` | Coupon list with search/filter/stats |
+| `GiftCardViewModel` | `GiftCards/Index` | Gift card list with balance summaries |
+
+### Utilities (`/Utilities/`)
+
+Cross-cutting utilities shared across controllers and services.
+
+| Utility | Purpose |
+|---------|---------|
+| `JsonSerializer` | Secure JSON serialization with depth limiting, circular reference detection, and HTML-safe encoding |
+| `SortHelper<T>` | Declarative, dictionary-based sort utility — replaces duplicated switch-over-sort-key patterns in controllers. Each controller defines sort columns as a `Dictionary<string, SortColumn<T>>` with key selectors, direction, and optional tie-breakers |
 
 ### Views (`/Views/`)
 
@@ -232,7 +346,7 @@ Vidly.Tests/
 │   ├── MovieModelTests.cs              — Movie validation
 │   ├── CustomerModelTests.cs           — Customer validation
 │   ├── RentalModelTests.cs             — Rental validation + cost computation
-│   └── ViewModelTests.cs              — All 9 ViewModel classes
+│   └── ViewModelTests.cs              — All 11 ViewModel classes
 ├── Repository tests
 │   ├── InMemoryMovieRepositoryTests.cs
 │   ├── InMemoryCustomerRepositoryTests.cs
@@ -243,7 +357,7 @@ Vidly.Tests/
 │   ├── RentalsControllerTests.cs
 │   ├── RecommendationsControllerTests.cs
 │   └── ExportControllerTests.cs
-├── Service tests
+├── Core service tests
 │   ├── DashboardTests.cs
 │   ├── MovieInsightsServiceTests.cs
 │   ├── MovieSimilarityServiceTests.cs
@@ -254,13 +368,39 @@ Vidly.Tests/
 │   ├── LoyaltyPointsServiceTests.cs
 │   ├── PricingServiceTests.cs
 │   ├── NotificationServiceTests.cs
-│   ├── ReviewTests.cs
+│   ├── ReviewServiceTests.cs / ReviewTests.cs
 │   ├── CollectionTests.cs
-│   └── WatchlistTests.cs
+│   └── WatchlistTests.cs / WatchlistServiceTests.cs
+├── Analytics/ML service tests
+│   ├── CustomerSegmentationServiceTests.cs
+│   ├── ChurnPredictorServiceTests.cs
+│   ├── RatingEngineServiceTests.cs
+│   ├── RevenueAnalyticsServiceTests.cs
+│   └── RentalForecastServiceTests.cs
+├── Operations service tests
+│   ├── RentalReturnServiceTests.cs
+│   ├── ReservationServiceTests.cs
+│   ├── StaffPerformanceServiceTests.cs
+│   ├── DisputeResolutionServiceTests.cs
+│   ├── FranchiseTrackerServiceTests.cs
+│   ├── MovieLifecycleServiceTests.cs
+│   └── MovieNightPlannerServiceTests.cs
+├── Commerce service tests
+│   ├── BundleTests.cs
+│   ├── CouponTests.cs
+│   ├── GiftCardTests.cs
+│   ├── MembershipTierServiceTests.cs
+│   ├── SeasonalPromotionServiceTests.cs
+│   └── TaggingServiceTests.cs
+├── Content service tests
+│   └── ParentalControlServiceTests.cs
 ├── Security tests
-│   └── SecurityHeadersTests.cs
-└── Activity tests
-    └── ActivityControllerTests.cs
+│   ├── SecurityHeadersTests.cs
+│   └── ExportSecurityTests.cs
+├── Activity tests
+│   └── ActivityControllerTests.cs
+└── Utility tests
+    └── JsonSerializerTests.cs
 ```
 
 **Testing strategy:**
