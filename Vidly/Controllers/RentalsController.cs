@@ -4,6 +4,7 @@ using System.Linq;
 using System.Web.Mvc;
 using Vidly.Models;
 using Vidly.Repositories;
+using Vidly.Utilities;
 using Vidly.ViewModels;
 
 namespace Vidly.Controllers
@@ -13,6 +14,18 @@ namespace Vidly.Controllers
         private readonly IRentalRepository _rentalRepository;
         private readonly IMovieRepository _movieRepository;
         private readonly ICustomerRepository _customerRepository;
+
+        private static readonly SortHelper<Rental> _sorter = new SortHelper<Rental>(
+            "rentaldate",
+            new Dictionary<string, SortColumn<Rental>>
+            {
+                ["rentaldate"] = new SortColumn<Rental>(r => r.RentalDate, descending: true, thenBy: r => r.CustomerName ?? ""),
+                ["customer"]   = new SortColumn<Rental>(r => r.CustomerName ?? "", thenBy: r => r.RentalDate),
+                ["movie"]      = new SortColumn<Rental>(r => r.MovieName ?? "", thenBy: r => r.RentalDate),
+                ["duedate"]    = new SortColumn<Rental>(r => r.DueDate, thenBy: r => r.CustomerName ?? ""),
+                ["status"]     = new SortColumn<Rental>(r => r.Status, thenBy: r => r.DueDate),
+                ["totalcost"]  = new SortColumn<Rental>(r => r.TotalCost, descending: true, thenBy: r => r.RentalDate),
+            });
 
         /// <summary>
         /// Parameterless constructor for ASP.NET MVC default controller factory.
@@ -57,34 +70,12 @@ namespace Vidly.Controllers
                 rentals = allRentals;
             }
 
-            // Apply sorting
-            var sort = string.IsNullOrWhiteSpace(sortBy) ? "RentalDate" : sortBy;
-            IEnumerable<Rental> sorted;
-            switch (sort.ToLowerInvariant())
-            {
-                case "customer":
-                    sorted = rentals.OrderBy(r => r.CustomerName ?? "").ThenByDescending(r => r.RentalDate);
-                    break;
-                case "movie":
-                    sorted = rentals.OrderBy(r => r.MovieName ?? "").ThenByDescending(r => r.RentalDate);
-                    break;
-                case "duedate":
-                    sorted = rentals.OrderBy(r => r.DueDate).ThenBy(r => r.CustomerName);
-                    break;
-                case "status":
-                    sorted = rentals.OrderBy(r => r.Status).ThenBy(r => r.DueDate);
-                    break;
-                case "totalcost":
-                    sorted = rentals.OrderByDescending(r => r.TotalCost).ThenByDescending(r => r.RentalDate);
-                    break;
-                default: // "rentaldate"
-                    sorted = rentals.OrderByDescending(r => r.RentalDate).ThenBy(r => r.CustomerName);
-                    break;
-            }
+            // Apply sorting via declarative SortHelper (replaces switch block)
+            var sort = _sorter.ResolveKey(sortBy);
 
             var viewModel = new RentalSearchViewModel
             {
-                Rentals = sorted.ToList(),
+                Rentals = _sorter.Apply(rentals, sort),
                 Query = query,
                 Status = status,
                 SortBy = sort,

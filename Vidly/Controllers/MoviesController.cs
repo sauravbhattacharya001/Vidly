@@ -4,6 +4,7 @@ using System.Linq;
 using System.Web.Mvc;
 using Vidly.Models;
 using Vidly.Repositories;
+using Vidly.Utilities;
 using Vidly.ViewModels;
 
 namespace Vidly.Controllers
@@ -11,6 +12,17 @@ namespace Vidly.Controllers
     public class MoviesController : Controller
     {
         private readonly IMovieRepository _movieRepository;
+
+        private static readonly SortHelper<Movie> _sorter = new SortHelper<Movie>(
+            "name",
+            new Dictionary<string, SortColumn<Movie>>
+            {
+                ["name"]        = new SortColumn<Movie>(m => m.Name ?? ""),
+                ["rating"]      = new SortColumn<Movie>(m => m.Rating ?? 0, descending: true, thenBy: m => m.Name ?? ""),
+                ["releasedate"] = new SortColumn<Movie>(m => m.ReleaseDate ?? DateTime.MinValue, descending: true, thenBy: m => m.Name ?? ""),
+                ["genre"]       = new SortColumn<Movie>(m => m.Genre?.ToString() ?? "", thenBy: m => m.Name ?? ""),
+                ["id"]          = new SortColumn<Movie>(m => m.Id),
+            });
 
         /// <summary>
         /// Parameterless constructor for ASP.NET MVC default controller factory.
@@ -164,31 +176,12 @@ namespace Vidly.Controllers
                 movies = allMovies;
             }
 
-            // Apply sorting
-            var sort = string.IsNullOrWhiteSpace(sortBy) ? "Name" : sortBy;
-            IEnumerable<Movie> sorted;
-            switch (sort.ToLowerInvariant())
-            {
-                case "rating":
-                    sorted = movies.OrderByDescending(m => m.Rating ?? 0).ThenBy(m => m.Name);
-                    break;
-                case "releasedate":
-                    sorted = movies.OrderByDescending(m => m.ReleaseDate ?? DateTime.MinValue).ThenBy(m => m.Name);
-                    break;
-                case "genre":
-                    sorted = movies.OrderBy(m => m.Genre?.ToString() ?? "").ThenBy(m => m.Name);
-                    break;
-                case "id":
-                    sorted = movies.OrderBy(m => m.Id);
-                    break;
-                default:
-                    sorted = movies.OrderBy(m => m.Name);
-                    break;
-            }
+            // Apply sorting via declarative SortHelper (replaces switch block)
+            var sort = _sorter.ResolveKey(sortBy);
 
             var viewModel = new MovieSearchViewModel
             {
-                Movies = sorted.ToList(),
+                Movies = _sorter.Apply(movies, sort),
                 Query = query,
                 Genre = genre,
                 MinRating = minRating,
