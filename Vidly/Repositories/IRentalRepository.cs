@@ -53,6 +53,19 @@ namespace Vidly.Repositories
         Rental Checkout(Rental rental);
 
         /// <summary>
+        /// Atomically checks out a rental with concurrent rental limit enforcement.
+        /// Verifies the customer's active rental count does not exceed the given limit
+        /// before creating the rental, preventing TOCTOU races.
+        /// </summary>
+        /// <param name="rental">The rental to create.</param>
+        /// <param name="maxConcurrentRentals">Maximum active rentals allowed for this customer.</param>
+        /// <returns>The created rental with assigned Id and defaults.</returns>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when the movie is already rented out or the customer has reached their rental limit.
+        /// </exception>
+        Rental Checkout(Rental rental, int maxConcurrentRentals);
+
+        /// <summary>
         /// Returns dashboard statistics about rentals.
         /// </summary>
         RentalStats GetStats();

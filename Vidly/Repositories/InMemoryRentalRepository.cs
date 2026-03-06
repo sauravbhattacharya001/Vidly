@@ -302,6 +302,11 @@ namespace Vidly.Repositories
 
         public Rental Checkout(Rental rental)
         {
+            return Checkout(rental, int.MaxValue);
+        }
+
+        public Rental Checkout(Rental rental, int maxConcurrentRentals)
+        {
             if (rental == null)
                 throw new ArgumentNullException(nameof(rental));
 
@@ -312,6 +317,19 @@ namespace Vidly.Repositories
                 {
                     throw new InvalidOperationException(
                         "This movie is currently rented out.");
+                }
+
+                // Enforce membership tier concurrent rental limit
+                if (maxConcurrentRentals < int.MaxValue)
+                {
+                    var activeCount = _rentals.Values.Count(r =>
+                        r.CustomerId == rental.CustomerId &&
+                        r.Status == RentalStatus.Active);
+                    if (activeCount >= maxConcurrentRentals)
+                    {
+                        throw new InvalidOperationException(
+                            $"Customer has reached their concurrent rental limit of {maxConcurrentRentals}.");
+                    }
                 }
 
                 InitializeNewRental(rental);
