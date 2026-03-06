@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web.Mvc;
+using Vidly.Filters;
 using Vidly.Models;
 using Vidly.Repositories;
 using Vidly.Utilities;
@@ -123,6 +124,8 @@ namespace Vidly.Controllers
         // POST: Rentals/Checkout
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [RateLimit(MaxRequests = 15, WindowSeconds = 60,
+            Message = "Too many checkout attempts. Please wait and try again.")]
         public ActionResult Checkout(RentalCheckoutViewModel viewModel)
         {
             if (viewModel?.Rental == null)

@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Web.Mvc;
+using Vidly.Filters;
 using Vidly.Models;
 using Vidly.Repositories;
 using Vidly.Services;
@@ -107,6 +108,8 @@ namespace Vidly.Controllers
         // POST: GiftCards/Balance
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [RateLimit(MaxRequests = 10, WindowSeconds = 60,
+            Message = "Too many balance check attempts. Please wait and try again.")]
         public ActionResult Balance(GiftCardBalanceViewModel model)
         {
             if (model == null)
@@ -135,6 +138,8 @@ namespace Vidly.Controllers
         // POST: GiftCards/TopUp
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [RateLimit(MaxRequests = 5, WindowSeconds = 60,
+            Message = "Too many top-up attempts. Please wait and try again.")]
         public ActionResult TopUp(string code, decimal amount)
         {
             var result = _giftCardService.TopUp(code, amount);
