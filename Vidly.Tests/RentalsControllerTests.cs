@@ -241,5 +241,32 @@ namespace Vidly.Tests
             Assert.AreEqual(vm.Stats.TotalRentals,
                 vm.Stats.ActiveRentals + vm.Stats.OverdueRentals + vm.Stats.ReturnedRentals);
         }
+
+        [TestMethod]
+        public void Receipt_ValidId_ReturnsViewWithRental()
+        {
+            var controller = CreateController();
+            var rentals = new InMemoryRentalRepository().GetAll();
+            var firstRental = rentals.First();
+
+            var result = controller.Receipt(firstRental.Id) as ViewResult;
+
+            Assert.IsNotNull(result);
+            var model = result.Model as Rental;
+            Assert.IsNotNull(model);
+            Assert.AreEqual(firstRental.Id, model.Id);
+            Assert.IsNotNull(model.CustomerName);
+            Assert.IsNotNull(model.MovieName);
+        }
+
+        [TestMethod]
+        public void Receipt_InvalidId_ReturnsHttpNotFound()
+        {
+            var controller = CreateController();
+
+            var result = controller.Receipt(99999);
+
+            Assert.IsInstanceOfType(result, typeof(HttpNotFoundResult));
+        }
     }
 }

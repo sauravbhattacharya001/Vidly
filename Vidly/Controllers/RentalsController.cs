@@ -260,6 +260,17 @@ namespace Vidly.Controllers
             return RedirectToAction("Index");
         }
 
+        // GET: Rentals/Receipt/5
+        public ActionResult Receipt(int id)
+        {
+            var rental = _rentalRepository.GetById(id);
+
+            if (rental == null)
+                return HttpNotFound();
+
+            return View(rental);
+        }
+
         // GET: Rentals/Overdue
         public ActionResult Overdue()
         {
