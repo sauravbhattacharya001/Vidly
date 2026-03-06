@@ -4,6 +4,7 @@ using System.Linq;
 using System.Web.Mvc;
 using Vidly.Models;
 using Vidly.Repositories;
+using Vidly.Utilities;
 using Vidly.ViewModels;
 
 namespace Vidly.Controllers
@@ -11,6 +12,17 @@ namespace Vidly.Controllers
     public class CustomersController : Controller
     {
         private readonly ICustomerRepository _customerRepository;
+
+        private static readonly SortHelper<Customer> _sorter = new SortHelper<Customer>(
+            "name",
+            new Dictionary<string, SortColumn<Customer>>
+            {
+                ["name"]        = new SortColumn<Customer>(c => c.Name ?? ""),
+                ["membership"]  = new SortColumn<Customer>(c => c.MembershipType, thenBy: c => c.Name ?? ""),
+                ["membersince"] = new SortColumn<Customer>(c => c.MemberSince ?? DateTime.MinValue, descending: true, thenBy: c => c.Name ?? ""),
+                ["email"]       = new SortColumn<Customer>(c => c.Email ?? "", thenBy: c => c.Name ?? ""),
+                ["id"]          = new SortColumn<Customer>(c => c.Id),
+            });
 
         /// <summary>
         /// Parameterless constructor for ASP.NET MVC default controller factory.
@@ -45,31 +57,12 @@ namespace Vidly.Controllers
                 customers = allCustomers;
             }
 
-            // Apply sorting
-            var sort = string.IsNullOrWhiteSpace(sortBy) ? "Name" : sortBy;
-            IEnumerable<Customer> sorted;
-            switch (sort.ToLowerInvariant())
-            {
-                case "membership":
-                    sorted = customers.OrderBy(c => c.MembershipType).ThenBy(c => c.Name);
-                    break;
-                case "membersince":
-                    sorted = customers.OrderByDescending(c => c.MemberSince ?? DateTime.MinValue).ThenBy(c => c.Name);
-                    break;
-                case "email":
-                    sorted = customers.OrderBy(c => c.Email ?? "").ThenBy(c => c.Name);
-                    break;
-                case "id":
-                    sorted = customers.OrderBy(c => c.Id);
-                    break;
-                default:
-                    sorted = customers.OrderBy(c => c.Name);
-                    break;
-            }
+            // Apply sorting via declarative SortHelper (replaces switch block)
+            var sort = _sorter.ResolveKey(sortBy);
 
             var viewModel = new CustomerSearchViewModel
             {
-                Customers = sorted.ToList(),
+                Customers = _sorter.Apply(customers, sort),
                 Query = query,
                 MembershipType = membershipType,
                 SortBy = sort,
