@@ -241,5 +241,64 @@ namespace Vidly.Tests
             Assert.AreEqual(vm.Stats.TotalRentals,
                 vm.Stats.ActiveRentals + vm.Stats.OverdueRentals + vm.Stats.ReturnedRentals);
         }
+
+        [TestMethod]
+        public void Checkout_Post_ExceedingMaxConcurrentRentals_ReturnsViewWithError()
+        {
+            // Bob Wilson (Id=3) is Basic tier — max 2 concurrent rentals.
+            // Seed already has some rentals; reset and manually create 2 active rentals
+            // then try a third.
+            var rentalRepo = new InMemoryRentalRepository();
+            var movieRepo = new InMemoryMovieRepository();
+            var customerRepo = new InMemoryCustomerRepository();
+            var controller = new RentalsController(rentalRepo, movieRepo, customerRepo);
+
+            int customerId = 3; // Basic tier, max 2
+
+            // Rent 2 movies for Bob (movies 1 and 2)
+            var rental1 = new Rental
+            {
+                CustomerId = customerId,
+                MovieId = 1,
+                CustomerName = "Bob Wilson",
+                MovieName = "Movie 1",
+                RentalDate = DateTime.Today,
+                DueDate = DateTime.Today.AddDays(7),
+                DailyRate = 3.99m
+            };
+            rentalRepo.Checkout(rental1);
+
+            var rental2 = new Rental
+            {
+                CustomerId = customerId,
+                MovieId = 2,
+                CustomerName = "Bob Wilson",
+                MovieName = "Movie 2",
+                RentalDate = DateTime.Today,
+                DueDate = DateTime.Today.AddDays(7),
+                DailyRate = 3.99m
+            };
+            rentalRepo.Checkout(rental2);
+
+            // Now attempt a third rental — should be blocked
+            var viewModel = new RentalCheckoutViewModel
+            {
+                Rental = new Rental
+                {
+                    CustomerId = customerId,
+                    MovieId = 3,
+                    RentalDate = DateTime.Today,
+                    DueDate = DateTime.Today.AddDays(7),
+                    DailyRate = 3.99m
+                }
+            };
+
+            var result = controller.Checkout(viewModel) as ViewResult;
+
+            Assert.IsNotNull(result, "Expected ViewResult when concurrent rental limit exceeded");
+            Assert.IsFalse(controller.ModelState.IsValid);
+            Assert.IsTrue(controller.ModelState["Rental.CustomerId"]?.Errors.Count > 0,
+                "Expected model error on CustomerId about concurrent rental limit");
+        }
     }
 }
