@@ -201,15 +201,19 @@ namespace Vidly.Controllers
                 }
             }
 
-            // Use atomic Checkout to prevent TOCTOU race: availability check
-            // and rental creation happen in a single lock acquisition
+            // Use atomic Checkout to prevent TOCTOU race: availability check,
+            // concurrent rental limit check, and rental creation happen in a
+            // single lock acquisition
             try
             {
-                _rentalRepository.Checkout(rental);
+                _rentalRepository.Checkout(rental, benefits.MaxConcurrentRentals);
             }
-            catch (InvalidOperationException)
+            catch (InvalidOperationException ex)
             {
-                ModelState.AddModelError("Rental.MovieId", "This movie is currently rented out.");
+                var errorField = ex.Message.Contains("concurrent rental limit")
+                    ? "Rental.CustomerId"
+                    : "Rental.MovieId";
+                ModelState.AddModelError(errorField, ex.Message);
                 var movies = _movieRepository.GetAll();
                 viewModel.Customers = _customerRepository.GetAll();
                 viewModel.AvailableMovies = movies
