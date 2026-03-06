@@ -201,6 +201,23 @@ namespace Vidly.Controllers
                 }
             }
 
+            // Enforce membership tier concurrent rental limit (issue #44).
+            // Check active rental count against MaxConcurrentRentals BEFORE
+            // the atomic Checkout to prevent exceeding the tier's limit.
+            var activeRentals = _rentalRepository.GetActiveByCustomer(customer.Id);
+            if (activeRentals.Count >= benefits.MaxConcurrentRentals)
+            {
+                ModelState.AddModelError("Rental.CustomerId",
+                    $"{customer.Name} has reached the maximum of {benefits.MaxConcurrentRentals} " +
+                    $"concurrent rentals for the {customer.MembershipType} tier.");
+                var movies = _movieRepository.GetAll();
+                viewModel.Customers = _customerRepository.GetAll();
+                viewModel.AvailableMovies = movies
+                    .Where(m => !_rentalRepository.IsMovieRentedOut(m.Id))
+                    .ToList();
+                return View(viewModel);
+            }
+
             // Use atomic Checkout to prevent TOCTOU race: availability check
             // and rental creation happen in a single lock acquisition
             try
