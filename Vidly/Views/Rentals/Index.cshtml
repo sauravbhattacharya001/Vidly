@@ -168,6 +168,7 @@ else
                     </td>
                     <td>
                         @Html.ActionLink("Details", "Details", new { id = rental.Id }, new { @class = "btn btn-sm btn-default" })
+                        @Html.ActionLink("Receipt", "Receipt", new { id = rental.Id }, new { @class = "btn btn-sm btn-info", title = "Print Receipt" })
                         @if (rental.Status != Vidly.Models.RentalStatus.Returned)
                         {
                             using (Html.BeginForm("Return", "Rentals", new { id = rental.Id }, FormMethod.Post, new { style = "display:inline" }))

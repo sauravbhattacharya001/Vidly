@@ -1,0 +1,184 @@
+@model Vidly.Models.Rental
+@{
+    ViewBag.Title = "Rental Receipt";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var rentalDays = Math.Max(1, (int)Math.Ceiling(((Model.ReturnDate ?? DateTime.Today) - Model.RentalDate).TotalDays));
+    var subtotal = rentalDays * Model.DailyRate;
+}
+
+<style>
+    .receipt-container {
+        max-width: 600px;
+        margin: 0 auto;
+        border: 2px solid #333;
+        padding: 30px;
+        background: #fff;
+        font-family: 'Courier New', monospace;
+    }
+    .receipt-header {
+        text-align: center;
+        border-bottom: 2px dashed #999;
+        padding-bottom: 15px;
+        margin-bottom: 15px;
+    }
+    .receipt-header h2 {
+        margin: 0 0 5px;
+        font-size: 24px;
+        letter-spacing: 3px;
+    }
+    .receipt-header p {
+        margin: 2px 0;
+        color: #666;
+        font-size: 12px;
+    }
+    .receipt-section {
+        border-bottom: 1px dashed #ccc;
+        padding: 10px 0;
+    }
+    .receipt-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 3px 0;
+        font-size: 14px;
+    }
+    .receipt-row.total {
+        font-weight: bold;
+        font-size: 18px;
+        border-top: 2px solid #333;
+        padding-top: 10px;
+        margin-top: 5px;
+    }
+    .receipt-row.late-fee {
+        color: #d9534f;
+    }
+    .receipt-footer {
+        text-align: center;
+        padding-top: 15px;
+        border-top: 2px dashed #999;
+        margin-top: 15px;
+    }
+    .receipt-footer p {
+        margin: 2px 0;
+        font-size: 12px;
+        color: #666;
+    }
+    .receipt-barcode {
+        text-align: center;
+        font-size: 28px;
+        letter-spacing: 5px;
+        margin: 10px 0;
+        font-family: monospace;
+    }
+    .receipt-status {
+        text-align: center;
+        margin: 10px 0;
+    }
+    @@media print {
+        body * { visibility: hidden; }
+        .receipt-container, .receipt-container * { visibility: visible; }
+        .receipt-container { position: absolute; left: 0; top: 0; border: none; }
+        .no-print { display: none !important; }
+    }
+</style>
+
+<div class="no-print" style="text-align: center; margin-bottom: 20px;">
+    <button onclick="window.print()" class="btn btn-primary">
+        <span class="glyphicon glyphicon-print"></span> Print Receipt
+    </button>
+    @Html.ActionLink("Back to Details", "Details", new { id = Model.Id }, new { @class = "btn btn-default" })
+    @Html.ActionLink("Back to List", "Index", null, new { @class = "btn btn-default" })
+</div>
+
+<div class="receipt-container">
+    <div class="receipt-header">
+        <h2>VIDLY</h2>
+        <p>Your Neighborhood Video Rental</p>
+        <p>123 Main Street &bull; Anytown, USA</p>
+        <p>Tel: (555) 123-4567</p>
+    </div>
+
+    <div class="receipt-section">
+        <div class="receipt-row">
+            <span>Receipt #</span>
+            <span>@Model.Id.ToString("D6")</span>
+        </div>
+        <div class="receipt-row">
+            <span>Date</span>
+            <span>@Model.RentalDate.ToString("MM/dd/yyyy")</span>
+        </div>
+        <div class="receipt-row">
+            <span>Customer</span>
+            <span>@(Model.CustomerName ?? "—")</span>
+        </div>
+    </div>
+
+    <div class="receipt-section">
+        <div class="receipt-row" style="font-weight: bold;">
+            <span>ITEM</span>
+            <span>AMOUNT</span>
+        </div>
+        <div class="receipt-row">
+            <span>@(Model.MovieName ?? "—")</span>
+            <span></span>
+        </div>
+        <div class="receipt-row" style="padding-left: 15px; color: #888; font-size: 12px;">
+            <span>@rentalDays day(s) × $@Model.DailyRate.ToString("F2")/day</span>
+            <span>$@subtotal.ToString("F2")</span>
+        </div>
+        @if (Model.LateFee > 0)
+        {
+            <div class="receipt-row late-fee">
+                <span>Late Fee (@Model.DaysOverdue day(s) overdue)</span>
+                <span>$@Model.LateFee.ToString("F2")</span>
+            </div>
+        }
+        <div class="receipt-row total">
+            <span>TOTAL</span>
+            <span>$@Model.TotalCost.ToString("F2")</span>
+        </div>
+    </div>
+
+    <div class="receipt-section">
+        <div class="receipt-row">
+            <span>Rented On</span>
+            <span>@Model.RentalDate.ToString("MMM dd, yyyy")</span>
+        </div>
+        <div class="receipt-row">
+            <span>Due Date</span>
+            <span>@Model.DueDate.ToString("MMM dd, yyyy")</span>
+        </div>
+        @if (Model.ReturnDate.HasValue)
+        {
+            <div class="receipt-row">
+                <span>Returned</span>
+                <span>@Model.ReturnDate.Value.ToString("MMM dd, yyyy")</span>
+            </div>
+        }
+    </div>
+
+    <div class="receipt-status">
+        @switch (Model.Status)
+        {
+            case Vidly.Models.RentalStatus.Active:
+                <span class="label label-info" style="font-size: 14px; padding: 5px 15px;">ACTIVE RENTAL</span>
+                break;
+            case Vidly.Models.RentalStatus.Overdue:
+                <span class="label label-danger" style="font-size: 14px; padding: 5px 15px;">OVERDUE</span>
+                break;
+            case Vidly.Models.RentalStatus.Returned:
+                <span class="label label-success" style="font-size: 14px; padding: 5px 15px;">RETURNED</span>
+                break;
+        }
+    </div>
+
+    <div class="receipt-barcode">
+        ||| @Model.Id.ToString("D6") |||
+    </div>
+
+    <div class="receipt-footer">
+        <p>Thank you for choosing Vidly!</p>
+        <p>Please return movies on time to avoid late fees.</p>
+        <p>Generated: @DateTime.Now.ToString("MM/dd/yyyy hh:mm tt")</p>
+    </div>
+</div>

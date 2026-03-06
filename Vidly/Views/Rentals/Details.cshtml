@@ -77,6 +77,7 @@
                         </button>
                     }
                 }
+                @Html.ActionLink("Print Receipt", "Receipt", new { id = Model.Id }, new { @class = "btn btn-info" })
                 @Html.ActionLink("Back to List", "Index", null, new { @class = "btn btn-default" })
             </div>
         </div>
