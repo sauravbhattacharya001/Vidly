@@ -122,6 +122,7 @@
     <Compile Include="App_Start\RouteConfig.cs" />
     <Compile Include="Controllers\CustomersController.cs" />
     <Compile Include="Controllers\HomeController.cs" />
+    <Compile Include="Controllers\CompareController.cs" />
     <Compile Include="Controllers\MoviesController.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
@@ -136,6 +137,7 @@
     <Compile Include="Repositories\IMovieRepository.cs" />
     <Compile Include="Repositories\InMemoryCustomerRepository.cs" />
     <Compile Include="Repositories\InMemoryMovieRepository.cs" />
+    <Compile Include="ViewModels\CompareViewModel.cs" />
     <Compile Include="ViewModels\CustomerSearchViewModel.cs" />
     <Compile Include="ViewModels\MovieSearchViewModel.cs" />
     <Compile Include="ViewModels\RandomMovieViewModel.cs" />
@@ -147,6 +149,7 @@
     <Compile Include="Models\Rental.cs" />
     <Compile Include="ViewModels\RentalCheckoutViewModel.cs" />
     <Compile Include="ViewModels\RentalSearchViewModel.cs" />
+    <Compile Include="Services\MovieComparisonService.cs" />
     <Compile Include="Services\RecommendationService.cs" />
     <Compile Include="Models\WatchlistItem.cs" />
     <Compile Include="Repositories\IWatchlistRepository.cs" />
@@ -188,6 +191,7 @@
     <Content Include="Views\_ViewStart.cshtml" />
     <Content Include="Views\Shared\Error.cshtml" />
     <Content Include="Views\Shared\_Layout.cshtml" />
+    <Content Include="Views\Compare\Index.cshtml" />
     <Content Include="Views\Home\About.cshtml" />
     <Content Include="Views\Home\Contact.cshtml" />
     <Content Include="Views\Home\Index.cshtml" />
