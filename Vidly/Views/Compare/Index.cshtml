@@ -1,0 +1,253 @@
+@model Vidly.ViewModels.CompareViewModel
+@{
+    ViewBag.Title = "Compare Movies";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2><span class="glyphicon glyphicon-transfer"></span> Compare Movies</h2>
+<p class="text-muted">Select 2–4 movies to compare side-by-side on pricing, ratings, popularity, and availability.</p>
+
+@* ── Movie Selection Form ── *@
+<div class="panel panel-default">
+    <div class="panel-heading">
+        <h3 class="panel-title">Select Movies</h3>
+    </div>
+    <div class="panel-body">
+        @using (Html.BeginForm("Index", "Compare", FormMethod.Post, new { @class = "form-inline" }))
+        {
+            @Html.AntiForgeryToken()
+
+            <div class="row">
+                @if (Model.AvailableMovies != null)
+                {
+                    var movies = Model.AvailableMovies.OrderBy(m => m.Name).ToList();
+                    for (int i = 0; i < Math.Min(4, 4); i++)
+                    {
+                        <div class="col-md-3 col-sm-6" style="margin-bottom: 10px;">
+                            <label class="sr-only">Movie @(i + 1)</label>
+                            <select name="selectedIds" class="form-control" style="width: 100%;">
+                                <option value="">— Movie @(i + 1) —</option>
+                                @foreach (var movie in movies)
+                                {
+                                    var selected = Model.SelectedIds != null
+                                        && Model.SelectedIds.Count > i
+                                        && Model.SelectedIds[i] == movie.Id;
+                                    <option value="@movie.Id" @(selected ? "selected" : "")>
+                                        @movie.Name @(movie.Genre.HasValue ? "(" + movie.Genre + ")" : "")
+                                    </option>
+                                }
+                            </select>
+                        </div>
+                    }
+                }
+            </div>
+
+            <div style="margin-top: 10px;">
+                <button type="submit" class="btn btn-primary">
+                    <span class="glyphicon glyphicon-transfer"></span> Compare
+                </button>
+                <a href="@Url.Action("Index", "Compare")" class="btn btn-default">Clear</a>
+            </div>
+        }
+    </div>
+</div>
+
+@* ── Error Message ── *@
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-warning">
+        <span class="glyphicon glyphicon-exclamation-sign"></span> @Model.ErrorMessage
+    </div>
+}
+
+@* ── Comparison Results ── *@
+@if (Model.Result != null && Model.Result.Entries.Any())
+{
+    var entries = Model.Result.Entries;
+    var colWidth = 12 / entries.Count;
+
+    <div class="panel panel-info">
+        <div class="panel-heading">
+            <h3 class="panel-title">
+                <span class="glyphicon glyphicon-stats"></span> Comparison Results
+                <small class="pull-right">Compared at @Model.Result.ComparedAt.ToString("h:mm tt")</small>
+            </h3>
+        </div>
+        <div class="panel-body">
+            @* ── Header Row ── *@
+            <div class="row" style="margin-bottom: 15px;">
+                @foreach (var entry in entries)
+                {
+                    <div class="col-md-@colWidth text-center">
+                        <h3 style="margin-top: 0;">
+                            @Html.ActionLink(entry.Movie.Name, "Details", "Movies", new { id = entry.Movie.Id }, null)
+                        </h3>
+                        @if (entry.Movie.Genre.HasValue)
+                        {
+                            <span class="label label-default">@entry.Movie.Genre</span>
+                        }
+                        @if (entry.IsNewRelease)
+                        {
+                            <span class="label label-success">New Release</span>
+                        }
+                    </div>
+                }
+            </div>
+
+            <hr />
+
+            @* ── Rating Row ── *@
+            <div class="row" style="margin-bottom: 12px;">
+                <div class="col-md-12"><strong><span class="glyphicon glyphicon-star"></span> Rating</strong></div>
+            </div>
+            <div class="row" style="margin-bottom: 15px;">
+                @foreach (var entry in entries)
+                {
+                    var isBest = Model.Result.BestRatedId == entry.Movie.Id;
+                    <div class="col-md-@colWidth text-center">
+                        <span style="font-size: 1.3em; color: #f0ad4e;">@entry.StarDisplay</span>
+                        <br />
+                        <span class="text-muted">
+                            @(entry.AverageRating.HasValue ? entry.AverageRating.Value.ToString("0.0") + "/5" : "—")
+                            (@entry.ReviewCount review@(entry.ReviewCount == 1 ? "" : "s"))
+                        </span>
+                        @if (isBest && entries.Count(e => e.AverageRating.HasValue) > 1)
+                        {
+                            <br /><span class="label label-warning"><span class="glyphicon glyphicon-thumbs-up"></span> Best Rated</span>
+                        }
+                    </div>
+                }
+            </div>
+
+            <hr />
+
+            @* ── Pricing Row ── *@
+            <div class="row" style="margin-bottom: 12px;">
+                <div class="col-md-12"><strong><span class="glyphicon glyphicon-usd"></span> Pricing</strong></div>
+            </div>
+            <div class="row" style="margin-bottom: 15px;">
+                @foreach (var entry in entries)
+                {
+                    var isCheapest = Model.Result.CheapestId == entry.Movie.Id;
+                    <div class="col-md-@colWidth text-center">
+                        <span style="font-size: 1.5em; font-weight: bold;">$@entry.DailyRate.ToString("0.00")</span>
+                        <span class="text-muted">/day</span>
+                        <br />
+                        <span class="text-muted">~$@entry.WeeklyEstimate.ToString("0.00") /week</span>
+                        @if (isCheapest && entries.Select(e => e.DailyRate).Distinct().Count() > 1)
+                        {
+                            <br /><span class="label label-success"><span class="glyphicon glyphicon-piggy-bank"></span> Best Value</span>
+                        }
+                    </div>
+                }
+            </div>
+
+            <hr />
+
+            @* ── Popularity Row ── *@
+            <div class="row" style="margin-bottom: 12px;">
+                <div class="col-md-12"><strong><span class="glyphicon glyphicon-fire"></span> Popularity</strong></div>
+            </div>
+            <div class="row" style="margin-bottom: 15px;">
+                @{
+                    var maxRentals = entries.Max(e => e.TotalRentals);
+                }
+                @foreach (var entry in entries)
+                {
+                    var isMostPopular = Model.Result.MostPopularId == entry.Movie.Id;
+                    var barWidth = maxRentals > 0 ? (int)(100.0 * entry.TotalRentals / maxRentals) : 0;
+                    <div class="col-md-@colWidth text-center">
+                        <span style="font-size: 1.2em;">@entry.TotalRentals rental@(entry.TotalRentals == 1 ? "" : "s")</span>
+                        <div class="progress" style="margin-top: 5px;">
+                            <div class="progress-bar progress-bar-info" style="width: @(barWidth)%; min-width: 2em;">
+                                @entry.TotalRentals
+                            </div>
+                        </div>
+                        @if (isMostPopular && entries.Select(e => e.TotalRentals).Distinct().Count() > 1)
+                        {
+                            <span class="label label-info"><span class="glyphicon glyphicon-fire"></span> Most Popular</span>
+                        }
+                    </div>
+                }
+            </div>
+
+            <hr />
+
+            @* ── Availability Row ── *@
+            <div class="row" style="margin-bottom: 12px;">
+                <div class="col-md-12"><strong><span class="glyphicon glyphicon-ok-circle"></span> Availability</strong></div>
+            </div>
+            <div class="row" style="margin-bottom: 15px;">
+                @foreach (var entry in entries)
+                {
+                    <div class="col-md-@colWidth text-center">
+                        @if (entry.IsAvailable)
+                        {
+                            <span class="label label-success" style="font-size: 1.1em;">
+                                <span class="glyphicon glyphicon-ok"></span> Available
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="label label-danger" style="font-size: 1.1em;">
+                                <span class="glyphicon glyphicon-remove"></span> Rented Out
+                            </span>
+                        }
+                    </div>
+                }
+            </div>
+
+            <hr />
+
+            @* ── Details Row ── *@
+            <div class="row" style="margin-bottom: 12px;">
+                <div class="col-md-12"><strong><span class="glyphicon glyphicon-info-sign"></span> Details</strong></div>
+            </div>
+            <div class="row" style="margin-bottom: 15px;">
+                @foreach (var entry in entries)
+                {
+                    <div class="col-md-@colWidth text-center">
+                        <dl>
+                            <dt>Released</dt>
+                            <dd>
+                                @(entry.Movie.ReleaseDate.HasValue
+                                    ? entry.Movie.ReleaseDate.Value.ToString("MMM d, yyyy")
+                                    : "Unknown")
+                            </dd>
+                            <dt>Age</dt>
+                            <dd>@entry.AgeDisplay</dd>
+                            <dt>Editor Rating</dt>
+                            <dd>
+                                @if (entry.Movie.Rating.HasValue)
+                                {
+                                    @(new string('★', entry.Movie.Rating.Value) + new string('☆', 5 - entry.Movie.Rating.Value))
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </dd>
+                        </dl>
+                    </div>
+                }
+            </div>
+
+            @* ── Action Buttons ── *@
+            <hr />
+            <div class="row">
+                @foreach (var entry in entries)
+                {
+                    <div class="col-md-@colWidth text-center">
+                        @Html.ActionLink("View Details", "Details", "Movies",
+                            new { id = entry.Movie.Id }, new { @class = "btn btn-default btn-sm" })
+                        @if (entry.IsAvailable)
+                        {
+                            @Html.ActionLink("Rent Now", "Checkout", "Rentals",
+                                new { movieId = entry.Movie.Id }, new { @class = "btn btn-primary btn-sm" })
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
