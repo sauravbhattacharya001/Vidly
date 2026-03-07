@@ -26,12 +26,13 @@ namespace Vidly.Services
         private readonly ICustomerRepository _customerRepository;
 
         // ── Late-fee policy constants ────────────────────────────────
+        // Delegated to RentalPolicyConstants for single source of truth.
 
         /// <summary>Per-day late fee (before tier discount).</summary>
-        public const decimal BaseLateFeePer​Day = 1.50m;
+        public const decimal BaseLateFeePer​Day = RentalPolicyConstants.LateFeePerDay;
 
         /// <summary>Maximum late fee on any single rental.</summary>
-        public const decimal MaxLateFeeCap = 25.00m;
+        public const decimal MaxLateFeeCap = RentalPolicyConstants.MaxLateFeeCap;
 
         /// <summary>Grace period in days before late fees kick in.</summary>
         public const int BaseGracePeriodDays = 1;
@@ -51,9 +52,10 @@ namespace Vidly.Services
         public const int DamageWarningThreshold = 3;
 
         // ── Loyalty constants ────────────────────────────────────────
+        // OnTimeReturnBonus delegated to RentalPolicyConstants.
 
         /// <summary>Bonus loyalty points for an on-time or early return.</summary>
-        public const int OnTimeReturnBonus = 25;
+        public const int OnTimeReturnBonus = RentalPolicyConstants.OnTimeReturnBonus;
 
         /// <summary>Bonus points for returning in perfect condition.</summary>
         public const int PerfectConditionBonus = 10;
@@ -364,22 +366,12 @@ namespace Vidly.Services
 
         /// <summary>
         /// Points multiplier based on membership tier.
+        /// Delegates to <see cref="LoyaltyPointsService.GetTierMultiplier"/>
+        /// for a single source of truth.
         /// </summary>
         public static decimal GetTierPointMultiplier(MembershipType tier)
         {
-            switch (tier)
-            {
-                case MembershipType.Basic:
-                    return 1.0m;
-                case MembershipType.Silver:
-                    return 1.25m;
-                case MembershipType.Gold:
-                    return 1.50m;
-                case MembershipType.Platinum:
-                    return 2.0m;
-                default:
-                    return 1.0m;
-            }
+            return LoyaltyPointsService.GetTierMultiplier(tier);
         }
 
         // ── Overdue management ───────────────────────────────────────

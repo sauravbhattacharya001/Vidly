@@ -40,13 +40,15 @@ namespace Vidly.Services
 
         /// <summary>
         /// Maximum late fee that can be charged on a single rental.
+        /// Delegates to <see cref="RentalPolicyConstants"/> for single source of truth.
         /// </summary>
-        public const decimal MaxLateFeeCap = 25.00m;
+        public const decimal MaxLateFeeCap = RentalPolicyConstants.MaxLateFeeCap;
 
         /// <summary>
         /// Per-day late fee rate applied after the grace period.
+        /// Delegates to <see cref="RentalPolicyConstants"/> for single source of truth.
         /// </summary>
-        public const decimal LateFeePerDay = 1.50m;
+        public const decimal LateFeePerDay = RentalPolicyConstants.LateFeePerDay;
 
         public PricingService(
             IMovieRepository movieRepository,
