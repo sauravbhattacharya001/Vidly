@@ -5,6 +5,7 @@ using System.Web.Mvc;
 using Vidly.Filters;
 using Vidly.Models;
 using Vidly.Repositories;
+using Vidly.Services;
 using Vidly.Utilities;
 using Vidly.ViewModels;
 
@@ -15,6 +16,7 @@ namespace Vidly.Controllers
         private readonly IRentalRepository _rentalRepository;
         private readonly IMovieRepository _movieRepository;
         private readonly ICustomerRepository _customerRepository;
+        private readonly CouponService _couponService;
 
         private static readonly SortHelper<Rental> _sorter = new SortHelper<Rental>(
             "rentaldate",
@@ -35,7 +37,8 @@ namespace Vidly.Controllers
             : this(
                 new InMemoryRentalRepository(),
                 new InMemoryMovieRepository(),
-                new InMemoryCustomerRepository())
+                new InMemoryCustomerRepository(),
+                new InMemoryCouponRepository())
         {
         }
 
@@ -45,7 +48,8 @@ namespace Vidly.Controllers
         public RentalsController(
             IRentalRepository rentalRepository,
             IMovieRepository movieRepository,
-            ICustomerRepository customerRepository)
+            ICustomerRepository customerRepository,
+            ICouponRepository couponRepository)
         {
             _rentalRepository = rentalRepository
                 ?? throw new ArgumentNullException(nameof(rentalRepository));
@@ -53,6 +57,8 @@ namespace Vidly.Controllers
                 ?? throw new ArgumentNullException(nameof(movieRepository));
             _customerRepository = customerRepository
                 ?? throw new ArgumentNullException(nameof(customerRepository));
+            _couponService = new CouponService(couponRepository
+                ?? throw new ArgumentNullException(nameof(couponRepository)));
         }
 
         // GET: Rentals
@@ -183,9 +189,8 @@ namespace Vidly.Controllers
             var couponDiscount = 0m;
             if (!string.IsNullOrWhiteSpace(viewModel.CouponCode))
             {
-                var couponService = new Services.CouponService();
                 var subtotal = rental.DailyRate * (decimal)(rental.DueDate - rental.RentalDate).TotalDays;
-                couponDiscount = couponService.Apply(viewModel.CouponCode, subtotal);
+                couponDiscount = _couponService.Apply(viewModel.CouponCode, subtotal);
                 if (couponDiscount > 0)
                 {
                     // Apply coupon discount by reducing the effective daily rate

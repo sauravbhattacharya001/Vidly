@@ -6,6 +6,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Vidly.Controllers;
 using Vidly.Models;
 using Vidly.Repositories;
+using Vidly.Services;
 using Vidly.ViewModels;
 
 namespace Vidly.Tests
@@ -19,6 +20,7 @@ namespace Vidly.Tests
             InMemoryRentalRepository.Reset();
             InMemoryMovieRepository.Reset();
             InMemoryCustomerRepository.Reset();
+            InMemoryCouponRepository.Reset();
         }
 
         private RentalsController CreateController()
@@ -26,7 +28,8 @@ namespace Vidly.Tests
             return new RentalsController(
                 new InMemoryRentalRepository(),
                 new InMemoryMovieRepository(),
-                new InMemoryCustomerRepository());
+                new InMemoryCustomerRepository(),
+                new InMemoryCouponRepository());
         }
 
         [TestMethod]
@@ -267,6 +270,89 @@ namespace Vidly.Tests
             var result = controller.Receipt(99999);
 
             Assert.IsInstanceOfType(result, typeof(HttpNotFoundResult));
+        }
+
+        // ── Coupon DI integration test ─────────────────────────────────
+
+        [TestMethod]
+        public void Checkout_WithValidCoupon_AppliesDiscount()
+        {
+            // Arrange: use a shared coupon repo so the seeded "WELCOME20"
+            // coupon is visible to the controller's CouponService.
+            var couponRepo = new InMemoryCouponRepository();
+            var rentalRepo = new InMemoryRentalRepository();
+            var movieRepo = new InMemoryMovieRepository();
+            var customerRepo = new InMemoryCustomerRepository();
+
+            var controller = new RentalsController(
+                rentalRepo, movieRepo, customerRepo, couponRepo);
+
+            var movie = movieRepo.GetAll().First(m => !rentalRepo.IsMovieRentedOut(m.Id));
+            var customer = customerRepo.GetAll().First();
+            var baseDailyRate = Services.PricingService.GetMovieDailyRate(movie);
+
+            var viewModel = new CheckoutViewModel
+            {
+                Rental = new Rental
+                {
+                    MovieId = movie.Id,
+                    CustomerId = customer.Id,
+                    DailyRate = baseDailyRate
+                },
+                CouponCode = "WELCOME20"
+            };
+
+            // Act
+            controller.Checkout(viewModel);
+
+            // Assert: the coupon was found and applied (rate should be < base rate)
+            var rental = rentalRepo.GetAll()
+                .OrderByDescending(r => r.Id)
+                .First(r => r.MovieId == movie.Id && r.CustomerId == customer.Id);
+
+            Assert.IsTrue(rental.DailyRate < baseDailyRate,
+                $"Expected discounted rate < {baseDailyRate}, got {rental.DailyRate}");
+        }
+
+        [TestMethod]
+        public void Checkout_WithInvalidCoupon_NoDiscount()
+        {
+            var couponRepo = new InMemoryCouponRepository();
+            var rentalRepo = new InMemoryRentalRepository();
+            var movieRepo = new InMemoryMovieRepository();
+            var customerRepo = new InMemoryCustomerRepository();
+
+            var controller = new RentalsController(
+                rentalRepo, movieRepo, customerRepo, couponRepo);
+
+            var movie = movieRepo.GetAll().First(m => !rentalRepo.IsMovieRentedOut(m.Id));
+            var customer = customerRepo.GetAll().First();
+            var baseDailyRate = Services.PricingService.GetMovieDailyRate(movie);
+
+            var viewModel = new CheckoutViewModel
+            {
+                Rental = new Rental
+                {
+                    MovieId = movie.Id,
+                    CustomerId = customer.Id,
+                    DailyRate = baseDailyRate
+                },
+                CouponCode = "BOGUS_CODE"
+            };
+
+            // Act
+            controller.Checkout(viewModel);
+
+            // Assert: invalid coupon → no discount, rate unchanged
+            var rental = rentalRepo.GetAll()
+                .OrderByDescending(r => r.Id)
+                .First(r => r.MovieId == movie.Id && r.CustomerId == customer.Id);
+
+            // Rate should reflect membership discount only, not coupon
+            var benefits = Services.PricingService.GetBenefits(customer.MembershipType);
+            var expectedRate = baseDailyRate - baseDailyRate * benefits.DiscountPercent / 100m;
+            Assert.AreEqual(expectedRate, rental.DailyRate,
+                $"Expected rate {expectedRate} (no coupon discount), got {rental.DailyRate}");
         }
     }
 }
