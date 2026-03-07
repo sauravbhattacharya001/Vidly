@@ -146,11 +146,14 @@ namespace Vidly.Controllers
             if (!string.IsNullOrEmpty(returnUrl))
             {
                 // Only allow local URLs to prevent open redirect.
-                // Url helper may be null in unit tests; fall back to
-                // simple starts-with check.
+                // Use Url.IsLocalUrl when available; fall back to a strict
+                // path check that rejects protocol-relative URLs (//) and
+                // backslash-based bypasses (/\).
                 bool isLocal = Url != null
                     ? Url.IsLocalUrl(returnUrl)
-                    : returnUrl.StartsWith("/") && !returnUrl.StartsWith("//");
+                    : returnUrl.StartsWith("/")
+                      && !returnUrl.StartsWith("//")
+                      && !returnUrl.StartsWith("/\\");
 
                 if (isLocal)
                     return Redirect(returnUrl);
