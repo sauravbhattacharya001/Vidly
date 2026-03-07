@@ -106,31 +106,38 @@ namespace Vidly.Services
             if (franchise == null) throw new ArgumentNullException(nameof(franchise));
             if (rentals == null) throw new ArgumentNullException(nameof(rentals));
 
-            var customerRentals = rentals.Where(r => r.CustomerId == customerId).ToList();
-            var watchedIds = franchise.MovieIds
-                .Where(mid => customerRentals.Any(r => r.MovieId == mid))
-                .ToList();
+            // O(1) lookup set for franchise movies instead of List.Contains O(n)
+            var franchiseMovieSet = new HashSet<int>(franchise.MovieIds);
+            // O(1) set of movie IDs this customer has rented within this franchise
+            var rentedMovieIds = new HashSet<int>();
+            DateTime? firstDate = null;
+            DateTime? lastDate = null;
 
+            for (int i = 0; i < rentals.Count; i++)
+            {
+                var r = rentals[i];
+                if (r.CustomerId != customerId) continue;
+                if (!franchiseMovieSet.Contains(r.MovieId)) continue;
+                rentedMovieIds.Add(r.MovieId);
+                if (!firstDate.HasValue || r.RentalDate < firstDate.Value)
+                    firstDate = r.RentalDate;
+                if (!lastDate.HasValue || r.RentalDate > lastDate.Value)
+                    lastDate = r.RentalDate;
+            }
+
+            // Preserve franchise order for watched list
+            var watchedIds = new List<int>();
             int? nextMovieId = null;
             foreach (var mid in franchise.MovieIds)
             {
-                if (!watchedIds.Contains(mid))
-                {
+                if (rentedMovieIds.Contains(mid))
+                    watchedIds.Add(mid);
+                else if (!nextMovieId.HasValue)
                     nextMovieId = mid;
-                    break;
-                }
             }
 
-            var firstRental = customerRentals
-                .Where(r => franchise.MovieIds.Contains(r.MovieId))
-                .OrderBy(r => r.RentalDate)
-                .FirstOrDefault();
-
             var completedDate = watchedIds.Count == franchise.MovieIds.Count
-                ? customerRentals
-                    .Where(r => franchise.MovieIds.Contains(r.MovieId))
-                    .Max(r => r.RentalDate)
-                : (DateTime?)null;
+                ? lastDate : (DateTime?)null;
 
             return new FranchiseProgress
             {
@@ -141,7 +148,7 @@ namespace Vidly.Services
                     ? Math.Round(100.0 * watchedIds.Count / franchise.MovieIds.Count, 1)
                     : 0,
                 NextMovieId = nextMovieId,
-                StartedDate = firstRental?.RentalDate,
+                StartedDate = firstDate,
                 CompletedDate = completedDate
             };
         }
@@ -163,38 +170,64 @@ namespace Vidly.Services
             if (rentals == null) throw new ArgumentNullException(nameof(rentals));
             if (movies == null) throw new ArgumentNullException(nameof(movies));
 
+            var franchiseMovieSet = new HashSet<int>(franchise.MovieIds);
             var franchiseRentals = rentals
-                .Where(r => franchise.MovieIds.Contains(r.MovieId))
+                .Where(r => franchiseMovieSet.Contains(r.MovieId))
                 .ToList();
 
-            var franchiseMovies = movies
-                .Where(m => franchise.MovieIds.Contains(m.Id))
-                .ToList();
+            var movieLookup = new Dictionary<int, Movie>();
+            foreach (var m in movies)
+                if (franchiseMovieSet.Contains(m.Id) && !movieLookup.ContainsKey(m.Id))
+                    movieLookup[m.Id] = m;
 
-            var customerIds = franchiseRentals.Select(r => r.CustomerId).Distinct().ToList();
+            // Build per-customer watched sets and per-movie rental counts in a single pass
+            var customerWatched = new Dictionary<int, HashSet<int>>();
+            var rentalCounts = new Dictionary<int, int>();
+            foreach (var mid in franchise.MovieIds)
+                rentalCounts[mid] = 0;
 
-            // Per-customer progress
-            var completedCount = 0;
-            foreach (var cid in customerIds)
+            foreach (var r in franchiseRentals)
             {
-                var watched = franchise.MovieIds
-                    .Where(mid => franchiseRentals.Any(r => r.CustomerId == cid && r.MovieId == mid))
-                    .Count();
-                if (watched == franchise.MovieIds.Count) completedCount++;
+                rentalCounts[r.MovieId]++;
+                HashSet<int> watched;
+                if (!customerWatched.TryGetValue(r.CustomerId, out watched))
+                {
+                    watched = new HashSet<int>();
+                    customerWatched[r.CustomerId] = watched;
+                }
+                watched.Add(r.MovieId);
             }
 
-            // Rental counts per movie
-            var rentalCounts = franchise.MovieIds.ToDictionary(
-                mid => mid,
-                mid => franchiseRentals.Count(r => r.MovieId == mid));
+            var completedCount = 0;
+            var totalFranchiseMovies = franchise.MovieIds.Count;
+            foreach (var kv in customerWatched)
+            {
+                if (kv.Value.Count == totalFranchiseMovies)
+                    completedCount++;
+            }
 
             var mostPopularId = rentalCounts.OrderByDescending(kv => kv.Value).FirstOrDefault().Key;
             var leastPopularId = rentalCounts.OrderBy(kv => kv.Value).FirstOrDefault().Key;
 
-            // Drop-off analysis
-            var dropoffs = CalculateDropoffs(franchise, franchiseRentals, movies);
+            // Drop-off analysis using pre-built per-customer sets
+            var dropoffs = CalculateDropoffs(franchise, customerWatched, movieLookup);
 
-            var avgRating = franchiseMovies.Where(m => m.Rating.HasValue).Select(m => m.Rating.Value).DefaultIfEmpty(0).Average();
+            var ratingSum = 0.0;
+            var ratingCount = 0;
+            foreach (var mid in franchise.MovieIds)
+            {
+                Movie m;
+                if (movieLookup.TryGetValue(mid, out m) && m.Rating.HasValue)
+                {
+                    ratingSum += m.Rating.Value;
+                    ratingCount++;
+                }
+            }
+            var avgRating = ratingCount > 0 ? ratingSum / ratingCount : 0.0;
+
+            Movie mostPopular, leastPopular;
+            movieLookup.TryGetValue(mostPopularId, out mostPopular);
+            movieLookup.TryGetValue(leastPopularId, out leastPopular);
 
             return new FranchiseReport
             {
@@ -203,43 +236,48 @@ namespace Vidly.Services
                 TotalRentals = franchiseRentals.Count,
                 AverageRating = Math.Round(avgRating, 2),
                 TotalRevenue = franchiseRentals.Sum(r => r.TotalCost),
-                CustomersStarted = customerIds.Count,
+                CustomersStarted = customerWatched.Count,
                 CustomersCompleted = completedCount,
-                CompletionRate = customerIds.Count > 0
-                    ? Math.Round(100.0 * completedCount / customerIds.Count, 1) : 0,
+                CompletionRate = customerWatched.Count > 0
+                    ? Math.Round(100.0 * completedCount / customerWatched.Count, 1) : 0,
                 MostPopularMovieId = mostPopularId,
-                MostPopularMovieName = movies.FirstOrDefault(m => m.Id == mostPopularId)?.Name ?? "Unknown",
+                MostPopularMovieName = mostPopular?.Name ?? "Unknown",
                 LeastPopularMovieId = leastPopularId,
-                LeastPopularMovieName = movies.FirstOrDefault(m => m.Id == leastPopularId)?.Name ?? "Unknown",
+                LeastPopularMovieName = leastPopular?.Name ?? "Unknown",
                 Dropoffs = dropoffs
             };
         }
 
-        private List<FranchiseDropoff> CalculateDropoffs(Franchise franchise, List<Rental> rentals, List<Movie> movies)
+        private List<FranchiseDropoff> CalculateDropoffs(Franchise franchise,
+            Dictionary<int, HashSet<int>> customerWatched, Dictionary<int, Movie> movieLookup)
         {
             var dropoffs = new List<FranchiseDropoff>();
-            var customerIds = rentals.Select(r => r.CustomerId).Distinct().ToList();
 
             for (int i = 0; i < franchise.MovieIds.Count; i++)
             {
                 var mid = franchise.MovieIds[i];
-                var watchedThisCount = customerIds.Count(cid =>
-                    rentals.Any(r => r.CustomerId == cid && r.MovieId == mid));
-
-                // "Dropped" = watched this one but not the next one
+                var watchedThisCount = 0;
                 var droppedCount = 0;
-                if (i < franchise.MovieIds.Count - 1)
+                var nextMid = i < franchise.MovieIds.Count - 1
+                    ? franchise.MovieIds[i + 1] : -1;
+
+                foreach (var kv in customerWatched)
                 {
-                    var nextMid = franchise.MovieIds[i + 1];
-                    droppedCount = customerIds.Count(cid =>
-                        rentals.Any(r => r.CustomerId == cid && r.MovieId == mid) &&
-                        !rentals.Any(r => r.CustomerId == cid && r.MovieId == nextMid));
+                    if (kv.Value.Contains(mid))
+                    {
+                        watchedThisCount++;
+                        if (nextMid >= 0 && !kv.Value.Contains(nextMid))
+                            droppedCount++;
+                    }
                 }
+
+                Movie m;
+                movieLookup.TryGetValue(mid, out m);
 
                 dropoffs.Add(new FranchiseDropoff
                 {
                     MovieId = mid,
-                    MovieName = movies.FirstOrDefault(m => m.Id == mid)?.Name ?? "Unknown",
+                    MovieName = m?.Name ?? "Unknown",
                     Position = i + 1,
                     WatchedCount = watchedThisCount,
                     DroppedCount = droppedCount,
@@ -342,15 +380,28 @@ namespace Vidly.Services
 
         public List<Franchise> GetPopularFranchises(List<Rental> rentals, int top = 10)
         {
-            return _franchises
-                .Select(f => new
+            // Pre-build per-franchise movie set for O(1) lookup,
+            // then single-pass over rentals to count per-franchise
+            var franchiseSets = new Dictionary<int, HashSet<int>>();
+            var franchiseCounts = new Dictionary<int, int>();
+            foreach (var f in _franchises)
+            {
+                franchiseSets[f.Id] = new HashSet<int>(f.MovieIds);
+                franchiseCounts[f.Id] = 0;
+            }
+
+            foreach (var r in rentals)
+            {
+                foreach (var f in _franchises)
                 {
-                    Franchise = f,
-                    RentalCount = rentals.Count(r => f.MovieIds.Contains(r.MovieId))
-                })
-                .OrderByDescending(x => x.RentalCount)
+                    if (franchiseSets[f.Id].Contains(r.MovieId))
+                        franchiseCounts[f.Id]++;
+                }
+            }
+
+            return _franchises
+                .OrderByDescending(f => franchiseCounts[f.Id])
                 .Take(top)
-                .Select(x => x.Franchise)
                 .ToList();
         }
 
