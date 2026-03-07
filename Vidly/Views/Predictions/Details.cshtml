@@ -1,0 +1,105 @@
+@model Vidly.Models.LateReturnPrediction
+@{
+    ViewBag.Title = "Prediction Details — " + Model.MovieName;
+}
+
+<h2>
+    <span class="label @Vidly.ViewModels.LateReturnViewModel.GetBadgeClass(Model.Level)">@Model.Level</span>
+    @Model.MovieName
+</h2>
+<p class="text-muted">Rental #@Model.RentalId — @Model.CustomerName</p>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong>Rental Details</strong></div>
+            <table class="table">
+                <tr><td>Customer</td><td><strong>@Model.CustomerName</strong></td></tr>
+                <tr><td>Movie</td><td><strong>@Model.MovieName</strong></td></tr>
+                <tr><td>Rented</td><td>@Model.RentalDate.ToString("MMM dd, yyyy")</td></tr>
+                <tr><td>Due</td><td>@Model.DueDate.ToString("MMM dd, yyyy")</td></tr>
+                <tr>
+                    <td>Status</td>
+                    <td>
+                        @if (Model.DaysRemaining < 0)
+                        {
+                            <span class="text-danger"><strong>@Math.Abs(Model.DaysRemaining) day(s) overdue</strong></span>
+                        }
+                        else if (Model.DaysRemaining == 0)
+                        {
+                            <span class="text-warning"><strong>Due today</strong></span>
+                        }
+                        else
+                        {
+                            <span>@Model.DaysRemaining day(s) remaining</span>
+                        }
+                    </td>
+                </tr>
+                <tr>
+                    <td>Risk Score</td>
+                    <td>
+                        <div class="progress" style="margin-bottom: 0;">
+                            <div class="progress-bar @Vidly.ViewModels.LateReturnViewModel.GetProgressClass(Model.RiskScore)"
+                                 style="width: @(Model.RiskScore)%;">
+                                @Model.RiskScore / 100
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Est. Late Fee</td>
+                    <td>
+                        @if (Model.EstimatedLateFee > 0)
+                        {
+                            <span class="text-danger"><strong>@Model.EstimatedLateFee.ToString("C")</strong></span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">None expected</span>
+                        }
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong>Risk Factors</strong></div>
+            <div class="panel-body">
+                @if (Model.Factors.Count == 0)
+                {
+                    <p class="text-muted">No significant risk factors detected.</p>
+                }
+                else
+                {
+                    foreach (var factor in Model.Factors)
+                    {
+                        <div style="margin-bottom: 12px;">
+                            <strong>@factor.Name</strong>
+                            <span class="badge pull-right">+@factor.Points pts</span>
+                            <br/>
+                            <small class="text-muted">@factor.Description</small>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+
+        <div class="panel panel-info">
+            <div class="panel-heading"><strong>Suggested Actions</strong></div>
+            <ul class="list-group">
+                @foreach (var action in Model.SuggestedActions)
+                {
+                    <li class="list-group-item">
+                        <span class="glyphicon glyphicon-chevron-right"></span> @action
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+</div>
+
+<a href="@Url.Action("Index")" class="btn btn-default">
+    <span class="glyphicon glyphicon-arrow-left"></span> Back to Predictions
+</a>

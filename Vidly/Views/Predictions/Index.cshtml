@@ -1,0 +1,162 @@
+@model Vidly.ViewModels.LateReturnViewModel
+@{
+    ViewBag.Title = "Late Return Predictions";
+}
+
+<h2><span class="glyphicon glyphicon-warning-sign"></span> Late Return Predictions</h2>
+<p class="text-muted">Risk assessment for active rentals — identifies which are likely to be returned late.</p>
+
+@* Summary Cards *@
+<div class="row" style="margin-bottom: 20px;">
+    <div class="col-md-2">
+        <div class="panel panel-default">
+            <div class="panel-body text-center">
+                <h3>@Model.Summary.TotalActiveRentals</h3>
+                <small class="text-muted">Active Rentals</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="panel panel-danger">
+            <div class="panel-body text-center">
+                <h3>@Model.Summary.CriticalRisk</h3>
+                <small>Critical Risk</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="panel panel-warning">
+            <div class="panel-body text-center">
+                <h3>@Model.Summary.HighRisk</h3>
+                <small>High Risk</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="panel panel-info">
+            <div class="panel-body text-center">
+                <h3>@Model.Summary.MediumRisk</h3>
+                <small>Medium Risk</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="panel panel-success">
+            <div class="panel-body text-center">
+                <h3>@Model.Summary.LowRisk</h3>
+                <small>Low Risk</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="panel panel-default">
+            <div class="panel-body text-center">
+                <h3>@Model.Summary.TotalEstimatedLateFees.ToString("C")</h3>
+                <small class="text-muted">Est. Late Fees</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Filter Buttons *@
+<div class="btn-group" style="margin-bottom: 15px;">
+    <a href="@Url.Action("Index")" class="btn btn-default @(string.IsNullOrEmpty(Model.FilterLevel) ? "active" : "")">
+        All
+    </a>
+    <a href="@Url.Action("Index", new { level = "Critical" })" class="btn btn-danger @(Model.FilterLevel == "Critical" ? "active" : "")">
+        Critical
+    </a>
+    <a href="@Url.Action("Index", new { level = "High" })" class="btn btn-warning @(Model.FilterLevel == "High" ? "active" : "")">
+        High
+    </a>
+    <a href="@Url.Action("Index", new { level = "Medium" })" class="btn btn-info @(Model.FilterLevel == "Medium" ? "active" : "")">
+        Medium
+    </a>
+    <a href="@Url.Action("Index", new { level = "Low" })" class="btn btn-success @(Model.FilterLevel == "Low" ? "active" : "")">
+        Low
+    </a>
+</div>
+
+@if (Model.Predictions.Count == 0)
+{
+    <div class="alert alert-success">
+        <span class="glyphicon glyphicon-ok"></span>
+        No active rentals to assess — all clear!
+    </div>
+}
+else
+{
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>Risk</th>
+                <th>Score</th>
+                <th>Customer</th>
+                <th>Movie</th>
+                <th>Due Date</th>
+                <th>Days Left</th>
+                <th>Est. Late Fee</th>
+                <th>Top Factor</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in Model.Predictions)
+            {
+                <tr class="@(p.Level == Vidly.Models.RiskLevel.Critical ? "danger" : p.Level == Vidly.Models.RiskLevel.High ? "warning" : "")">
+                    <td>
+                        <span class="label @Vidly.ViewModels.LateReturnViewModel.GetBadgeClass(p.Level)">
+                            @p.Level
+                        </span>
+                    </td>
+                    <td>
+                        <div class="progress" style="margin-bottom: 0; min-width: 80px;">
+                            <div class="progress-bar @Vidly.ViewModels.LateReturnViewModel.GetProgressClass(p.RiskScore)"
+                                 style="width: @(p.RiskScore)%;">
+                                @p.RiskScore
+                            </div>
+                        </div>
+                    </td>
+                    <td>@p.CustomerName</td>
+                    <td>@p.MovieName</td>
+                    <td>@p.DueDate.ToString("MMM dd, yyyy")</td>
+                    <td>
+                        @if (p.DaysRemaining < 0)
+                        {
+                            <span class="text-danger"><strong>@Math.Abs(p.DaysRemaining)d overdue</strong></span>
+                        }
+                        else if (p.DaysRemaining == 0)
+                        {
+                            <span class="text-warning"><strong>Due today</strong></span>
+                        }
+                        else
+                        {
+                            <span>@p.DaysRemaining day(s)</span>
+                        }
+                    </td>
+                    <td>
+                        @if (p.EstimatedLateFee > 0)
+                        {
+                            <span class="text-danger">@p.EstimatedLateFee.ToString("C")</span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">—</span>
+                        }
+                    </td>
+                    <td>
+                        @if (p.Factors.Count > 0)
+                        {
+                            <small>@p.Factors[0].Name</small>
+                        }
+                    </td>
+                    <td>
+                        <a href="@Url.Action("Details", new { id = p.RentalId })" class="btn btn-xs btn-default">
+                            <span class="glyphicon glyphicon-search"></span> Details
+                        </a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
