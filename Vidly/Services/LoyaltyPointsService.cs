@@ -29,7 +29,7 @@ namespace Vidly.Services
         public const int HalfOffCost = 250;
 
         /// <summary>Bonus points for returning a movie on time or early.</summary>
-        public const int OnTimeReturnBonus = 25;
+        public const int OnTimeReturnBonus = RentalPolicyConstants.OnTimeReturnBonus;
 
         public LoyaltyPointsService(
             ICustomerRepository customerRepository,
