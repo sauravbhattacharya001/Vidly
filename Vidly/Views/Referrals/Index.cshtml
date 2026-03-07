@@ -1,0 +1,258 @@
+@model Vidly.ViewModels.ReferralViewModel
+@{
+    ViewBag.Title = "Referral Program";
+}
+
+<h2><i class="glyphicon glyphicon-share"></i> Referral Program</h2>
+<p class="text-muted">Invite friends to Vidly and earn loyalty points!</p>
+
+@if (TempData["Message"] != null)
+{
+    <div class="alert alert-@TempData["MessageType"] alert-dismissible" role="alert">
+        <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+        @TempData["Message"]
+    </div>
+}
+
+<!-- Program Overview Stats -->
+<div class="row" style="margin-bottom: 20px;">
+    <div class="col-md-2">
+        <div class="panel panel-primary">
+            <div class="panel-body text-center">
+                <h3 style="margin: 0;">@Model.ProgramStats.TotalReferrals</h3>
+                <small class="text-muted">Total Referrals</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="panel panel-success">
+            <div class="panel-body text-center">
+                <h3 style="margin: 0;">@Model.ProgramStats.TotalConverted</h3>
+                <small class="text-muted">Converted</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="panel panel-warning">
+            <div class="panel-body text-center">
+                <h3 style="margin: 0;">@Model.ProgramStats.TotalPending</h3>
+                <small class="text-muted">Pending</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="panel panel-default">
+            <div class="panel-body text-center">
+                <h3 style="margin: 0;">@(Model.ProgramStats.OverallConversionRate)%</h3>
+                <small class="text-muted">Conversion Rate</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="panel panel-info">
+            <div class="panel-body text-center">
+                <h3 style="margin: 0;">@Model.ProgramStats.TotalPointsAwarded</h3>
+                <small class="text-muted">Points Awarded</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="panel panel-default">
+            <div class="panel-body text-center">
+                <h3 style="margin: 0;">@Model.ProgramStats.ActiveReferrers</h3>
+                <small class="text-muted">Active Referrers</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Left Column: Send Referral + Customer Filter -->
+    <div class="col-md-4">
+        <!-- Customer Selector -->
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong>Select Customer</strong></div>
+            <div class="panel-body">
+                <form method="get" action="@Url.Action("Index")">
+                    <div class="form-group">
+                        <select name="customerId" class="form-control" onchange="this.form.submit()">
+                            <option value="">-- All Referrals --</option>
+                            @foreach (var c in Model.Customers)
+                            {
+                                <option value="@c.Id" @(Model.SelectedCustomerId == c.Id ? "selected" : "")>@c.Name</option>
+                            }
+                        </select>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        @if (Model.SelectedCustomerId.HasValue && Model.CustomerSummary != null)
+        {
+            <!-- Customer Referral Summary -->
+            <div class="panel panel-info">
+                <div class="panel-heading"><strong>@Model.CustomerSummary.CustomerName's Referrals</strong></div>
+                <div class="panel-body">
+                    <table class="table table-condensed" style="margin-bottom: 10px;">
+                        <tr><td>Total Sent</td><td class="text-right"><strong>@Model.CustomerSummary.TotalReferrals</strong></td></tr>
+                        <tr><td>Converted</td><td class="text-right"><span class="label label-success">@Model.CustomerSummary.ConvertedCount</span></td></tr>
+                        <tr><td>Pending</td><td class="text-right"><span class="label label-warning">@Model.CustomerSummary.PendingCount</span></td></tr>
+                        <tr><td>Expired</td><td class="text-right"><span class="label label-default">@Model.CustomerSummary.ExpiredCount</span></td></tr>
+                        <tr><td>Conversion Rate</td><td class="text-right">@(Model.CustomerSummary.ConversionRate)%</td></tr>
+                        <tr><td>Points Earned</td><td class="text-right"><strong>@Model.CustomerSummary.TotalPointsEarned pts</strong></td></tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Send New Referral -->
+            <div class="panel panel-success">
+                <div class="panel-heading"><strong><i class="glyphicon glyphicon-envelope"></i> Send Referral</strong></div>
+                <div class="panel-body">
+                    <form method="post" action="@Url.Action("Create")">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="referrerId" value="@Model.SelectedCustomerId" />
+                        <div class="form-group">
+                            <label>Friend's Name</label>
+                            <input type="text" name="referredName" class="form-control" placeholder="e.g. Sarah Connor" required />
+                        </div>
+                        <div class="form-group">
+                            <label>Friend's Email</label>
+                            <input type="email" name="referredEmail" class="form-control" placeholder="friend@example.com" required />
+                        </div>
+                        <button type="submit" class="btn btn-success btn-block">
+                            <i class="glyphicon glyphicon-send"></i> Send Invitation
+                        </button>
+                    </form>
+                    <hr />
+                    <p class="text-muted" style="font-size: 12px;">
+                        <strong>How it works:</strong> Your friend gets an invitation. When they sign up,
+                        you earn <strong>@Vidly.Services.ReferralService.ConversionBonusPoints points</strong>
+                        and they get <strong>@Vidly.Services.ReferralService.WelcomeBonusPoints welcome points</strong>.
+                        Referrals expire after @Vidly.Services.ReferralService.ExpirationDays days.
+                    </p>
+                </div>
+            </div>
+        }
+
+        <!-- Leaderboard -->
+        @if (Model.ProgramStats.Leaderboard != null && Model.ProgramStats.Leaderboard.Count > 0)
+        {
+            <div class="panel panel-warning">
+                <div class="panel-heading"><strong><i class="glyphicon glyphicon-star"></i> Top Referrers</strong></div>
+                <table class="table table-condensed" style="margin-bottom: 0;">
+                    <thead>
+                        <tr><th>#</th><th>Name</th><th>Converted</th><th>Tier</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var entry in Model.ProgramStats.Leaderboard)
+                        {
+                            <tr>
+                                <td>@entry.Rank</td>
+                                <td>@entry.CustomerName</td>
+                                <td>@entry.ConvertedReferrals</td>
+                                <td>
+                                    @{
+                                        var badgeClass = entry.Tier == "Ambassador" ? "label-danger" :
+                                                         entry.Tier == "Champion" ? "label-warning" :
+                                                         entry.Tier == "Advocate" ? "label-info" : "label-default";
+                                    }
+                                    <span class="label @badgeClass">@entry.Tier</span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    <!-- Right Column: Referral List -->
+    <div class="col-md-8">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <strong>
+                    @if (Model.SelectedCustomerId.HasValue && Model.CustomerSummary != null)
+                    {
+                        @:Referrals by @Model.CustomerSummary.CustomerName
+                    }
+                    else
+                    {
+                        @:All Referrals
+                    }
+                </strong>
+            </div>
+            @if (Model.Referrals != null && Model.Referrals.Count > 0)
+            {
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Referred</th>
+                            <th>Email</th>
+                            <th>Code</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Points</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in Model.Referrals)
+                        {
+                            var statusClass = r.Status == ReferralStatus.Converted ? "label-success" :
+                                              r.Status == ReferralStatus.Pending ? "label-warning" :
+                                              r.Status == ReferralStatus.RewardClaimed ? "label-info" : "label-default";
+                            <tr>
+                                <td>@r.ReferredName</td>
+                                <td>@r.ReferredEmail</td>
+                                <td><code>@r.ReferralCode</code></td>
+                                <td>@r.CreatedDate.ToString("MMM dd, yyyy")</td>
+                                <td><span class="label @statusClass">@r.Status</span></td>
+                                <td>
+                                    @if (r.PointsAwarded > 0)
+                                    {
+                                        <span class="text-success">+@r.PointsAwarded</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <div class="panel-body text-center text-muted">
+                    <i class="glyphicon glyphicon-info-sign"></i>
+                    No referrals yet. Select a customer and send the first one!
+                </div>
+            }
+        </div>
+
+        <!-- Reward Tiers Info -->
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong><i class="glyphicon glyphicon-gift"></i> Referral Reward Tiers</strong></div>
+            <div class="panel-body">
+                <div class="row">
+                    <div class="col-sm-3 text-center">
+                        <span class="label label-default" style="font-size: 14px;">Starter</span>
+                        <p style="margin-top: 5px;">1-2 referrals<br /><strong>200 pts each</strong></p>
+                    </div>
+                    <div class="col-sm-3 text-center">
+                        <span class="label label-info" style="font-size: 14px;">Advocate</span>
+                        <p style="margin-top: 5px;">3-4 referrals<br /><strong>+ Badge unlock</strong></p>
+                    </div>
+                    <div class="col-sm-3 text-center">
+                        <span class="label label-warning" style="font-size: 14px;">Champion</span>
+                        <p style="margin-top: 5px;">5-9 referrals<br /><strong>+ Priority access</strong></p>
+                    </div>
+                    <div class="col-sm-3 text-center">
+                        <span class="label label-danger" style="font-size: 14px;">Ambassador</span>
+                        <p style="margin-top: 5px;">10+ referrals<br /><strong>+ Free monthly rental</strong></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
