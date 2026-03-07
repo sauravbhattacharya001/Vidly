@@ -122,15 +122,31 @@ namespace Vidly.Services
         public bool IsEnabled { get; set; }
 
         /// <summary>
-        /// Optional 4-digit PIN required to override parental controls.
+        /// SHA-256 hash of (salt + PIN). Never stores the raw PIN.
         /// </summary>
-        public string Pin { get; set; }
+        internal string PinHash { get; set; }
 
         /// <summary>
-        /// Whether a valid PIN has been set.
+        /// Cryptographic salt for PIN hashing (hex-encoded, 16 bytes).
         /// </summary>
-        public bool HasPin => !string.IsNullOrWhiteSpace(Pin) && Pin.Length == 4
-                              && Pin.All(char.IsDigit);
+        internal string PinSalt { get; set; }
+
+        /// <summary>
+        /// Number of consecutive failed PIN attempts.
+        /// </summary>
+        public int FailedPinAttempts { get; set; }
+
+        /// <summary>
+        /// UTC time when the last failed PIN attempt occurred.
+        /// Used for lockout window calculation.
+        /// </summary>
+        public DateTime? LastFailedAttempt { get; set; }
+
+        /// <summary>
+        /// Whether a valid PIN has been set (checks for hash, not raw value).
+        /// </summary>
+        public bool HasPin => !string.IsNullOrWhiteSpace(PinHash)
+                              && !string.IsNullOrWhiteSpace(PinSalt);
     }
 
     /// <summary>
@@ -182,6 +198,12 @@ namespace Vidly.Services
         private readonly Dictionary<int, MovieContentProfile> _movieProfiles = new();
         private readonly Dictionary<int, ParentalControlProfile> _controlProfiles = new();
 
+        /// <summary>Maximum consecutive failed PIN attempts before lockout.</summary>
+        public const int MaxPinAttempts = 5;
+
+        /// <summary>Lockout duration in minutes after max failed attempts.</summary>
+        public const int LockoutMinutes = 15;
+
         public ParentalControlService(
             IMovieRepository movieRepository,
             ICustomerRepository customerRepository)
@@ -190,6 +212,102 @@ namespace Vidly.Services
                 ?? throw new ArgumentNullException(nameof(movieRepository));
             _customerRepository = customerRepository
                 ?? throw new ArgumentNullException(nameof(customerRepository));
+        }
+
+        // ── PIN Security Helpers ─────────────────────────────────────
+
+        /// <summary>
+        /// Generate a cryptographic salt (16 bytes, hex-encoded).
+        /// </summary>
+        private static string GenerateSalt()
+        {
+            var bytes = new byte[16];
+            using (var rng = System.Security.Cryptography.RandomNumberGenerator.Create())
+                rng.GetBytes(bytes);
+            return BitConverter.ToString(bytes).Replace("-", "").ToLowerInvariant();
+        }
+
+        /// <summary>
+        /// Hash a PIN with SHA-256 using the provided salt.
+        /// Returns hex-encoded hash string.
+        /// </summary>
+        private static string HashPin(string pin, string salt)
+        {
+            using (var sha = System.Security.Cryptography.SHA256.Create())
+            {
+                var data = System.Text.Encoding.UTF8.GetBytes(salt + pin);
+                var hash = sha.ComputeHash(data);
+                return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+            }
+        }
+
+        /// <summary>
+        /// Constant-time comparison to prevent timing attacks.
+        /// </summary>
+        private static bool ConstantTimeEquals(string a, string b)
+        {
+            if (a == null || b == null) return false;
+            if (a.Length != b.Length) return false;
+            int diff = 0;
+            for (int i = 0; i < a.Length; i++)
+                diff |= a[i] ^ b[i];
+            return diff == 0;
+        }
+
+        /// <summary>
+        /// Set PIN on a profile (hashes with fresh salt).
+        /// </summary>
+        private static void SetPinOnProfile(ParentalControlProfile profile, string pin)
+        {
+            if (pin == null)
+            {
+                profile.PinHash = null;
+                profile.PinSalt = null;
+            }
+            else
+            {
+                profile.PinSalt = GenerateSalt();
+                profile.PinHash = HashPin(pin, profile.PinSalt);
+            }
+            profile.FailedPinAttempts = 0;
+            profile.LastFailedAttempt = null;
+        }
+
+        /// <summary>
+        /// Verify a PIN against a profile's stored hash.
+        /// Includes rate limiting: locks out after MaxPinAttempts
+        /// failures for LockoutMinutes.
+        /// </summary>
+        private bool VerifyPin(ParentalControlProfile profile, string pin)
+        {
+            if (!profile.HasPin) return false;
+
+            // Check lockout
+            if (profile.FailedPinAttempts >= MaxPinAttempts
+                && profile.LastFailedAttempt.HasValue)
+            {
+                var elapsed = DateTime.UtcNow - profile.LastFailedAttempt.Value;
+                if (elapsed.TotalMinutes < LockoutMinutes)
+                    return false; // Still locked out
+
+                // Lockout expired — reset attempts
+                profile.FailedPinAttempts = 0;
+                profile.LastFailedAttempt = null;
+            }
+
+            var candidateHash = HashPin(pin, profile.PinSalt);
+            if (ConstantTimeEquals(candidateHash, profile.PinHash))
+            {
+                // Correct PIN — reset failed attempts
+                profile.FailedPinAttempts = 0;
+                profile.LastFailedAttempt = null;
+                return true;
+            }
+
+            // Wrong PIN — increment failure counter
+            profile.FailedPinAttempts++;
+            profile.LastFailedAttempt = DateTime.UtcNow;
+            return false;
         }
 
         // ── Movie Content Rating ─────────────────────────────────────
@@ -312,11 +430,11 @@ namespace Vidly.Services
             {
                 CustomerId = customerId,
                 MaxAllowedRating = maxRating,
-                Pin = pin,
                 WarnAdvisories = warnAdvisories,
                 BlockAdvisories = blockAdvisories,
                 IsEnabled = true
             };
+            SetPinOnProfile(profile, pin);
             _controlProfiles[customerId] = profile;
             return profile;
         }
@@ -329,7 +447,7 @@ namespace Vidly.Services
             if (!_controlProfiles.TryGetValue(customerId, out var profile))
                 return false;
 
-            if (profile.HasPin && profile.Pin != pin)
+            if (profile.HasPin && !VerifyPin(profile, pin))
                 return false;
 
             profile.IsEnabled = false;
@@ -355,13 +473,13 @@ namespace Vidly.Services
             if (!_controlProfiles.TryGetValue(customerId, out var profile))
                 return false;
 
-            if (profile.HasPin && profile.Pin != oldPin)
+            if (profile.HasPin && !VerifyPin(profile, oldPin))
                 return false;
 
             if (newPin != null && (newPin.Length != 4 || !newPin.All(char.IsDigit)))
                 return false;
 
-            profile.Pin = newPin;
+            SetPinOnProfile(profile, newPin);
             return true;
         }
 
@@ -426,13 +544,14 @@ namespace Vidly.Services
         /// <summary>
         /// Attempt to override a block using the parental control PIN.
         /// Returns true if the PIN is correct and override is allowed.
+        /// Subject to rate limiting (locked out after MaxPinAttempts failures).
         /// </summary>
         public bool TryOverrideWithPin(int customerId, string pin)
         {
             if (!_controlProfiles.TryGetValue(customerId, out var profile))
                 return false;
 
-            return profile.HasPin && profile.Pin == pin;
+            return VerifyPin(profile, pin);
         }
 
         // ── Filtering ────────────────────────────────────────────────
