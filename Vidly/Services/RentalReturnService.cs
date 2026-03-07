@@ -393,9 +393,14 @@ namespace Vidly.Services
             var overdueRentals = _rentalRepository.GetOverdue();
             var result = new List<OverdueRentalInfo>();
 
+            // Batch-load all customers to avoid N+1 GetById calls per rental
+            var customerLookup = new Dictionary<int, Customer>();
+            foreach (var c in _customerRepository.GetAll())
+                customerLookup[c.Id] = c;
+
             foreach (var rental in overdueRentals)
             {
-                var customer = _customerRepository.GetById(rental.CustomerId);
+                customerLookup.TryGetValue(rental.CustomerId, out var customer);
                 var tier = customer?.MembershipType ?? MembershipType.Basic;
                 var projected = CalculateLateFee(
                     rental.DueDate, DateTime.Today, rental.DailyRate, tier);
@@ -475,14 +480,12 @@ namespace Vidly.Services
                     $"Customer {customerId} not found.");
 
             var allRentals = _rentalRepository.GetActiveByCustomer(customerId);
-            // GetActiveByCustomer only returns active; we need all.
-            // Use Search to find all rentals for this customer.
-            var returned = _rentalRepository
-                .Search(customer.Name, RentalStatus.Returned);
-            var active = _rentalRepository
-                .Search(customer.Name, RentalStatus.Active);
-            var overdue = _rentalRepository
-                .Search(customer.Name, RentalStatus.Overdue);
+            // Single search call instead of 3 separate status-filtered searches.
+            // Search by customer name with no status filter, then partition locally.
+            var allByName = _rentalRepository.Search(customer.Name, null);
+            var returned = allByName.Where(r => r.Status == RentalStatus.Returned).ToList();
+            var active = allByName.Where(r => r.Status == RentalStatus.Active).ToList();
+            var overdue = allByName.Where(r => r.Status == RentalStatus.Overdue).ToList();
 
             var totalReturned = returned.Count;
             var onTimeReturns = returned.Count(r =>
