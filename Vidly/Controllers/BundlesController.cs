@@ -56,7 +56,7 @@ namespace Vidly.Controllers
         // POST: Bundles/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Create(BundleDeal bundle)
+        public ActionResult Create([Bind(Include = "Name,Description,MinMovies,MaxMovies,DiscountType,DiscountValue,RequiredGenre,IsActive,StartDate,EndDate")] BundleDeal bundle)
         {
             if (!ModelState.IsValid)
                 return View(bundle);

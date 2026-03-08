@@ -139,6 +139,13 @@ namespace Vidly.Controllers
 
             var rental = viewModel.Rental;
 
+            // Security: reset server-controlled fields to prevent over-posting.
+            // An attacker could POST Rental.Status=Returned, Rental.LateFee=-100,
+            // or Rental.ReturnDate to manipulate rental state (CWE-915).
+            rental.Status = RentalStatus.Active;
+            rental.LateFee = 0;
+            rental.ReturnDate = null;
+
             // Validate customer exists
             var customer = _customerRepository.GetById(rental.CustomerId);
             if (customer == null)

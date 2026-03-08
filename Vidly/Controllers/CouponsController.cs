@@ -71,7 +71,7 @@ namespace Vidly.Controllers
         // POST: Coupons/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Create(Coupon coupon)
+        public ActionResult Create([Bind(Include = "Code,Description,DiscountType,DiscountValue,MinimumOrderAmount,MaxDiscountAmount,ValidFrom,ValidUntil,MaxRedemptions,IsActive")] Coupon coupon)
         {
             if (coupon == null)
                 return new HttpStatusCodeResult(400);
@@ -120,7 +120,7 @@ namespace Vidly.Controllers
         // POST: Coupons/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Edit(Coupon coupon)
+        public ActionResult Edit([Bind(Include = "Id,Code,Description,DiscountType,DiscountValue,MinimumOrderAmount,MaxDiscountAmount,ValidFrom,ValidUntil,MaxRedemptions,IsActive")] Coupon coupon)
         {
             if (coupon == null)
                 return new HttpStatusCodeResult(400);
