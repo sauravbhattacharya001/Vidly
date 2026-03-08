@@ -29,7 +29,7 @@ namespace Vidly.Services
         // Delegated to RentalPolicyConstants for single source of truth.
 
         /// <summary>Per-day late fee (before tier discount).</summary>
-        public const decimal BaseLateFeePer​Day = RentalPolicyConstants.LateFeePerDay;
+        public const decimal BaseLateFeePerDay = RentalPolicyConstants.LateFeePerDay;
 
         /// <summary>Maximum late fee on any single rental.</summary>
         public const decimal MaxLateFeeCap = RentalPolicyConstants.MaxLateFeeCap;
@@ -243,7 +243,7 @@ namespace Vidly.Services
 
             var waivedDays = Math.Min(daysOverdue, gracePeriod);
             var chargeableDays = Math.Max(0, daysOverdue - gracePeriod);
-            var fee = chargeableDays * BaseLateFeePer​Day;
+            var fee = chargeableDays * BaseLateFeePerDay;
 
             // Apply tier discount
             var discount = GetTierLateDiscount(tier);
