@@ -302,8 +302,9 @@ namespace Vidly.Tests
         public void AnalyzeGenrePreferences_EmptyRentals_ReturnsEmpty()
         {
             var movies = new TestMovieRepository();
+            var movieLookup = RecommendationService.BuildMovieLookup(movies.GetAll());
             var prefs = RecommendationService.AnalyzeGenrePreferences(
-                new List<Rental>(), movies.GetAll());
+                new List<Rental>(), movieLookup);
 
             Assert.AreEqual(0, prefs.Count);
         }
@@ -312,7 +313,8 @@ namespace Vidly.Tests
         public void AnalyzeGenrePreferences_NullRentals_ReturnsEmpty()
         {
             var movies = new TestMovieRepository();
-            var prefs = RecommendationService.AnalyzeGenrePreferences(null, movies.GetAll());
+            var movieLookup = RecommendationService.BuildMovieLookup(movies.GetAll());
+            var prefs = RecommendationService.AnalyzeGenrePreferences(null, movieLookup);
 
             Assert.AreEqual(0, prefs.Count);
         }
@@ -323,8 +325,9 @@ namespace Vidly.Tests
             var movies = new TestMovieRepository();
             movies.Add(CreateMovie(1, "Action Movie", Genre.Action, 4));
             var rentals = new List<Rental> { CreateRental(1, 1) };
+            var movieLookup = RecommendationService.BuildMovieLookup(movies.GetAll());
 
-            var prefs = RecommendationService.AnalyzeGenrePreferences(rentals, movies.GetAll());
+            var prefs = RecommendationService.AnalyzeGenrePreferences(rentals, movieLookup);
 
             Assert.IsTrue(prefs.ContainsKey(Genre.Action));
             Assert.IsTrue(prefs[Genre.Action] > 0, "Score should be positive.");
@@ -343,8 +346,9 @@ namespace Vidly.Tests
                 CreateRental(1, 2),
                 CreateRental(1, 3)
             };
+            var movieLookup = RecommendationService.BuildMovieLookup(movies.GetAll());
 
-            var prefs = RecommendationService.AnalyzeGenrePreferences(rentals, movies.GetAll());
+            var prefs = RecommendationService.AnalyzeGenrePreferences(rentals, movieLookup);
 
             Assert.AreEqual(3, prefs.Count, "Should track all 3 genres.");
             Assert.IsTrue(prefs.ContainsKey(Genre.Action));
@@ -366,8 +370,9 @@ namespace Vidly.Tests
                 CreateRental(1, 2, 5),
                 CreateRental(1, 3, 5)
             };
+            var movieLookup = RecommendationService.BuildMovieLookup(movies.GetAll());
 
-            var prefs = RecommendationService.AnalyzeGenrePreferences(rentals, movies.GetAll());
+            var prefs = RecommendationService.AnalyzeGenrePreferences(rentals, movieLookup);
 
             Assert.IsTrue(prefs[Genre.Action] > prefs[Genre.Comedy],
                 "Genre rented twice should score higher than once.");
@@ -385,8 +390,9 @@ namespace Vidly.Tests
                 CreateRental(1, 1, 1),   // 1 day ago — very recent
                 CreateRental(1, 2, 60)   // 60 days ago — no recency bonus
             };
+            var movieLookup = RecommendationService.BuildMovieLookup(movies.GetAll());
 
-            var prefs = RecommendationService.AnalyzeGenrePreferences(rentals, movies.GetAll());
+            var prefs = RecommendationService.AnalyzeGenrePreferences(rentals, movieLookup);
 
             Assert.IsTrue(prefs[Genre.Action] > prefs[Genre.Comedy],
                 "Recent rental should get recency bonus.");
@@ -398,8 +404,9 @@ namespace Vidly.Tests
             var movies = new TestMovieRepository();
             movies.Add(CreateMovie(1, "No Genre Movie", null, 4));
             var rentals = new List<Rental> { CreateRental(1, 1) };
+            var movieLookup = RecommendationService.BuildMovieLookup(movies.GetAll());
 
-            var prefs = RecommendationService.AnalyzeGenrePreferences(rentals, movies.GetAll());
+            var prefs = RecommendationService.AnalyzeGenrePreferences(rentals, movieLookup);
 
             Assert.AreEqual(0, prefs.Count,
                 "Movies without genre should not generate preferences.");
@@ -409,10 +416,11 @@ namespace Vidly.Tests
         public void AnalyzeGenrePreferences_UnknownMovieId_Skipped()
         {
             var movies = new TestMovieRepository();
+            var movieLookup = RecommendationService.BuildMovieLookup(movies.GetAll());
             // Movie ID 999 does not exist
             var rentals = new List<Rental> { CreateRental(1, 999) };
 
-            var prefs = RecommendationService.AnalyzeGenrePreferences(rentals, movies.GetAll());
+            var prefs = RecommendationService.AnalyzeGenrePreferences(rentals, movieLookup);
 
             Assert.AreEqual(0, prefs.Count,
                 "Rentals referencing unknown movies should be skipped.");
@@ -869,6 +877,7 @@ namespace Vidly.Tests
             public MovieTagAssignment GetAssignmentById(int id) => _assignments.TryGetValue(id, out var a) ? a : null;
             public IReadOnlyList<MovieTagAssignment> GetAssignmentsByMovie(int movieId) => _assignments.Values.Where(a => a.MovieId == movieId).ToList().AsReadOnly();
             public IReadOnlyList<MovieTagAssignment> GetAssignmentsByTag(int tagId) => _assignments.Values.Where(a => a.TagId == tagId).ToList().AsReadOnly();
+            public IReadOnlyList<MovieTagAssignment> GetAllAssignments() => _assignments.Values.ToList().AsReadOnly();
             public void RemoveAssignment(int id) { _assignments.Remove(id); }
             public bool HasAssignment(int tagId, int movieId) => _assignments.Values.Any(a => a.TagId == tagId && a.MovieId == movieId);
             public int RemoveAllAssignmentsForTag(int tagId) { var ids = _assignments.Where(kv => kv.Value.TagId == tagId).Select(kv => kv.Key).ToList(); foreach (var id in ids) _assignments.Remove(id); return ids.Count; }
@@ -975,7 +984,9 @@ namespace Vidly.Tests
                 CreateRental(1, 2, 5)
             };
 
-            var affinities = RecommendationService.AnalyzeTagAffinities(rentals, tags);
+            // Build tag index from bulk-loaded assignments (new API)
+            var tagsByMovie = RecommendationService.BuildTagIndex(tags.GetAllAssignments());
+            var affinities = RecommendationService.AnalyzeTagAffinities(rentals, tagsByMovie);
 
             Assert.AreEqual(1, affinities.Count);
             Assert.AreEqual(2, affinities[tag.Id].RentalCount);

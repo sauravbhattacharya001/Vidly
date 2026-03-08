@@ -85,6 +85,11 @@ namespace Vidly.Repositories
                 .ToList().AsReadOnly();
         }
 
+        public IReadOnlyList<MovieTagAssignment> GetAllAssignments()
+        {
+            return _assignments.Values.ToList().AsReadOnly();
+        }
+
         public MovieTagAssignment AddAssignment(MovieTagAssignment assignment)
         {
             if (assignment == null) throw new ArgumentNullException(nameof(assignment));

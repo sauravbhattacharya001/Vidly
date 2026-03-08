@@ -22,6 +22,7 @@ namespace Vidly.Repositories
         MovieTagAssignment GetAssignmentById(int id);
         IReadOnlyList<MovieTagAssignment> GetAssignmentsByMovie(int movieId);
         IReadOnlyList<MovieTagAssignment> GetAssignmentsByTag(int tagId);
+        IReadOnlyList<MovieTagAssignment> GetAllAssignments();
         MovieTagAssignment AddAssignment(MovieTagAssignment assignment);
         void RemoveAssignment(int id);
         bool HasAssignment(int tagId, int movieId);
