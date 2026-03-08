@@ -332,8 +332,14 @@ namespace Vidly.Services
             {
                 summary.AverageResolutionDays = resolved
                     .Average(d => (d.ResolvedDate.Value - d.SubmittedDate).Days);
-                summary.ApprovalRate = all.Count > 0
-                    ? (double)(summary.Approved + summary.PartiallyApproved) / all.Count * 100
+
+                // Bug fix: approval rate should use resolved disputes as the
+                // denominator, not total disputes. Including open/pending disputes
+                // in the denominator artificially deflates the rate — a store with
+                // 8 approved out of 10 resolved but 5 still open would show 53%
+                // instead of the correct 80%.
+                summary.ApprovalRate = resolved.Count > 0
+                    ? (double)(summary.Approved + summary.PartiallyApproved) / resolved.Count * 100
                     : 0;
             }
 
