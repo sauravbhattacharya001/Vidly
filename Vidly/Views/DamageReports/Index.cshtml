@@ -1,0 +1,364 @@
+@model Vidly.ViewModels.DamageReportViewModel
+@{
+    ViewBag.Title = "Damage Reports";
+}
+
+<h2><span class="glyphicon glyphicon-alert"></span> Damage Report Dashboard</h2>
+<p class="text-muted">Track disc condition, file damage reports, and manage replacements.</p>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+@* Summary Cards *@
+<div class="row" style="margin-bottom: 20px;">
+    <div class="col-md-2">
+        <div class="panel panel-default">
+            <div class="panel-body text-center">
+                <h3>@Model.Analytics.TotalReports</h3>
+                <small class="text-muted">Total Reports</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="panel panel-warning">
+            <div class="panel-body text-center">
+                <h3>@Model.Analytics.TotalCharges.ToString("C")</h3>
+                <small>Total Charges</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="panel panel-success">
+            <div class="panel-body text-center">
+                <h3>@Model.Analytics.CollectionRate%</h3>
+                <small>Collection Rate</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="panel panel-danger">
+            <div class="panel-body text-center">
+                <h3>@Model.Analytics.MoviesNeedingReplacement</h3>
+                <small>Need Replacement</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="panel panel-danger">
+            <div class="panel-body text-center">
+                <h3>@Model.Analytics.RepeatOffenders</h3>
+                <small>Repeat Offenders</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="panel panel-info">
+            <div class="panel-body text-center">
+                <h3>@Model.Analytics.MostCommonDamageType</h3>
+                <small>Top Damage Type</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Tabs *@
+<ul class="nav nav-tabs" style="margin-bottom: 15px;">
+    <li class="@(Model.ActiveTab == "overview" ? "active" : "")">
+        <a href="@Url.Action("Index", new { tab = "overview" })">Overview</a>
+    </li>
+    <li class="@(Model.ActiveTab == "reports" ? "active" : "")">
+        <a href="@Url.Action("Index", new { tab = "reports" })">All Reports</a>
+    </li>
+    <li class="@(Model.ActiveTab == "replacements" ? "active" : "")">
+        <a href="@Url.Action("Index", new { tab = "replacements" })">Replacements</a>
+    </li>
+    <li class="@(Model.ActiveTab == "offenders" ? "active" : "")">
+        <a href="@Url.Action("Index", new { tab = "offenders" })">Flagged Customers</a>
+    </li>
+    <li class="@(Model.ActiveTab == "file" ? "active" : "")">
+        <a href="@Url.Action("Index", new { tab = "file" })">File Report</a>
+    </li>
+</ul>
+
+@* Overview Tab *@
+@if (Model.ActiveTab == "overview")
+{
+    <div class="row">
+        <div class="col-md-6">
+            <div class="panel panel-default">
+                <div class="panel-heading"><strong>Most Damaged Movie</strong></div>
+                <div class="panel-body">
+                    @if (Model.Analytics.MostDamagedMovie != null)
+                    {
+                        <h4>@Model.Analytics.MostDamagedMovie.MovieName</h4>
+                        <p>Reports: @Model.Analytics.MostDamagedMovie.TotalReports |
+                           Condition: <span class="label label-@(Model.Analytics.MostDamagedMovie.CurrentCondition >= DiscCondition.Damaged ? "danger" : "warning")">@Model.Analytics.MostDamagedMovie.CurrentCondition</span> |
+                           Charges: @Model.Analytics.MostDamagedMovie.TotalCharges.ToString("C")</p>
+                    }
+                    else
+                    {
+                        <p class="text-muted">No damage reports yet.</p>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="panel panel-default">
+                <div class="panel-heading"><strong>Worst Offender</strong></div>
+                <div class="panel-body">
+                    @if (Model.Analytics.WorstOffender != null)
+                    {
+                        <h4>@Model.Analytics.WorstOffender.CustomerName</h4>
+                        <p>Incidents: @Model.Analytics.WorstOffender.TotalIncidents |
+                           Tier: <span class="label label-@(Model.Analytics.WorstOffender.RiskTier == "Flagged" ? "danger" : Model.Analytics.WorstOffender.RiskTier == "Watch" ? "warning" : "success")">@Model.Analytics.WorstOffender.RiskTier</span> |
+                           Unpaid: @Model.Analytics.WorstOffender.UnpaidCharges.ToString("C")</p>
+                    }
+                    else
+                    {
+                        <p class="text-muted">No customer damage data yet.</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h4>Recent Reports</h4>
+    @if (Model.RecentReports.Count == 0)
+    {
+        <div class="alert alert-info">No damage reports have been filed yet.</div>
+    }
+    else
+    {
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Movie</th>
+                    <th>Customer</th>
+                    <th>Damage</th>
+                    <th>Condition</th>
+                    <th>Charge</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model.RecentReports.Take(10))
+                {
+                    <tr>
+                        <td>@r.ReportedOn.ToString("MMM dd, yyyy")</td>
+                        <td><a href="@Url.Action("Movie", new { id = r.MovieId })">@r.MovieName</a></td>
+                        <td><a href="@Url.Action("Customer", new { id = r.CustomerId })">@r.CustomerName</a></td>
+                        <td>@r.DamageType</td>
+                        <td>@r.ConditionBefore &rarr; @r.ConditionAfter</td>
+                        <td>@r.DamageCharge.ToString("C")</td>
+                        <td>
+                            @if (r.ChargeCollected) { <span class="label label-success">Collected</span> }
+                            else { <span class="label label-default">Pending</span> }
+                            @if (r.Replaced) { <span class="label label-info">Replaced</span> }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@* All Reports Tab *@
+@if (Model.ActiveTab == "reports")
+{
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Date</th>
+                <th>Movie</th>
+                <th>Customer</th>
+                <th>Damage</th>
+                <th>Before &rarr; After</th>
+                <th>Charge</th>
+                <th>Notes</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var r in Model.RecentReports)
+            {
+                <tr class="@(r.ConditionAfter >= DiscCondition.Damaged ? "danger" : "")">
+                    <td>@r.Id</td>
+                    <td>@r.ReportedOn.ToString("MMM dd")</td>
+                    <td>@r.MovieName</td>
+                    <td>@r.CustomerName</td>
+                    <td>@r.DamageType</td>
+                    <td>@r.ConditionBefore &rarr; @r.ConditionAfter</td>
+                    <td>@r.DamageCharge.ToString("C")</td>
+                    <td>@(r.Notes ?? "&#8212;")</td>
+                    <td>
+                        @if (!r.ChargeCollected)
+                        {
+                            using (Html.BeginForm("Collect", "DamageReports", new { id = r.Id }, FormMethod.Post))
+                            {
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-xs btn-success" title="Mark Collected">
+                                    <span class="glyphicon glyphicon-ok"></span>
+                                </button>
+                            }
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@* Replacements Tab *@
+@if (Model.ActiveTab == "replacements")
+{
+    <h4>Movies Needing Replacement</h4>
+    @if (Model.MoviesNeedingReplacement.Count == 0)
+    {
+        <div class="alert alert-success">All discs are in acceptable condition!</div>
+    }
+    else
+    {
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Movie</th>
+                    <th>Condition</th>
+                    <th>Reports</th>
+                    <th>Common Damage</th>
+                    <th>Total Charges</th>
+                    <th>Outstanding</th>
+                    <th>Risk</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var m in Model.MoviesNeedingReplacement)
+                {
+                    <tr class="danger">
+                        <td><a href="@Url.Action("Movie", new { id = m.MovieId })">@m.MovieName</a></td>
+                        <td><span class="label label-danger">@m.CurrentCondition</span></td>
+                        <td>@m.TotalReports</td>
+                        <td>@m.MostCommonDamage</td>
+                        <td>@m.TotalCharges.ToString("C")</td>
+                        <td>@m.OutstandingCharges.ToString("C")</td>
+                        <td><span class="label label-@(m.RiskLevel == "High" ? "danger" : "warning")">@m.RiskLevel</span></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@* Flagged Customers Tab *@
+@if (Model.ActiveTab == "offenders")
+{
+    <h4>Flagged Customers (Repeat Offenders)</h4>
+    @if (Model.FlaggedCustomers.Count == 0)
+    {
+        <div class="alert alert-success">No customers are currently flagged.</div>
+    }
+    else
+    {
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Customer</th>
+                    <th>Incidents</th>
+                    <th>Total Charges</th>
+                    <th>Unpaid</th>
+                    <th>Avg Condition Drop</th>
+                    <th>Last Incident</th>
+                    <th>Risk Tier</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var c in Model.FlaggedCustomers)
+                {
+                    <tr class="warning">
+                        <td><a href="@Url.Action("Customer", new { id = c.CustomerId })">@c.CustomerName</a></td>
+                        <td>@c.TotalIncidents</td>
+                        <td>@c.TotalCharges.ToString("C")</td>
+                        <td>@c.UnpaidCharges.ToString("C")</td>
+                        <td>@c.AverageConditionDrop.ToString("F1") grades</td>
+                        <td>@(c.LastIncident?.ToString("MMM dd, yyyy") ?? "&#8212;")</td>
+                        <td><span class="label label-danger">@c.RiskTier</span></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@* File Report Tab *@
+@if (Model.ActiveTab == "file")
+{
+    <div class="row">
+        <div class="col-md-8">
+            <div class="panel panel-default">
+                <div class="panel-heading"><strong>File a Damage Report</strong></div>
+                <div class="panel-body">
+                    @using (Html.BeginForm("File", "DamageReports", FormMethod.Post, new { @class = "form-horizontal" }))
+                    {
+                        @Html.AntiForgeryToken()
+                        <div class="form-group">
+                            <label class="col-md-3 control-label">Movie ID</label>
+                            <div class="col-md-9">
+                                <input type="number" name="movieId" class="form-control" required min="1" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="col-md-3 control-label">Customer ID</label>
+                            <div class="col-md-9">
+                                <input type="number" name="customerId" class="form-control" required min="1" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="col-md-3 control-label">Condition Before</label>
+                            <div class="col-md-9">
+                                @Html.DropDownList("conditionBefore",
+                                    new SelectList(Enum.GetValues(typeof(DiscCondition))),
+                                    new { @class = "form-control" })
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="col-md-3 control-label">Condition After</label>
+                            <div class="col-md-9">
+                                @Html.DropDownList("conditionAfter",
+                                    new SelectList(Enum.GetValues(typeof(DiscCondition))),
+                                    new { @class = "form-control" })
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="col-md-3 control-label">Damage Type</label>
+                            <div class="col-md-9">
+                                @Html.DropDownList("damageType",
+                                    new SelectList(Enum.GetValues(typeof(DamageType))),
+                                    new { @class = "form-control" })
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="col-md-3 control-label">Staff Notes</label>
+                            <div class="col-md-9">
+                                <textarea name="notes" class="form-control" rows="3" maxlength="500"></textarea>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <div class="col-md-offset-3 col-md-9">
+                                <button type="submit" class="btn btn-danger">
+                                    <span class="glyphicon glyphicon-exclamation-sign"></span> File Report
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
