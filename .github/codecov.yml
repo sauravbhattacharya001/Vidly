@@ -1,0 +1,38 @@
+# Codecov configuration for Vidly
+# See https://docs.codecov.com/docs/codecov-yaml
+
+coverage:
+  status:
+    project:
+      default:
+        target: 40%      # Minimum overall line coverage
+        threshold: 5%     # Allow 5% drop before failing
+    patch:
+      default:
+        target: 50%       # New code should have at least 50% coverage
+        threshold: 10%
+
+  # Coverage precision (number of decimal places)
+  precision: 1
+
+  # Round coverage percentage
+  round: nearest
+
+  # Range for coverage colors (red → green)
+  range: "20...80"
+
+# Ignore generated/vendor files
+ignore:
+  - "Vidly/Migrations/**"
+  - "Vidly/obj/**"
+  - "Vidly/bin/**"
+  - "Vidly.Tests/**"
+  - "docs/**"
+
+# Comment on PRs with coverage diff
+comment:
+  layout: "reach,diff,flags,files"
+  behavior: default
+  require_changes: false
+  require_base: false
+  require_head: true
