@@ -303,8 +303,9 @@ namespace Vidly.Tests
         {
             var rentals = _rentalRepo.GetAll();
             var movieLookup = _movieRepo.GetAll().ToDictionary(m => m.Id);
-            var top2 = DashboardService.ComputeTopMovies(rentals, movieLookup, 2);
-            Assert.AreEqual(2, top2.Count);
+            var custLookup = _customerRepo.GetAll().ToDictionary(c => c.Id);
+            var agg = DashboardService.AggregateSinglePass(rentals, movieLookup, custLookup, 2, 10, 6);
+            Assert.AreEqual(2, agg.TopMovies.Count);
         }
 
         [TestMethod]
@@ -336,9 +337,10 @@ namespace Vidly.Tests
                 new Rental { MovieId = 999, MovieName = "Deleted Movie", RentalDate = DateTime.Today,
                     DueDate = DateTime.Today.AddDays(7), DailyRate = 3.99m, Status = RentalStatus.Active }
             };
-            var top = DashboardService.ComputeTopMovies(rentals, new Dictionary<int, Movie>(), 5);
-            Assert.AreEqual("Deleted Movie", top[0].MovieName);
-            Assert.IsNull(top[0].Genre);
+            var agg = DashboardService.AggregateSinglePass(
+                rentals, new Dictionary<int, Movie>(), new Dictionary<int, Customer>(), 5, 10, 6);
+            Assert.AreEqual("Deleted Movie", agg.TopMovies[0].MovieName);
+            Assert.IsNull(agg.TopMovies[0].Genre);
         }
 
         #endregion
@@ -374,8 +376,9 @@ namespace Vidly.Tests
         {
             var rentals = _rentalRepo.GetAll();
             var custLookup = _customerRepo.GetAll().ToDictionary(c => c.Id);
-            var top1 = DashboardService.ComputeTopCustomers(rentals, custLookup, 1);
-            Assert.AreEqual(1, top1.Count);
+            var movieLookup = _movieRepo.GetAll().ToDictionary(m => m.Id);
+            var agg = DashboardService.AggregateSinglePass(rentals, movieLookup, custLookup, 1, 10, 6);
+            Assert.AreEqual(1, agg.TopCustomers.Count);
         }
 
         [TestMethod]
@@ -395,9 +398,10 @@ namespace Vidly.Tests
                     RentalDate = DateTime.Today, DueDate = DateTime.Today.AddDays(7),
                     DailyRate = 3.99m, Status = RentalStatus.Active }
             };
-            var top = DashboardService.ComputeTopCustomers(rentals, new Dictionary<int, Customer>(), 5);
-            Assert.AreEqual("Ghost", top[0].CustomerName);
-            Assert.AreEqual(MembershipType.Basic, top[0].MembershipType); // default
+            var agg = DashboardService.AggregateSinglePass(
+                rentals, new Dictionary<int, Movie>(), new Dictionary<int, Customer>(), 5, 10, 6);
+            Assert.AreEqual("Ghost", agg.TopCustomers[0].CustomerName);
+            Assert.AreEqual(MembershipType.Basic, agg.TopCustomers[0].MembershipType); // default
         }
 
         #endregion
@@ -446,8 +450,9 @@ namespace Vidly.Tests
                 new Rental { MovieId = 999, RentalDate = DateTime.Today,
                     DueDate = DateTime.Today.AddDays(7), DailyRate = 3.99m, Status = RentalStatus.Active }
             };
-            var result = DashboardService.ComputeRevenueByGenre(rentals, new Dictionary<int, Movie>());
-            Assert.AreEqual("Unknown", result[0].GenreName);
+            var agg = DashboardService.AggregateSinglePass(
+                rentals, new Dictionary<int, Movie>(), new Dictionary<int, Customer>(), 5, 10, 6);
+            Assert.AreEqual("Unknown", agg.RevenueByGenre[0].GenreName);
         }
 
         [TestMethod]
@@ -460,8 +465,9 @@ namespace Vidly.Tests
                 new Rental { MovieId = 10, RentalDate = DateTime.Today,
                     DueDate = DateTime.Today.AddDays(7), DailyRate = 3.99m, Status = RentalStatus.Active }
             };
-            var result = DashboardService.ComputeRevenueByGenre(rentals, movieLookup);
-            Assert.AreEqual("Unknown", result[0].GenreName);
+            var agg = DashboardService.AggregateSinglePass(
+                rentals, movieLookup, new Dictionary<int, Customer>(), 5, 10, 6);
+            Assert.AreEqual("Unknown", agg.RevenueByGenre[0].GenreName);
         }
 
         #endregion
@@ -503,8 +509,9 @@ namespace Vidly.Tests
                 new Rental { CustomerId = 999, RentalDate = DateTime.Today,
                     DueDate = DateTime.Today.AddDays(7), DailyRate = 3.99m, Status = RentalStatus.Active }
             };
-            var result = DashboardService.ComputeMembershipBreakdown(rentals, new Dictionary<int, Customer>());
-            Assert.AreEqual(MembershipType.Basic, result[0].Tier);
+            var agg = DashboardService.AggregateSinglePass(
+                rentals, new Dictionary<int, Movie>(), new Dictionary<int, Customer>(), 5, 10, 6);
+            Assert.AreEqual(MembershipType.Basic, agg.MembershipBreakdown[0].Tier);
         }
 
         #endregion
@@ -525,16 +532,20 @@ namespace Vidly.Tests
         public void RecentRentals_RespectsLimit()
         {
             var rentals = _rentalRepo.GetAll();
-            var recent2 = DashboardService.GetRecentRentals(rentals, 2);
-            Assert.AreEqual(2, recent2.Count);
+            var movieLookup = _movieRepo.GetAll().ToDictionary(m => m.Id);
+            var custLookup = _customerRepo.GetAll().ToDictionary(c => c.Id);
+            var agg = DashboardService.AggregateSinglePass(rentals, movieLookup, custLookup, 5, 2, 6);
+            Assert.AreEqual(2, agg.RecentRentals.Count);
         }
 
         [TestMethod]
         public void RecentRentals_LimitLargerThanCount_ReturnsAll()
         {
             var rentals = _rentalRepo.GetAll();
-            var all = DashboardService.GetRecentRentals(rentals, 100);
-            Assert.AreEqual(5, all.Count);
+            var movieLookup = _movieRepo.GetAll().ToDictionary(m => m.Id);
+            var custLookup = _customerRepo.GetAll().ToDictionary(c => c.Id);
+            var agg = DashboardService.AggregateSinglePass(rentals, movieLookup, custLookup, 5, 100, 6);
+            Assert.AreEqual(5, agg.RecentRentals.Count);
         }
 
         #endregion
@@ -580,16 +591,19 @@ namespace Vidly.Tests
         public void MonthlyRevenue_CustomMonthCount()
         {
             var rentals = _rentalRepo.GetAll();
-            var months3 = DashboardService.ComputeMonthlyRevenue(rentals, 3);
-            Assert.AreEqual(3, months3.Count);
+            var movieLookup = _movieRepo.GetAll().ToDictionary(m => m.Id);
+            var custLookup = _customerRepo.GetAll().ToDictionary(c => c.Id);
+            var agg = DashboardService.AggregateSinglePass(rentals, movieLookup, custLookup, 5, 10, 3);
+            Assert.AreEqual(3, agg.MonthlyRevenue.Count);
         }
 
         [TestMethod]
         public void MonthlyRevenue_EmptyRentals_ReturnsEmptyMonths()
         {
-            var months = DashboardService.ComputeMonthlyRevenue(new List<Rental>(), 6);
-            Assert.AreEqual(6, months.Count);
-            Assert.IsTrue(months.All(m => m.Revenue == 0 && m.RentalCount == 0));
+            var agg = DashboardService.AggregateSinglePass(
+                new List<Rental>(), new Dictionary<int, Movie>(), new Dictionary<int, Customer>(), 5, 10, 6);
+            Assert.AreEqual(6, agg.MonthlyRevenue.Count);
+            Assert.IsTrue(agg.MonthlyRevenue.All(m => m.Revenue == 0 && m.RentalCount == 0));
         }
 
         #endregion
@@ -736,8 +750,9 @@ namespace Vidly.Tests
                     RentalDate = DateTime.Today, DueDate = DateTime.Today.AddDays(7),
                     DailyRate = 3.99m, Status = RentalStatus.Active }
             };
-            var top = DashboardService.ComputeTopMovies(rentals, new Dictionary<int, Movie>(), 5);
-            Assert.AreEqual("Unknown", top[0].MovieName);
+            var agg = DashboardService.AggregateSinglePass(
+                rentals, new Dictionary<int, Movie>(), new Dictionary<int, Customer>(), 5, 10, 6);
+            Assert.AreEqual("Unknown", agg.TopMovies[0].MovieName);
         }
 
         [TestMethod]
@@ -749,8 +764,9 @@ namespace Vidly.Tests
                     RentalDate = DateTime.Today, DueDate = DateTime.Today.AddDays(7),
                     DailyRate = 3.99m, Status = RentalStatus.Active }
             };
-            var top = DashboardService.ComputeTopCustomers(rentals, new Dictionary<int, Customer>(), 5);
-            Assert.AreEqual("Unknown", top[0].CustomerName);
+            var agg = DashboardService.AggregateSinglePass(
+                rentals, new Dictionary<int, Movie>(), new Dictionary<int, Customer>(), 5, 10, 6);
+            Assert.AreEqual("Unknown", agg.TopCustomers[0].CustomerName);
         }
 
         [TestMethod]
