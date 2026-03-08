@@ -257,11 +257,29 @@ namespace Vidly.Services
             var memberDays = (DateTime.Today - customer.MemberSince.Value).TotalDays;
             var years = (int)(memberDays / 365);
 
-            // Anniversary within 7 days
-            var dayOfYear = customer.MemberSince.Value.DayOfYear;
-            var todayDayOfYear = DateTime.Today.DayOfYear;
-            var daysUntilAnniversary = dayOfYear - todayDayOfYear;
-            if (daysUntilAnniversary < 0) daysUntilAnniversary += 365;
+            // Anniversary: compute by building the actual anniversary date this year,
+            // avoiding DayOfYear which is unreliable across leap/non-leap year boundaries
+            // (e.g., Mar 1 is day 60 in non-leap years but day 61 in leap years, and
+            // Feb 29 anniversaries have no direct equivalent in non-leap years).
+            var today = DateTime.Today;
+            var memberMonth = customer.MemberSince.Value.Month;
+            var memberDay = customer.MemberSince.Value.Day;
+
+            // Handle Feb 29 members in non-leap years: treat as Feb 28
+            if (memberMonth == 2 && memberDay == 29 && !DateTime.IsLeapYear(today.Year))
+                memberDay = 28;
+
+            var anniversaryThisYear = new DateTime(today.Year, memberMonth, memberDay);
+            var daysUntilAnniversary = (int)(anniversaryThisYear - today).TotalDays;
+
+            // If anniversary already passed this year, check next year's date
+            if (daysUntilAnniversary < 0)
+            {
+                var nextYear = today.Year + 1;
+                var nextDay = (memberMonth == 2 && customer.MemberSince.Value.Day == 29 && !DateTime.IsLeapYear(nextYear)) ? 28 : customer.MemberSince.Value.Day;
+                anniversaryThisYear = new DateTime(nextYear, memberMonth, nextDay);
+                daysUntilAnniversary = (int)(anniversaryThisYear - today).TotalDays;
+            }
 
             if (daysUntilAnniversary <= 7 && years > 0)
             {
