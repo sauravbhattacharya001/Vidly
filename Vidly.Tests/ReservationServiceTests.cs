@@ -64,6 +64,11 @@ namespace Vidly.Tests
             public bool IsMovieRentedOut(int mid) =>
                 _rentals.Any(r => r.MovieId == mid && r.Status != RentalStatus.Returned);
             public Rental Checkout(Rental rental) { Add(rental); return rental; }
+
+            public Rental Checkout(Rental rental, int maxConcurrentRentals)
+            {
+                return Checkout(rental);
+            }
             public RentalStats GetStats() => new RentalStats { TotalRentals = _rentals.Count };
         }
 

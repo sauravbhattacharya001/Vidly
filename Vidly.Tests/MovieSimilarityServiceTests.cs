@@ -43,6 +43,11 @@ namespace Vidly.Tests
             public Rental ReturnRental(int rentalId) => null;
             public bool IsMovieRentedOut(int movieId) => false;
             public Rental Checkout(Rental rental) { Add(rental); return rental; }
+
+            public Rental Checkout(Rental rental, int maxConcurrentRentals)
+            {
+                return Checkout(rental);
+            }
             public RentalStats GetStats() => new RentalStats();
         }
 

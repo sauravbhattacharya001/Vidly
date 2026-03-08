@@ -181,6 +181,11 @@ namespace Vidly.Tests
                 _rentals.Any(r => r.MovieId == movieId && r.ReturnDate == null);
 
             public Rental Checkout(Rental rental) { Add(rental); return rental; }
+
+            public Rental Checkout(Rental rental, int maxConcurrentRentals)
+            {
+                return Checkout(rental);
+            }
             public RentalStats GetStats() => new RentalStats();
         }
 

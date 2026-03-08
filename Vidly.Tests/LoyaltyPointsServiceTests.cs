@@ -42,6 +42,11 @@ namespace Vidly.Tests
             public Rental ReturnRental(int rentalId) { var r = GetById(rentalId); if (r != null) { r.Status = RentalStatus.Returned; r.ReturnDate = DateTime.Today; } return r; }
             public bool IsMovieRentedOut(int movieId) => _rentals.Any(r => r.MovieId == movieId && r.Status != RentalStatus.Returned);
             public Rental Checkout(Rental rental) { Add(rental); return rental; }
+
+            public Rental Checkout(Rental rental, int maxConcurrentRentals)
+            {
+                return Checkout(rental);
+            }
             public RentalStats GetStats() => new RentalStats { TotalRentals = _rentals.Count };
         }
 

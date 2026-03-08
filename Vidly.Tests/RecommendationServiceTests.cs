@@ -106,6 +106,11 @@ namespace Vidly.Tests
 
             public Rental Checkout(Rental rental) { Add(rental); return rental; }
 
+            public Rental Checkout(Rental rental, int maxConcurrentRentals)
+            {
+                return Checkout(rental);
+            }
+
             public RentalStats GetStats() => new RentalStats
             {
                 TotalRentals = _rentals.Count,

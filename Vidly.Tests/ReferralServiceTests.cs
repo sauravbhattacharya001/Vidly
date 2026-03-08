@@ -262,5 +262,43 @@ namespace Vidly.Tests
             var count = _service.ExpireOldReferrals();
             Assert.AreEqual(0, count);
         }
+
+        [TestMethod]
+        public void GenerateReferralCode_CodesAreUnpredictable()
+        {
+            // Generating multiple codes in rapid succession should produce
+            // different suffixes. With System.Random seeded from the clock,
+            // codes generated in the same millisecond were identical.
+            // CSPRNG ensures uniqueness even under tight timing.
+            var codes = Enumerable.Range(0, 20)
+                .Select(_ => _service.GenerateReferralCode(1))
+                .ToList();
+
+            var suffixes = codes.Select(c => c.Substring("REF-1-".Length)).ToList();
+            var uniqueSuffixes = suffixes.Distinct().Count();
+
+            // With 32^6 = ~1 billion possible codes, 20 draws should never
+            // collide. Allow at most 1 collision to be safe.
+            Assert.IsTrue(uniqueSuffixes >= 19,
+                $"Expected at least 19 unique suffixes from CSPRNG, got {uniqueSuffixes}. " +
+                "Codes may be using a predictable seed.");
+        }
+
+        [TestMethod]
+        public void GenerateReferralCode_SuffixUsesExpectedCharset()
+        {
+            // Verify the suffix only contains characters from the allowed set
+            // (no ambiguous chars like 0, O, 1, I, L)
+            var allowedChars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+            var code = _service.GenerateReferralCode(1);
+            var suffix = code.Substring("REF-1-".Length);
+
+            Assert.AreEqual(6, suffix.Length);
+            foreach (var c in suffix)
+            {
+                Assert.IsTrue(allowedChars.Contains(c),
+                    $"Unexpected character '{c}' in referral code suffix.");
+            }
+        }
     }
 }
