@@ -270,42 +270,25 @@ namespace Vidly.Services
         /// <summary>
         /// Grace period in days based on membership tier.
         /// Higher tiers get more lenient return windows.
+        /// Delegates to <see cref="RentalPolicyConstants.TierExtraGraceDays"/>
+        /// for a single source of truth.
         /// </summary>
         public static int GetGracePeriod(MembershipType tier)
         {
-            switch (tier)
-            {
-                case MembershipType.Basic:
-                    return BaseGracePeriodDays;     // 1 day
-                case MembershipType.Silver:
-                    return BaseGracePeriodDays + 1;  // 2 days
-                case MembershipType.Gold:
-                    return BaseGracePeriodDays + 2;  // 3 days
-                case MembershipType.Platinum:
-                    return BaseGracePeriodDays + 4;  // 5 days
-                default:
-                    return BaseGracePeriodDays;
-            }
+            return BaseGracePeriodDays
+                + RentalPolicyConstants.GetTierValue(
+                    RentalPolicyConstants.TierExtraGraceDays, tier, 0);
         }
 
         /// <summary>
         /// Late-fee discount percentage based on membership tier.
+        /// Delegates to <see cref="RentalPolicyConstants.TierLateFeeDiscount"/>
+        /// for a single source of truth.
         /// </summary>
         public static decimal GetTierLateDiscount(MembershipType tier)
         {
-            switch (tier)
-            {
-                case MembershipType.Basic:
-                    return 0m;
-                case MembershipType.Silver:
-                    return 0.10m;   // 10% off
-                case MembershipType.Gold:
-                    return 0.25m;   // 25% off
-                case MembershipType.Platinum:
-                    return 0.50m;   // 50% off
-                default:
-                    return 0m;
-            }
+            return RentalPolicyConstants.GetTierValue(
+                RentalPolicyConstants.TierLateFeeDiscount, tier, 0m);
         }
 
         // ── Condition / damage ───────────────────────────────────────
