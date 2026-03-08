@@ -244,6 +244,10 @@
             <a href="#testing" onclick="showSection('testing', this)">Testing</a>
             <a href="#ci" onclick="showSection('ci', this)">CI/CD</a>
             <a href="#contributing" onclick="showSection('contributing', this)">Contributing</a>
+
+            <div class="section-label">Services</div>
+            <a href="#services" onclick="showSection('services', this)">Service Catalog</a>
+            <a href="#services-ref" onclick="showSection('services-ref', this)">API Reference</a>
         </nav>
     </aside>
 
@@ -262,7 +266,8 @@
                 <li><strong>Thread-Safe Data Store</strong> — Concurrent access via lock-based synchronization</li>
                 <li><strong>Repository Pattern</strong> — Decoupled data access with interface-based design</li>
                 <li><strong>Dependency Injection Ready</strong> — Constructor injection in controllers</li>
-                <li><strong>22 Unit Tests</strong> — Models, view models, and controllers fully tested</li>
+                <li><strong>33 Business Services</strong> — Rental, pricing, loyalty, analytics, recommendations, and more</li>
+                <li><strong>Comprehensive Test Suite</strong> — Models, controllers, services, and edge cases</li>
             </ul>
 
             <h3>Tech Stack</h3>
@@ -323,25 +328,39 @@ cd Vidly</code></pre>
 ├── Vidly/                          <span class="highlight">← Main web application</span>
 │   ├── Controllers/
 │   │   ├── HomeController.cs       Landing, About, Contact
-│   │   └── MoviesController.cs     Movie CRUD + filtering
+│   │   ├── MoviesController.cs     Movie CRUD + filtering
+│   │   ├── RentalsController.cs    Checkout, return, delete
+│   │   ├── DashboardController.cs  Analytics dashboard
+│   │   └── ... (10+ controllers)
 │   ├── Models/
 │   │   ├── Movie.cs                Movie entity + validation
-│   │   └── Customer.cs             Customer entity + validation
+│   │   ├── Customer.cs             Customer entity + validation
+│   │   ├── Rental.cs               Rental entity + status tracking
+│   │   └── ... (enums, view models)
+│   ├── Services/                   <span class="highlight">← 33 business services</span>
+│   │   ├── PricingService.cs       Rate calculation + tier benefits
+│   │   ├── RentalReturnService.cs  Return workflow + late fees
+│   │   ├── DashboardService.cs     Single-pass analytics
+│   │   └── ... (see Service Catalog)
 │   ├── Repositories/
 │   │   ├── IRepository.cs          Generic CRUD interface
 │   │   ├── IMovieRepository.cs     Movie-specific queries
 │   │   └── InMemoryMovieRepository Thread-safe in-memory store
-│   ├── ViewModels/
-│   │   └── RandomMovieViewModel    Composed view model
+│   ├── Utilities/
+│   │   ├── SortHelper.cs           Declarative sorting
+│   │   └── JsonSerializer.cs       JSON serialization
+│   ├── Filters/
+│   │   └── RateLimitAttribute.cs   Rate limiting filter
 │   ├── Views/                      Razor views
 │   ├── App_Start/                  Config (routes, bundles, filters)
 │   ├── Content/                    CSS assets
 │   └── Scripts/                    JavaScript assets
 │
-└── Vidly.Tests/                    <span class="highlight">← Unit test project</span>
+└── Vidly.Tests/                    <span class="highlight">← 2,389 unit tests (59 files)</span>
     ├── Models/                     Model validation tests
     ├── ViewModels/                 ViewModel tests
-    └── Controllers/                Controller tests</div>
+    ├── Controllers/                Controller tests
+    └── Services/                   Service logic + edge cases</div>
         </div>
 
         <!-- Design Patterns -->
@@ -488,13 +507,14 @@ dotnet test Vidly.Tests/Vidly.Tests.csproj
 # With coverage
 dotnet test Vidly.Tests/Vidly.Tests.csproj --collect:"XPlat Code Coverage"</code></pre>
 
-            <h3>Test Suite (22 Tests)</h3>
+            <h3>Test Suite (2,389 Tests across 59 Files)</h3>
             <table>
-                <tr><th>Class</th><th>Tests</th><th>Coverage</th></tr>
-                <tr><td>MovieModelTests</td><td>7</td><td>Validation, required fields, string length, defaults</td></tr>
-                <tr><td>CustomerModelTests</td><td>5</td><td>Validation, required fields, string length, defaults</td></tr>
-                <tr><td>ViewModelTests</td><td>3</td><td>Default init, population, composition</td></tr>
-                <tr><td>MoviesControllerTests</td><td>7</td><td>Index sorting, Random, Edit, Create, ByReleaseDate, 404s</td></tr>
+                <tr><th>Category</th><th>Coverage</th></tr>
+                <tr><td>Model &amp; ViewModel Tests</td><td>Validation, required fields, string length, defaults, composition</td></tr>
+                <tr><td>Controller Tests</td><td>All 10+ controllers: routing, authorization, error handling, edge cases</td></tr>
+                <tr><td>Service Tests</td><td>All 33 services: business logic, boundary conditions, error paths</td></tr>
+                <tr><td>Repository Tests</td><td>In-memory repositories: CRUD, thread safety, search, pagination</td></tr>
+                <tr><td>Security Tests</td><td>Export safety, rate limiting, anti-forgery, input validation</td></tr>
             </table>
 
             <h3>Coverage Reports</h3>
@@ -513,7 +533,7 @@ dotnet test Vidly.Tests/Vidly.Tests.csproj --collect:"XPlat Code Coverage"</code
                     <li>Runs on <code>windows-latest</code> with .NET SDK 8.0</li>
                     <li>Restores NuGet packages</li>
                     <li>Builds in Release configuration</li>
-                    <li>Runs all 22 tests with code coverage</li>
+                    <li>Runs all 2,389 tests with code coverage</li>
                     <li>Uploads test results (TRX) and coverage (Cobertura) as artifacts</li>
                     <li>Outputs coverage summary in the workflow logs</li>
                 </ul>
@@ -539,6 +559,214 @@ dotnet test Vidly.Tests/Vidly.Tests.csproj --collect:"XPlat Code Coverage"</code
                 <li>Include unit tests for all new logic</li>
                 <li>Keep controllers thin — business logic belongs in repositories/services</li>
             </ul>
+        </div>
+
+        <!-- Service Catalog -->
+        <div id="services" class="section">
+            <h2>Service Catalog</h2>
+            <p>Vidly includes <strong>33 business services</strong> organized into five domains.
+            All services use constructor injection with repository interfaces and follow
+            in-memory, list-based storage patterns.</p>
+
+            <h3>🎬 Core Rental Operations</h3>
+            <div class="card">
+                <h4>PricingService</h4>
+                <p>Calculates daily rental rates with membership discounts, new-release premiums, and per-movie overrides. Provides <code>GetMovieDailyRate()</code> and <code>GetBenefits()</code> for tier-based pricing.</p>
+            </div>
+            <div class="card">
+                <h4>RentalReturnService</h4>
+                <p>Orchestrates the return workflow: late-fee calculation with tier-based grace periods, condition assessment and damage charges, loyalty-point awards, and batch return processing.</p>
+            </div>
+            <div class="card">
+                <h4>RentalHistoryService</h4>
+                <p>Filtered rental history queries, customer timelines, popular rental times, retention metrics, inventory forecasting, and loyalty score computation.</p>
+            </div>
+            <div class="card">
+                <h4>InventoryService</h4>
+                <p>Real-time stock tracking, availability checks, low-stock alerts, and inventory audit reports.</p>
+            </div>
+            <div class="card">
+                <h4>ReservationService</h4>
+                <p>Hold movies for customers with expiry management and conflict detection.</p>
+            </div>
+
+            <h3>👥 Customer Management</h3>
+            <div class="card">
+                <h4>MembershipTierService</h4>
+                <p>Tier evaluation (Basic → Silver → Gold → Platinum) with upgrade/downgrade logic, benefit lookups, and renewal management.</p>
+            </div>
+            <div class="card">
+                <h4>LoyaltyPointsService</h4>
+                <p>Point accrual, redemption, tier multipliers, transaction history, and balance queries.</p>
+            </div>
+            <div class="card">
+                <h4>CustomerSegmentationService</h4>
+                <p>RFM analysis (Recency, Frequency, Monetary), customer clustering, and segment-based marketing insights.</p>
+            </div>
+            <div class="card">
+                <h4>CustomerActivityService</h4>
+                <p>Activity feeds, engagement tracking, and customer lifecycle stage identification.</p>
+            </div>
+            <div class="card">
+                <h4>ChurnPredictorService</h4>
+                <p>Churn risk scoring based on rental frequency decay, gap analysis, and re-engagement recommendations.</p>
+            </div>
+            <div class="card">
+                <h4>ParentalControlService</h4>
+                <p>Age-based content filtering, parental profiles, rating restrictions, and viewing history controls.</p>
+            </div>
+
+            <h3>🔍 Discovery &amp; Content</h3>
+            <div class="card">
+                <h4>RecommendationService</h4>
+                <p>Content-based and collaborative filtering recommendations using genre preferences, rental history, and similar-user patterns.</p>
+            </div>
+            <div class="card">
+                <h4>MovieSimilarityService</h4>
+                <p>Computes similarity scores between movies based on genre, rating, release date, and co-rental patterns.</p>
+            </div>
+            <div class="card">
+                <h4>MovieInsightsService</h4>
+                <p>Deep analytics per movie: rental velocity, revenue trends, audience demographics, and performance comparisons.</p>
+            </div>
+            <div class="card">
+                <h4>MovieLifecycleService</h4>
+                <p>Tracks movies through lifecycle stages (New Release → Popular → Catalog → Archive) with automated transitions.</p>
+            </div>
+            <div class="card">
+                <h4>CollectionService</h4>
+                <p>Curated movie collections (staff picks, seasonal, thematic) with ordering and display management.</p>
+            </div>
+            <div class="card">
+                <h4>TaggingService</h4>
+                <p>User-defined and system tags for movies, tag-based search, and tag cloud generation.</p>
+            </div>
+            <div class="card">
+                <h4>ReviewService</h4>
+                <p>Customer reviews with ratings, helpfulness voting, moderation, and aggregate score computation.</p>
+            </div>
+            <div class="card">
+                <h4>WatchlistService</h4>
+                <p>Personal watchlists with priority ordering, availability notifications, and sharing.</p>
+            </div>
+            <div class="card">
+                <h4>MovieNightPlannerService</h4>
+                <p>Plan movie nights with group preferences, schedule coordination, and snack suggestions.</p>
+            </div>
+            <div class="card">
+                <h4>FranchiseTrackerService</h4>
+                <p>Track movie franchises (series, sequels, prequels) with watch-order recommendations and completion tracking.</p>
+            </div>
+            <div class="card">
+                <h4>MovieComparisonService</h4>
+                <p>Side-by-side movie comparison on ratings, revenue, rental count, and audience overlap.</p>
+            </div>
+
+            <h3>💰 Commerce &amp; Promotions</h3>
+            <div class="card">
+                <h4>CouponService</h4>
+                <p>Coupon creation, validation, redemption with percentage/fixed discounts, expiry, and usage limits.</p>
+            </div>
+            <div class="card">
+                <h4>GiftCardService</h4>
+                <p>Gift card issuance, balance management, partial redemption, and transfer between customers.</p>
+            </div>
+            <div class="card">
+                <h4>BundleService</h4>
+                <p>Movie bundles (rent 3 for price of 2), bundle creation, pricing rules, and availability checks.</p>
+            </div>
+            <div class="card">
+                <h4>SeasonalPromotionService</h4>
+                <p>Time-bound promotions tied to seasons/holidays with automatic activation and genre-specific discounts.</p>
+            </div>
+            <div class="card">
+                <h4>DisputeResolutionService</h4>
+                <p>Customer dispute filing, investigation workflows, resolution tracking, and refund processing.</p>
+            </div>
+
+            <h3>📊 Analytics &amp; Operations</h3>
+            <div class="card">
+                <h4>RentalForecastService</h4>
+                <p>Demand forecasting using historical patterns, seasonal adjustments, and trend analysis.</p>
+            </div>
+            <div class="card">
+                <h4>RevenueAnalyticsService</h4>
+                <p>Revenue reporting by period, genre, tier, and trend. Includes linear regression forecasting with confidence intervals.</p>
+            </div>
+            <div class="card">
+                <h4>RatingEngineService</h4>
+                <p>Aggregate rating computation with statistical analysis (mean, median, standard deviation, distribution).</p>
+            </div>
+            <div class="card">
+                <h4>DashboardService</h4>
+                <p>Single-pass dashboard aggregation: top movies, top customers, genre revenue, membership breakdown, recent rentals, and monthly revenue — all in O(R).</p>
+            </div>
+            <div class="card">
+                <h4>StaffSchedulingService</h4>
+                <p>Employee shift scheduling, availability management, conflict detection, and coverage optimization.</p>
+            </div>
+            <div class="card">
+                <h4>StaffPerformanceService</h4>
+                <p>Staff performance metrics, KPI tracking, peer comparison, and review period analytics.</p>
+            </div>
+            <div class="card">
+                <h4>StoreEventService</h4>
+                <p>In-store event planning (movie nights, premieres), RSVPs, capacity management, and calendar integration.</p>
+            </div>
+            <div class="card">
+                <h4>ReferralService</h4>
+                <p>Customer referral program with tracking codes, reward attribution, and conversion analytics.</p>
+            </div>
+            <div class="card">
+                <h4>NotificationService</h4>
+                <p>Customer notification management for due dates, availability, promotions, and account updates.</p>
+            </div>
+        </div>
+
+        <!-- Services API Reference -->
+        <div id="services-ref" class="section">
+            <h2>API Reference</h2>
+            <p>Detailed method signatures and return types for key services.
+            For complete API documentation, see <a href="SERVICES.md" target="_blank">SERVICES.md</a>.</p>
+
+            <h3>PricingService</h3>
+            <table>
+                <tr><th>Method</th><th>Returns</th><th>Description</th></tr>
+                <tr><td><code>GetMovieDailyRate(movie)</code></td><td><code>decimal</code></td><td>Base daily rate: new releases $5.99, catalog $2.99, per-movie overrides</td></tr>
+                <tr><td><code>GetBenefits(tier)</code></td><td><code>MembershipBenefits</code></td><td>Tier benefits: discount %, extended days, max concurrent rentals</td></tr>
+            </table>
+
+            <h3>RentalReturnService</h3>
+            <table>
+                <tr><th>Method</th><th>Returns</th><th>Description</th></tr>
+                <tr><td><code>ProcessReturn(rentalId, condition, returnDate)</code></td><td><code>ReturnReceipt</code></td><td>Full return workflow with late fees, damage charges, loyalty points</td></tr>
+                <tr><td><code>ProcessBatchReturn(ids, condition, returnDate)</code></td><td><code>BatchReturnResult</code></td><td>Batch return with individual receipts and error tracking</td></tr>
+                <tr><td><code>CalculateLateFee(dueDate, returnDate, dailyRate, tier)</code></td><td><code>ReturnLateFeeBreakdown</code></td><td>Late fee with grace period, tier discount, and cap</td></tr>
+                <tr><td><code>GetOverdueRentals()</code></td><td><code>List&lt;OverdueRentalInfo&gt;</code></td><td>All overdue rentals with projected fees and recommended actions</td></tr>
+                <tr><td><code>GetCustomerReturnProfile(customerId)</code></td><td><code>CustomerReturnProfile</code></td><td>Return history: on-time rate, late fees paid, reliability rating</td></tr>
+                <tr><td><code>EstimateCurrentLateFee(rentalId)</code></td><td><code>LateFeeEstimate</code></td><td>Self-service &ldquo;what would I owe?&rdquo; projection</td></tr>
+            </table>
+
+            <h3>DashboardService</h3>
+            <table>
+                <tr><th>Method</th><th>Returns</th><th>Description</th></tr>
+                <tr><td><code>GetDashboard()</code></td><td><code>DashboardData</code></td><td>Complete dashboard: stats, top movies/customers, genre revenue, membership breakdown, recent rentals, monthly revenue</td></tr>
+            </table>
+            <p>Internally uses <code>AggregateSinglePass()</code> to compute all metrics in a single O(R) pass over rentals, replacing 6 separate iterations.</p>
+
+            <h3>ChurnPredictorService</h3>
+            <table>
+                <tr><th>Method</th><th>Returns</th><th>Description</th></tr>
+                <tr><td><code>PredictChurn(customerId)</code></td><td><code>ChurnPrediction</code></td><td>Churn risk score (0–1) with contributing factors</td></tr>
+                <tr><td><code>GetAtRiskCustomers(threshold)</code></td><td><code>List&lt;ChurnPrediction&gt;</code></td><td>All customers above churn-risk threshold</td></tr>
+            </table>
+
+            <h3>RecommendationService</h3>
+            <table>
+                <tr><th>Method</th><th>Returns</th><th>Description</th></tr>
+                <tr><td><code>GetRecommendations(customerId, count)</code></td><td><code>List&lt;MovieRecommendation&gt;</code></td><td>Personalized movie recommendations</td></tr>
+                <tr><td><code>GetSimilarMovies(movieId, count)</code></td><td><code>List&lt;MovieRecommendation&gt;</code></td><td>Movies similar to a given title</td></tr>
+            </table>
         </div>
     </main>
 
