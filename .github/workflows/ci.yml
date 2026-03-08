@@ -16,10 +16,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Setup .NET SDK
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
 
@@ -36,32 +36,108 @@ jobs:
             --no-build `
             --logger "trx;LogFileName=test-results.trx" `
             --collect:"XPlat Code Coverage" `
-            --results-directory ./TestResults
+            --results-directory ./TestResults `
+            -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: test-results
           path: ./TestResults/**/*.trx
 
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-report
           path: ./TestResults/**/coverage.cobertura.xml
 
-      - name: Coverage summary
+      - name: Generate coverage summary & enforce threshold
         if: always()
         run: |
           $coverageFile = Get-ChildItem -Path ./TestResults -Recurse -Filter "coverage.cobertura.xml" | Select-Object -First 1
-          if ($coverageFile) {
-            Write-Host "Coverage report generated: $($coverageFile.FullName)"
-            [xml]$xml = Get-Content $coverageFile.FullName
-            $lineRate = [math]::Round([double]$xml.coverage.'line-rate' * 100, 1)
-            $branchRate = [math]::Round([double]$xml.coverage.'branch-rate' * 100, 1)
-            Write-Host "::notice::Line Coverage: $lineRate% | Branch Coverage: $branchRate%"
-          } else {
+          if (-not $coverageFile) {
             Write-Host "::warning::No coverage report found."
+            exit 0
           }
+
+          Write-Host "Coverage report: $($coverageFile.FullName)"
+          [xml]$xml = Get-Content $coverageFile.FullName
+
+          $lineRate = [math]::Round([double]$xml.coverage.'line-rate' * 100, 1)
+          $branchRate = [math]::Round([double]$xml.coverage.'branch-rate' * 100, 1)
+          $linesValid = $xml.coverage.'lines-valid'
+          $linesCovered = $xml.coverage.'lines-covered'
+          $branchesValid = $xml.coverage.'branches-valid'
+          $branchesCovered = $xml.coverage.'branches-covered'
+
+          Write-Host ""
+          Write-Host "╔══════════════════════════════════════╗"
+          Write-Host "║       CODE COVERAGE SUMMARY          ║"
+          Write-Host "╠══════════════════════════════════════╣"
+          Write-Host "║  Line Coverage:   $lineRate% ($linesCovered / $linesValid)"
+          Write-Host "║  Branch Coverage: $branchRate% ($branchesCovered / $branchesValid)"
+          Write-Host "╚══════════════════════════════════════╝"
+          Write-Host ""
+          Write-Host "::notice::Line Coverage: $lineRate% | Branch Coverage: $branchRate%"
+
+          # Per-package breakdown
+          Write-Host ""
+          Write-Host "=== Per-Package Coverage ==="
+          foreach ($pkg in $xml.coverage.packages.package) {
+            $pLine = [math]::Round([double]$pkg.'line-rate' * 100, 1)
+            $pBranch = [math]::Round([double]$pkg.'branch-rate' * 100, 1)
+            $name = $pkg.name
+            if ($name.Length -gt 40) { $name = $name.Substring(0, 37) + "..." }
+            Write-Host "  $name — Line: $pLine% | Branch: $pBranch%"
+          }
+
+          # Enforce minimum threshold (fail if below 40%)
+          $MIN_LINE = 40
+          $MIN_BRANCH = 20
+          if ($lineRate -lt $MIN_LINE) {
+            Write-Host "::error::Line coverage ($lineRate%) is below minimum threshold ($MIN_LINE%)"
+            exit 1
+          }
+          if ($branchRate -lt $MIN_BRANCH) {
+            Write-Host "::error::Branch coverage ($branchRate%) is below minimum threshold ($MIN_BRANCH%)"
+            exit 1
+          }
+          Write-Host "::notice::Coverage thresholds passed (line >= $MIN_LINE%, branch >= $MIN_BRANCH%)"
+
+      - name: Generate coverage badge
+        if: always() && github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+        run: |
+          $coverageFile = Get-ChildItem -Path ./TestResults -Recurse -Filter "coverage.cobertura.xml" | Select-Object -First 1
+          if (-not $coverageFile) { exit 0 }
+
+          [xml]$xml = Get-Content $coverageFile.FullName
+          $lineRate = [math]::Round([double]$xml.coverage.'line-rate' * 100, 0)
+
+          # Determine badge color
+          if ($lineRate -ge 80) { $color = "brightgreen" }
+          elseif ($lineRate -ge 60) { $color = "green" }
+          elseif ($lineRate -ge 40) { $color = "yellow" }
+          elseif ($lineRate -ge 20) { $color = "orange" }
+          else { $color = "red" }
+
+          # Write badge JSON for shields.io endpoint
+          $badge = @{
+            schemaVersion = 1
+            label = "coverage"
+            message = "$lineRate%"
+            color = $color
+          } | ConvertTo-Json
+
+          # Save as artifact for potential gist upload
+          New-Item -ItemType Directory -Path ./badges -Force | Out-Null
+          $badge | Set-Content ./badges/coverage.json
+          Write-Host "Badge: coverage $lineRate% ($color)"
+
+      - name: Upload badge artifact
+        if: always() && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-badge
+          path: ./badges/coverage.json

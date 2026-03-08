@@ -6,6 +6,9 @@
 [![Docker](https://github.com/sauravbhattacharya001/Vidly/actions/workflows/docker.yml/badge.svg)](https://github.com/sauravbhattacharya001/Vidly/actions/workflows/docker.yml)
 [![Pages](https://github.com/sauravbhattacharya001/Vidly/actions/workflows/pages.yml/badge.svg)](https://sauravbhattacharya001.github.io/Vidly/)
 
+<!-- Coverage -->
+![Coverage](https://img.shields.io/badge/coverage-threshold%2040%25-yellow?logo=dotnet)
+
 <!-- Package & License -->
 [![NuGet](https://github.com/sauravbhattacharya001/Vidly/actions/workflows/nuget-publish.yml/badge.svg)](https://github.com/sauravbhattacharya001/Vidly/packages)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
