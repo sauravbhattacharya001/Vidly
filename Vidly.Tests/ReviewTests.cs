@@ -876,5 +876,55 @@ namespace Vidly.Tests
             Assert.IsFalse(_reviewRepo.HasReviewed(1, 1));
             Assert.IsNull(_reviewRepo.GetByCustomerAndMovie(1, 1));
         }
+
+        // --- IsLocalUrl open redirect prevention (Gardener #1035) ---
+
+        [TestMethod]
+        public void IsLocalUrl_LocalPath_ReturnsTrue()
+        {
+            Assert.IsTrue(ReviewsController.IsLocalUrl("/Reviews"));
+            Assert.IsTrue(ReviewsController.IsLocalUrl("/Reviews/Movie/5"));
+            Assert.IsTrue(ReviewsController.IsLocalUrl("/"));
+        }
+
+        [TestMethod]
+        public void IsLocalUrl_ProtocolRelative_ReturnsFalse()
+        {
+            // CWE-601: //evil.com redirects to external site
+            Assert.IsFalse(ReviewsController.IsLocalUrl("//evil.com"));
+            Assert.IsFalse(ReviewsController.IsLocalUrl("//evil.com/phish"));
+        }
+
+        [TestMethod]
+        public void IsLocalUrl_BackslashBypass_ReturnsFalse()
+        {
+            // CWE-601: /\evil.com — browsers interpret backslash as forward slash
+            Assert.IsFalse(ReviewsController.IsLocalUrl("/\\evil.com"));
+            Assert.IsFalse(ReviewsController.IsLocalUrl("/\\"));
+        }
+
+        [TestMethod]
+        public void IsLocalUrl_AbsoluteUri_ReturnsFalse()
+        {
+            Assert.IsFalse(ReviewsController.IsLocalUrl("http://evil.com"));
+            Assert.IsFalse(ReviewsController.IsLocalUrl("https://evil.com/path"));
+            Assert.IsFalse(ReviewsController.IsLocalUrl("ftp://files.evil.com"));
+        }
+
+        [TestMethod]
+        public void IsLocalUrl_NullOrEmpty_ReturnsFalse()
+        {
+            Assert.IsFalse(ReviewsController.IsLocalUrl(null));
+            Assert.IsFalse(ReviewsController.IsLocalUrl(""));
+            Assert.IsFalse(ReviewsController.IsLocalUrl("   "));
+        }
+
+        [TestMethod]
+        public void IsLocalUrl_RelativeWithoutSlash_ReturnsFalse()
+        {
+            // Relative paths without leading slash are ambiguous
+            Assert.IsFalse(ReviewsController.IsLocalUrl("Reviews"));
+            Assert.IsFalse(ReviewsController.IsLocalUrl("evil.com"));
+        }
     }
 }

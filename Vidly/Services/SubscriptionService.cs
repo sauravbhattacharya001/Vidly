@@ -289,8 +289,12 @@ namespace Vidly.Services
 
         /// <summary>
         /// Record a rental against the subscription's usage counter.
+        /// Throws if the subscription has reached its per-period rental limit.
         /// </summary>
         /// <returns>Remaining rentals this period (-1 = unlimited).</returns>
+        /// <exception cref="InvalidOperationException">
+        /// Rental limit reached for the current billing period.
+        /// </exception>
         public int RecordRental(int subscriptionId)
         {
             var sub = _subscriptionRepo.GetById(subscriptionId);
@@ -300,10 +304,17 @@ namespace Vidly.Services
             if (sub.Status != SubscriptionStatus.Active)
                 throw new InvalidOperationException("Subscription is not active.");
 
+            var plan = GetPlan(sub.PlanType);
+
+            // Enforce per-period rental limit (0 = unlimited)
+            if (plan.RentalsPerMonth > 0 && sub.RentalsUsedThisPeriod >= plan.RentalsPerMonth)
+                throw new InvalidOperationException(
+                    "Rental limit reached (" + plan.RentalsPerMonth +
+                    "/" + plan.Name + " plan). Upgrade your plan or wait for the next billing period.");
+
             sub.RentalsUsedThisPeriod++;
             _subscriptionRepo.Update(sub);
 
-            var plan = GetPlan(sub.PlanType);
             return plan.RentalsPerMonth == 0 ? -1 : plan.RentalsPerMonth - sub.RentalsUsedThisPeriod;
         }
 

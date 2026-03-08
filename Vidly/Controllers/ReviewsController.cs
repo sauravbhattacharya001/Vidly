@@ -143,20 +143,36 @@ namespace Vidly.Controllers
             bool deleted = _reviewService.DeleteReview(id);
             string message = deleted ? "Review deleted." : "Review not found.";
 
-            if (!string.IsNullOrEmpty(returnUrl))
+            if (!string.IsNullOrEmpty(returnUrl) && IsLocalUrl(returnUrl))
             {
-                // Only allow local URLs to prevent open redirect.
-                // Url helper may be null in unit tests; fall back to
-                // simple starts-with check.
-                bool isLocal = Url != null
-                    ? Url.IsLocalUrl(returnUrl)
-                    : returnUrl.StartsWith("/") && !returnUrl.StartsWith("//");
-
-                if (isLocal)
-                    return Redirect(returnUrl);
+                return Redirect(returnUrl);
             }
 
             return RedirectToAction("Index", new { message, error = !deleted });
+        }
+
+        /// <summary>
+        /// Validates that a URL is a safe local (relative) path.
+        /// Guards against open redirect via protocol-relative URLs ("//"),
+        /// backslash-as-slash ("\/"), scheme-based ("http://"), and other
+        /// bypass techniques (CWE-601).
+        /// </summary>
+        public static bool IsLocalUrl(string url)
+        {
+            if (string.IsNullOrWhiteSpace(url))
+                return false;
+
+            // Reject absolute URIs (http://, https://, ftp://, etc.)
+            if (Uri.TryCreate(url, UriKind.Absolute, out _))
+                return false;
+
+            // Must start with / but not // or /\ (browser treats /\ as //)
+            if (!url.StartsWith("/"))
+                return false;
+            if (url.Length > 1 && (url[1] == '/' || url[1] == '\\'))
+                return false;
+
+            return true;
         }
 
     }
