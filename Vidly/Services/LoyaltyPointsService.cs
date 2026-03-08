@@ -46,17 +46,13 @@ namespace Vidly.Services
         /// <summary>
         /// Points multiplier based on membership tier.
         /// Higher tiers earn points faster.
+        /// Delegates to <see cref="RentalPolicyConstants.TierPointsMultiplier"/>
+        /// for a single source of truth.
         /// </summary>
         public static decimal GetTierMultiplier(MembershipType tier)
         {
-            switch (tier)
-            {
-                case MembershipType.Basic: return 1.0m;
-                case MembershipType.Silver: return 1.25m;
-                case MembershipType.Gold: return 1.5m;
-                case MembershipType.Platinum: return 2.0m;
-                default: return 1.0m;
-            }
+            return RentalPolicyConstants.GetTierValue(
+                RentalPolicyConstants.TierPointsMultiplier, tier, 1.0m);
         }
 
         // ── Earn points ──────────────────────────────────────────────
