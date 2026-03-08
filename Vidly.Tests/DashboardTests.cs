@@ -123,6 +123,11 @@ namespace Vidly.Tests
                 return rental;
             }
 
+            public Rental Checkout(Rental rental, int maxConcurrentRentals)
+            {
+                return Checkout(rental);
+            }
+
             public RentalStats GetStats()
             {
                 var stats = new RentalStats();

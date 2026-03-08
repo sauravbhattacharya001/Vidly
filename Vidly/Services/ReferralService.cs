@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Security.Cryptography;
 using Vidly.Models;
 using Vidly.Repositories;
 
@@ -39,6 +40,10 @@ namespace Vidly.Services
         /// <summary>
         /// Generates a unique referral code for a customer.
         /// Format: REF-{CustomerId}-{random alphanumeric}.
+        /// Uses cryptographically secure random generation to prevent
+        /// code prediction attacks. System.Random is deterministic — an
+        /// attacker who knows the approximate generation time can predict
+        /// future codes and hijack referral bonuses.
         /// </summary>
         public string GenerateReferralCode(int customerId)
         {
@@ -46,10 +51,15 @@ namespace Vidly.Services
             if (customer == null)
                 throw new ArgumentException($"Customer {customerId} not found.");
 
-            var random = new Random();
             var chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-            var suffix = new string(Enumerable.Range(0, 6)
-                .Select(_ => chars[random.Next(chars.Length)]).ToArray());
+            const int suffixLength = 6;
+            var randomBytes = new byte[suffixLength];
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(randomBytes);
+            }
+            var suffix = new string(randomBytes
+                .Select(b => chars[b % chars.Length]).ToArray());
 
             return $"REF-{customerId}-{suffix}";
         }
