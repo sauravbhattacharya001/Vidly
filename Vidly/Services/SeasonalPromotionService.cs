@@ -378,7 +378,7 @@ namespace Vidly.Services
             return CreatePromotion(
                 name: $"Oscar Season {year}",
                 startDate: new DateTime(year, 2, 1),
-                endDate: new DateTime(year, 2, 28),
+                endDate: new DateTime(year, 2, DateTime.IsLeapYear(year) ? 29 : 28),
                 discountType: PromotionDiscountType.Percentage,
                 discountValue: 15,
                 eligibleGenres: new List<Genre> { Genre.Drama, Genre.Documentary },
