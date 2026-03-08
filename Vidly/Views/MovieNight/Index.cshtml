@@ -1,0 +1,213 @@
+@model Vidly.ViewModels.MovieNightViewModel
+@{
+    ViewBag.Title = "Movie Night Planner";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>
+    <span class="glyphicon glyphicon-film"></span>
+    Movie Night Planner
+</h2>
+<p class="text-muted">Plan the perfect movie marathon — pick a theme, set your schedule, and we'll do the rest.</p>
+
+<div class="panel panel-default">
+    <div class="panel-heading">
+        <h3 class="panel-title"><span class="glyphicon glyphicon-cog"></span> Plan Your Night</h3>
+    </div>
+    <div class="panel-body">
+        @using (Html.BeginForm("Plan", "MovieNight", FormMethod.Post, new { @class = "form-horizontal" }))
+        {
+            @Html.AntiForgeryToken()
+
+            <div class="form-group">
+                <label class="col-sm-3 control-label">Theme</label>
+                <div class="col-sm-6">
+                    <select name="Theme" class="form-control">
+                        @foreach (var theme in Model.Themes)
+                        {
+                            <option value="@theme.Theme"
+                                    @(Model.Request.Theme == theme.Theme ? "selected" : "")
+                                    title="@theme.Description">
+                                @theme.Name — @theme.Description
+                            </option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="col-sm-3 control-label">Movies</label>
+                <div class="col-sm-2">
+                    <input type="number" name="MovieCount" class="form-control"
+                           value="@Model.Request.MovieCount" min="1" max="8" />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="col-sm-3 control-label">Runtime per movie (min)</label>
+                <div class="col-sm-2">
+                    <input type="number" name="EstimatedRuntimeMinutes" class="form-control"
+                           value="@Model.Request.EstimatedRuntimeMinutes" min="60" max="240" />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="col-sm-3 control-label">Break between movies (min)</label>
+                <div class="col-sm-2">
+                    <input type="number" name="BreakMinutes" class="form-control"
+                           value="@Model.Request.BreakMinutes" min="0" max="60" />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="col-sm-3 control-label">Personalize for</label>
+                <div class="col-sm-4">
+                    <select name="CustomerId" class="form-control">
+                        <option value="">-- Anyone --</option>
+                        @foreach (var c in Model.Customers)
+                        {
+                            <option value="@c.Id"
+                                    @(Model.Request.CustomerId == c.Id ? "selected" : "")>
+                                @c.Name
+                            </option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="col-sm-offset-3 col-sm-6">
+                    <button type="submit" class="btn btn-primary">
+                        <span class="glyphicon glyphicon-play"></span> Generate Plan
+                    </button>
+                    <a href="@Url.Action("Index", "MovieNight")" class="btn btn-default" style="margin-left: 8px;">Reset</a>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@if (Model.Plan != null)
+{
+    if (!Model.HasPlan)
+    {
+        <div class="alert alert-warning">
+            <span class="glyphicon glyphicon-info-sign"></span>
+            @Model.Plan.ThemeDescription
+        </div>
+    }
+    else
+    {
+        <div class="panel panel-primary">
+            <div class="panel-heading">
+                <h3 class="panel-title">
+                    <span class="glyphicon glyphicon-star"></span>
+                    @Model.Plan.Title
+                </h3>
+            </div>
+            <div class="panel-body">
+                <div class="row" style="margin-bottom: 15px;">
+                    <div class="col-sm-4">
+                        <strong>Theme:</strong> @Model.Plan.ThemeDescription
+                    </div>
+                    <div class="col-sm-2">
+                        <strong>Movies:</strong> @Model.Plan.MovieCount
+                    </div>
+                    <div class="col-sm-3">
+                        <strong>Total Time:</strong> @Model.Plan.TotalDuration
+                    </div>
+                    <div class="col-sm-3">
+                        <strong>Ends at:</strong> @Model.Plan.EstimatedEndTime.ToString("h:mm tt")
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(Model.Plan.AvailabilityNote))
+                {
+                    <div class="alert alert-warning" style="margin-bottom: 15px;">
+                        <span class="glyphicon glyphicon-exclamation-sign"></span>
+                        @Model.Plan.AvailabilityNote
+                    </div>
+                }
+
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">#</th>
+                            <th>Movie</th>
+                            <th>Genre</th>
+                            <th>Rating</th>
+                            <th>Time Slot</th>
+                            <th>Available</th>
+                            <th>Note</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var slot in Model.Plan.Slots)
+                        {
+                            <tr class="@(!slot.IsAvailable ? "warning" : "")">
+                                <td><span class="badge">@slot.Order</span></td>
+                                <td><strong>@slot.Movie.Name</strong></td>
+                                <td>@(slot.Movie.Genre.HasValue ? slot.Movie.Genre.Value.ToString() : "—")</td>
+                                <td>
+                                    @if (slot.Movie.Rating.HasValue)
+                                    {
+                                        for (int i = 0; i < (int)slot.Movie.Rating.Value; i++)
+                                        {
+                                            <span class="glyphicon glyphicon-star" style="color: #f0ad4e;"></span>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                                <td>@slot.StartTime.ToString("h:mm tt") – @slot.EndTime.ToString("h:mm tt")</td>
+                                <td>
+                                    @if (slot.IsAvailable)
+                                    {
+                                        <span class="label label-success">Yes</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="label label-danger">Rented Out</span>
+                                    }
+                                </td>
+                                <td><em class="text-muted">@slot.SlotNote</em></td>
+                            </tr>
+                            if (!string.IsNullOrEmpty(slot.BreakSuggestion))
+                            {
+                                <tr class="active">
+                                    <td></td>
+                                    <td colspan="6" style="font-style: italic; color: #888;">
+                                        <span class="glyphicon glyphicon-pause"></span>
+                                        Break: @slot.BreakSuggestion
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @if (Model.Plan.SnackSuggestions != null && Model.Plan.SnackSuggestions.Count > 0)
+        {
+            <div class="panel panel-info">
+                <div class="panel-heading">
+                    <h3 class="panel-title"><span class="glyphicon glyphicon-cutlery"></span> Snack Suggestions</h3>
+                </div>
+                <div class="panel-body">
+                    <div class="row">
+                        @foreach (var snack in Model.Plan.SnackSuggestions)
+                        {
+                            <div class="col-sm-4 col-md-3" style="margin-bottom: 8px;">
+                                <span class="glyphicon glyphicon-ok-circle" style="color: #5cb85c;"></span>
+                                @snack
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    }
+}
