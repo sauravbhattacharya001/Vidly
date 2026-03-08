@@ -8,8 +8,13 @@ namespace Vidly.Services
 {
     /// <summary>
     /// Generates personalized movie recommendations for customers based on
-    /// their rental history. Analyzes genre preferences and suggests unwatched
-    /// movies, prioritizing top-rated films in preferred genres.
+    /// their rental history. Analyzes genre preferences and tag affinities,
+    /// then suggests unwatched movies prioritizing highly-rated films in
+    /// preferred genres/tags.
+    ///
+    /// Performance: all tag assignments are bulk-loaded once via
+    /// GetAllAssignments() and indexed by movieId, eliminating
+    /// per-movie / per-rental N+1 repository calls.
     /// </summary>
     public class RecommendationService
     {
@@ -51,26 +56,30 @@ namespace Vidly.Services
             // Build the set of movie IDs this customer has already rented
             var rentedMovieIds = new HashSet<int>(customerRentals.Select(r => r.MovieId));
 
-            // Load movies once and reuse for both genre analysis and scoring
+            // Load movies once — shared by genre analysis, preference list, and scoring
             var allMovies = _movieRepository.GetAll();
+            var movieLookup = BuildMovieLookup(allMovies);
 
-            // Analyze genre preferences from rental history (reuses allMovies)
-            var genrePreferences = AnalyzeGenrePreferences(customerRentals, allMovies);
+            // Analyze genre preferences from rental history
+            var genrePreferences = AnalyzeGenrePreferences(customerRentals, movieLookup);
 
-            // Build tag affinity from rental history
-            var tagAffinities = _tagRepository != null
-                ? AnalyzeTagAffinities(customerRentals, _tagRepository)
-                : new Dictionary<int, TagAffinity>();
+            // Bulk-load all tag assignments once (replaces per-movie/per-rental
+            // GetAssignmentsByMovie calls that caused N+1 query pattern)
+            Dictionary<int, List<MovieTagAssignment>> tagsByMovie = null;
+            var tagAffinities = new Dictionary<int, TagAffinity>();
+            var staffPickMovieIds = new HashSet<int>();
 
-            // Get staff pick movie IDs for boosting
-            var staffPickMovieIds = _tagRepository != null
-                ? GetStaffPickMovieIds(_tagRepository)
-                : new HashSet<int>();
+            if (_tagRepository != null)
+            {
+                tagsByMovie = BuildTagIndex(_tagRepository.GetAllAssignments());
+                tagAffinities = AnalyzeTagAffinities(customerRentals, tagsByMovie);
+                staffPickMovieIds = GetStaffPickMovieIds(_tagRepository, tagsByMovie);
+            }
 
             // Score and rank unwatched movies
             var recommendations = ScoreMovies(
                     allMovies, rentedMovieIds, genrePreferences,
-                    tagAffinities, staffPickMovieIds, _tagRepository)
+                    tagAffinities, staffPickMovieIds, tagsByMovie)
                 .Take(maxRecommendations)
                 .ToList();
 
@@ -79,7 +88,7 @@ namespace Vidly.Services
                 CustomerId = customerId,
                 TotalRentals = customerRentals.Count,
                 GenrePreferences = BuildGenrePreferenceList(
-                    genrePreferences, customerRentals, allMovies),
+                    genrePreferences, customerRentals, movieLookup),
                 TopTagAffinities = tagAffinities.Values
                     .OrderByDescending(ta => ta.Score)
                     .Take(5)
@@ -89,22 +98,61 @@ namespace Vidly.Services
             };
         }
 
+        // ── Index builders ───────────────────────────────────────
+
         /// <summary>
-        /// Builds the genre preference list using a dictionary lookup instead of
-        /// FirstOrDefault per rental per genre (O(G*R) → O(R) with O(1) lookups).
+        /// Builds a dictionary of movieId → Movie for O(1) lookups.
+        /// Shared across genre analysis, preference list building, and scoring.
+        /// Previously built separately in AnalyzeGenrePreferences and
+        /// BuildGenrePreferenceList (redundant O(M) work).
+        /// </summary>
+        internal static Dictionary<int, Movie> BuildMovieLookup(IReadOnlyList<Movie> allMovies)
+        {
+            var lookup = new Dictionary<int, Movie>(allMovies.Count);
+            foreach (var m in allMovies)
+                lookup[m.Id] = m;
+            return lookup;
+        }
+
+        /// <summary>
+        /// Indexes all tag assignments by movieId for O(1) lookups per movie.
+        /// Replaces the N+1 pattern of calling GetAssignmentsByMovie() for
+        /// each movie/rental — a single bulk load + dictionary build.
+        /// </summary>
+        internal static Dictionary<int, List<MovieTagAssignment>> BuildTagIndex(
+            IReadOnlyList<MovieTagAssignment> allAssignments)
+        {
+            var index = new Dictionary<int, List<MovieTagAssignment>>();
+            foreach (var a in allAssignments)
+            {
+                List<MovieTagAssignment> list;
+                if (!index.TryGetValue(a.MovieId, out list))
+                {
+                    list = new List<MovieTagAssignment>();
+                    index[a.MovieId] = list;
+                }
+                list.Add(a);
+            }
+            return index;
+        }
+
+        // ── Genre preferences ────────────────────────────────────
+
+        /// <summary>
+        /// Builds the genre preference list using the shared movieLookup.
+        /// Single pass over rentals to count per-genre.
         /// </summary>
         internal static List<GenrePreference> BuildGenrePreferenceList(
             Dictionary<Genre, double> genrePreferences,
             IList<Rental> customerRentals,
-            IReadOnlyList<Movie> allMovies)
+            Dictionary<int, Movie> movieLookup)
         {
-            var movieLookup = allMovies.ToDictionary(m => m.Id);
-
             // Single pass: count rentals per genre using O(1) dictionary lookups
             var rentalCounts = new Dictionary<Genre, int>();
             foreach (var rental in customerRentals)
             {
-                if (movieLookup.TryGetValue(rental.MovieId, out var movie) && movie.Genre.HasValue)
+                Movie movie;
+                if (movieLookup.TryGetValue(rental.MovieId, out movie) && movie.Genre.HasValue)
                 {
                     var genre = movie.Genre.Value;
                     if (rentalCounts.ContainsKey(genre))
@@ -128,22 +176,22 @@ namespace Vidly.Services
         /// <summary>
         /// Analyzes a customer's rental history to compute genre preference scores.
         /// Each rental of a genre adds 1.0 to the base score. More recent rentals
-        /// get a recency bonus (up to +0.5 for rentals in the last 7 days).
+        /// get a recency bonus (up to +0.5 for rentals in the last 30 days).
+        /// Accepts pre-built movieLookup to avoid redundant dictionary creation.
         /// </summary>
         internal static Dictionary<Genre, double> AnalyzeGenrePreferences(
             IList<Rental> customerRentals,
-            IReadOnlyList<Movie> allMovies)
+            Dictionary<int, Movie> movieLookup)
         {
             var preferences = new Dictionary<Genre, double>();
 
             if (customerRentals == null || customerRentals.Count == 0)
                 return preferences;
 
-            var movieLookup = allMovies.ToDictionary(m => m.Id);
-
             foreach (var rental in customerRentals)
             {
-                if (!movieLookup.TryGetValue(rental.MovieId, out var movie) || !movie.Genre.HasValue)
+                Movie movie;
+                if (!movieLookup.TryGetValue(rental.MovieId, out movie) || !movie.Genre.HasValue)
                     continue;
 
                 var genre = movie.Genre.Value;
@@ -167,9 +215,94 @@ namespace Vidly.Services
             return preferences;
         }
 
+        // ── Tag affinities ───────────────────────────────────────
+
+        /// <summary>
+        /// Analyzes tag affinities using the pre-built tag index.
+        /// Previously called GetAssignmentsByMovie per rental (N+1);
+        /// now uses O(1) dictionary lookups per rental.
+        /// </summary>
+        internal static Dictionary<int, TagAffinity> AnalyzeTagAffinities(
+            IList<Rental> customerRentals,
+            Dictionary<int, List<MovieTagAssignment>> tagsByMovie)
+        {
+            var affinities = new Dictionary<int, TagAffinity>();
+
+            if (customerRentals == null || customerRentals.Count == 0 || tagsByMovie == null)
+                return affinities;
+
+            foreach (var rental in customerRentals)
+            {
+                List<MovieTagAssignment> movieTags;
+                if (!tagsByMovie.TryGetValue(rental.MovieId, out movieTags))
+                    continue;
+
+                foreach (var tagAssignment in movieTags)
+                {
+                    TagAffinity aff;
+                    if (!affinities.TryGetValue(tagAssignment.TagId, out aff))
+                    {
+                        aff = new TagAffinity
+                        {
+                            TagId = tagAssignment.TagId,
+                            TagName = tagAssignment.TagName,
+                            Score = 0,
+                            RentalCount = 0
+                        };
+                        affinities[tagAssignment.TagId] = aff;
+                    }
+
+                    double score = 1.0;
+                    var daysSinceRental = (DateTime.Today - rental.RentalDate).TotalDays;
+                    if (daysSinceRental <= 30)
+                        score += 0.5 * (1.0 - (daysSinceRental / 30.0));
+
+                    aff.Score += score;
+                    aff.RentalCount++;
+                }
+            }
+
+            return affinities;
+        }
+
+        /// <summary>
+        /// Gets the set of movie IDs tagged with staff-pick tags.
+        /// Uses the pre-built tag index instead of per-tag GetAssignmentsByTag calls.
+        /// </summary>
+        internal static HashSet<int> GetStaffPickMovieIds(
+            ITagRepository tagRepository,
+            Dictionary<int, List<MovieTagAssignment>> tagsByMovie)
+        {
+            var staffPickTagIds = new HashSet<int>();
+            var allTags = tagRepository.GetAllTags(false);
+            foreach (var tag in allTags)
+            {
+                if (tag.IsStaffPick)
+                    staffPickTagIds.Add(tag.Id);
+            }
+
+            var movieIds = new HashSet<int>();
+            foreach (var kvp in tagsByMovie)
+            {
+                foreach (var a in kvp.Value)
+                {
+                    if (staffPickTagIds.Contains(a.TagId))
+                    {
+                        movieIds.Add(kvp.Key);
+                        break; // one staff-pick tag is enough
+                    }
+                }
+            }
+            return movieIds;
+        }
+
+        // ── Scoring ──────────────────────────────────────────────
+
         /// <summary>
         /// Scores all unwatched movies based on genre preferences, tag affinities,
         /// staff pick status, and movie rating.
+        /// Uses pre-built tagsByMovie index for O(1) per-movie tag lookups
+        /// instead of calling tagRepository.GetAssignmentsByMovie() per movie.
         /// </summary>
         internal static IEnumerable<MovieRecommendation> ScoreMovies(
             IReadOnlyList<Movie> allMovies,
@@ -177,7 +310,7 @@ namespace Vidly.Services
             Dictionary<Genre, double> genrePreferences,
             Dictionary<int, TagAffinity> tagAffinities = null,
             HashSet<int> staffPickMovieIds = null,
-            ITagRepository tagRepository = null)
+            Dictionary<int, List<MovieTagAssignment>> tagsByMovie = null)
         {
             var scored = new List<MovieRecommendation>();
 
@@ -198,28 +331,32 @@ namespace Vidly.Services
                 }
 
                 // Tag affinity component: sum affinity scores for matching tags
+                // Uses pre-built index — O(1) lookup per movie instead of repository call
                 double tagScore = 0;
-                if (tagAffinities != null && tagAffinities.Count > 0 && tagRepository != null)
+                if (tagAffinities != null && tagAffinities.Count > 0 && tagsByMovie != null)
                 {
-                    var movieTags = tagRepository.GetAssignmentsByMovie(movie.Id);
-                    foreach (var tagAssignment in movieTags)
+                    List<MovieTagAssignment> movieTags;
+                    if (tagsByMovie.TryGetValue(movie.Id, out movieTags))
                     {
-                        TagAffinity affinity;
-                        if (tagAffinities.TryGetValue(tagAssignment.TagId, out affinity))
+                        foreach (var tagAssignment in movieTags)
                         {
-                            tagScore += affinity.Score;
+                            TagAffinity affinity;
+                            if (tagAffinities.TryGetValue(tagAssignment.TagId, out affinity))
+                            {
+                                tagScore += affinity.Score;
+                            }
                         }
-                    }
-                    score += tagScore * 1.5;
+                        score += tagScore * 1.5;
 
-                    if (tagScore > 0)
-                    {
-                        var topMatchingTag = movieTags
-                            .Where(a => tagAffinities.ContainsKey(a.TagId))
-                            .OrderByDescending(a => tagAffinities[a.TagId].Score)
-                            .FirstOrDefault();
-                        if (topMatchingTag != null)
-                            reasons.Add($"Because you liked movies tagged \"{topMatchingTag.TagName}\"");
+                        if (tagScore > 0)
+                        {
+                            var topMatchingTag = movieTags
+                                .Where(a => tagAffinities.ContainsKey(a.TagId))
+                                .OrderByDescending(a => tagAffinities[a.TagId].Score)
+                                .FirstOrDefault();
+                            if (topMatchingTag != null)
+                                reasons.Add($"Because you liked movies tagged \"{topMatchingTag.TagName}\"");
+                        }
                     }
                 }
 
@@ -280,66 +417,6 @@ namespace Vidly.Services
                 .OrderByDescending(r => r.Score)
                 .ThenByDescending(r => r.Movie.Rating ?? 0)
                 .ThenBy(r => r.Movie.Name);
-        }
-
-        /// <summary>
-        /// Analyzes a customer's rental history to compute tag affinity scores.
-        /// Each rental of a movie with a given tag adds 1.0, with recency bonus.
-        /// </summary>
-        internal static Dictionary<int, TagAffinity> AnalyzeTagAffinities(
-            IList<Rental> customerRentals,
-            ITagRepository tagRepository)
-        {
-            var affinities = new Dictionary<int, TagAffinity>();
-
-            if (customerRentals == null || customerRentals.Count == 0 || tagRepository == null)
-                return affinities;
-
-            foreach (var rental in customerRentals)
-            {
-                var movieTags = tagRepository.GetAssignmentsByMovie(rental.MovieId);
-                foreach (var tagAssignment in movieTags)
-                {
-                    TagAffinity aff;
-                    if (!affinities.TryGetValue(tagAssignment.TagId, out aff))
-                    {
-                        aff = new TagAffinity
-                        {
-                            TagId = tagAssignment.TagId,
-                            TagName = tagAssignment.TagName,
-                            Score = 0,
-                            RentalCount = 0
-                        };
-                        affinities[tagAssignment.TagId] = aff;
-                    }
-
-                    double score = 1.0;
-                    var daysSinceRental = (DateTime.Today - rental.RentalDate).TotalDays;
-                    if (daysSinceRental <= 30)
-                        score += 0.5 * (1.0 - (daysSinceRental / 30.0));
-
-                    aff.Score += score;
-                    aff.RentalCount++;
-                }
-            }
-
-            return affinities;
-        }
-
-        /// <summary>
-        /// Gets the set of movie IDs tagged with staff-pick tags.
-        /// </summary>
-        internal static HashSet<int> GetStaffPickMovieIds(ITagRepository tagRepository)
-        {
-            var movieIds = new HashSet<int>();
-            var allTags = tagRepository.GetAllTags(false);
-            foreach (var tag in allTags)
-            {
-                if (!tag.IsStaffPick) continue;
-                foreach (var a in tagRepository.GetAssignmentsByTag(tag.Id))
-                    movieIds.Add(a.MovieId);
-            }
-            return movieIds;
         }
     }
 
