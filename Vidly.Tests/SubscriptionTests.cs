@@ -419,5 +419,49 @@ namespace Vidly.Tests
         {
             new SubscriptionService(_subRepo, null);
         }
+
+        // --- RecordRental limit enforcement (Gardener #1034) ---
+
+        [TestMethod]
+        [ExpectedException(typeof(InvalidOperationException))]
+        public void RecordRental_BasicPlan_ThrowsAtLimit()
+        {
+            var sub = _service.Subscribe(3, SubscriptionPlanType.Basic);
+            // Basic plan allows 2 rentals per month
+            _service.RecordRental(sub.Id); // 1 of 2
+            _service.RecordRental(sub.Id); // 2 of 2
+            _service.RecordRental(sub.Id); // 3rd should throw
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(InvalidOperationException))]
+        public void RecordRental_StandardPlan_ThrowsAtLimit()
+        {
+            var sub = _service.Subscribe(3, SubscriptionPlanType.Standard);
+            // Standard plan allows 5 rentals per month
+            for (int i = 0; i < 5; i++)
+                _service.RecordRental(sub.Id);
+            _service.RecordRental(sub.Id); // 6th should throw
+        }
+
+        [TestMethod]
+        public void RecordRental_PremiumUnlimited_NeverThrows()
+        {
+            var sub = _service.Subscribe(3, SubscriptionPlanType.Premium);
+            // Premium allows unlimited - record 20 without throwing
+            for (int i = 0; i < 20; i++)
+            {
+                var remaining = _service.RecordRental(sub.Id);
+                Assert.AreEqual(-1, remaining);
+            }
+        }
+
+        [TestMethod]
+        public void RecordRental_BasicPlan_ReturnsCorrectRemaining()
+        {
+            var sub = _service.Subscribe(3, SubscriptionPlanType.Basic);
+            Assert.AreEqual(1, _service.RecordRental(sub.Id)); // 2-1=1
+            Assert.AreEqual(0, _service.RecordRental(sub.Id)); // 2-2=0
+        }
     }
 }
