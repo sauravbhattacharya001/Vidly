@@ -300,5 +300,94 @@ namespace Vidly.Tests
                     $"Unexpected character '{c}' in referral code suffix.");
             }
         }
+
+        // ── Input validation tests ──────────────────────────────────────
+
+        [TestMethod]
+        [ExpectedException(typeof(ArgumentException))]
+        public void CreateReferral_InvalidEmail_NoAtSign_Throws()
+        {
+            _service.CreateReferral(1, "Test", "invalidemail");
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(ArgumentException))]
+        public void CreateReferral_InvalidEmail_NoDot_Throws()
+        {
+            _service.CreateReferral(1, "Test", "user@localhost");
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(ArgumentException))]
+        public void CreateReferral_InvalidEmail_MultipleAt_Throws()
+        {
+            _service.CreateReferral(1, "Test", "user@@domain.com");
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(ArgumentException))]
+        public void CreateReferral_InvalidEmail_WhitespaceInEmail_Throws()
+        {
+            _service.CreateReferral(1, "Test", "user @domain.com");
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(ArgumentException))]
+        public void CreateReferral_InvalidEmail_EmptyLocalPart_Throws()
+        {
+            _service.CreateReferral(1, "Test", "@domain.com");
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(ArgumentException))]
+        public void CreateReferral_InvalidEmail_DomainStartsWithDot_Throws()
+        {
+            _service.CreateReferral(1, "Test", "user@.domain.com");
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(ArgumentException))]
+        public void CreateReferral_NameTooLong_Throws()
+        {
+            var longName = new string('A', ReferralService.MaxNameLength + 1);
+            _service.CreateReferral(1, longName, "friend@test.com");
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(ArgumentException))]
+        public void CreateReferral_EmailTooLong_Throws()
+        {
+            var longEmail = new string('a', 250) + "@b.co";
+            _service.CreateReferral(1, "Test", longEmail);
+        }
+
+        [TestMethod]
+        public void CreateReferral_ValidEmail_Succeeds()
+        {
+            var referral = _service.CreateReferral(1, "Test", "valid.user+tag@sub.domain.com");
+            Assert.IsNotNull(referral);
+            Assert.AreEqual("valid.user+tag@sub.domain.com", referral.ReferredEmail);
+        }
+
+        [TestMethod]
+        public void IsValidEmailFormat_VariousInputs()
+        {
+            // Valid
+            Assert.IsTrue(ReferralService.IsValidEmailFormat("a@b.com"));
+            Assert.IsTrue(ReferralService.IsValidEmailFormat("user+tag@domain.co.uk"));
+            Assert.IsTrue(ReferralService.IsValidEmailFormat("test.email@example.org"));
+
+            // Invalid
+            Assert.IsFalse(ReferralService.IsValidEmailFormat(null));
+            Assert.IsFalse(ReferralService.IsValidEmailFormat(""));
+            Assert.IsFalse(ReferralService.IsValidEmailFormat("nope"));
+            Assert.IsFalse(ReferralService.IsValidEmailFormat("@domain.com"));
+            Assert.IsFalse(ReferralService.IsValidEmailFormat("user@"));
+            Assert.IsFalse(ReferralService.IsValidEmailFormat("user@domain"));
+            Assert.IsFalse(ReferralService.IsValidEmailFormat("user@.com"));
+            Assert.IsFalse(ReferralService.IsValidEmailFormat("user@domain."));
+            Assert.IsFalse(ReferralService.IsValidEmailFormat("user@domain..com"));
+            Assert.IsFalse(ReferralService.IsValidEmailFormat("us er@domain.com"));
+        }
     }
 }
