@@ -64,6 +64,12 @@ namespace Vidly.Services
             return $"REF-{customerId}-{suffix}";
         }
 
+        /// <summary>Maximum allowed length for referred person's name.</summary>
+        public const int MaxNameLength = 200;
+
+        /// <summary>Maximum allowed length for referred person's email.</summary>
+        public const int MaxEmailLength = 254; // RFC 5321
+
         /// <summary>
         /// Creates a new referral invitation.
         /// </summary>
@@ -73,6 +79,24 @@ namespace Vidly.Services
                 throw new ArgumentException("Referred name is required.");
             if (string.IsNullOrWhiteSpace(referredEmail))
                 throw new ArgumentException("Referred email is required.");
+
+            // Security: enforce input length limits to prevent abuse (memory
+            // exhaustion, log flooding, UI breakage). Without these, an attacker
+            // could submit megabytes of data in a single referral request.
+            if (referredName.Trim().Length > MaxNameLength)
+                throw new ArgumentException(
+                    $"Name cannot exceed {MaxNameLength} characters.");
+            if (referredEmail.Trim().Length > MaxEmailLength)
+                throw new ArgumentException(
+                    $"Email cannot exceed {MaxEmailLength} characters.");
+
+            // Security: validate email format to prevent storage of garbage data
+            // and potential header injection if emails are ever sent. A basic
+            // structural check (contains exactly one @, non-empty local/domain
+            // parts, domain has a dot) catches obvious abuse without being
+            // overly strict about valid RFC 5322 addresses.
+            if (!IsValidEmailFormat(referredEmail.Trim()))
+                throw new ArgumentException("Invalid email address format.");
 
             var customer = _customerRepository.GetById(referrerId);
             if (customer == null)
@@ -319,6 +343,40 @@ namespace Vidly.Services
 
                 return query.OrderByDescending(r => r.CreatedDate).ToList().AsReadOnly();
             }
+        }
+
+        /// <summary>
+        /// Validates basic email format: exactly one @, non-empty local and
+        /// domain parts, domain contains at least one dot, no whitespace.
+        /// This is intentionally permissive — we only reject obviously
+        /// malformed addresses rather than trying to implement full RFC 5322.
+        /// </summary>
+        public static bool IsValidEmailFormat(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+                return false;
+
+            // No whitespace allowed
+            if (email.Any(char.IsWhiteSpace))
+                return false;
+
+            var atIndex = email.IndexOf('@');
+            if (atIndex <= 0) // must have non-empty local part
+                return false;
+            if (email.LastIndexOf('@') != atIndex) // exactly one @
+                return false;
+
+            var domain = email.Substring(atIndex + 1);
+            if (string.IsNullOrEmpty(domain))
+                return false;
+            if (!domain.Contains('.'))
+                return false;
+            if (domain.StartsWith(".") || domain.EndsWith("."))
+                return false;
+            if (domain.Contains(".."))
+                return false;
+
+            return true;
         }
     }
 }
