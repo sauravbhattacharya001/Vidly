@@ -834,5 +834,74 @@ namespace Vidly.Tests
 
             Assert.IsFalse(result.IsSuccess);
         }
+
+        // ── ApprovalRate Calculation Tests ───────────────────────
+
+        [TestMethod]
+        public void GetSummary_ApprovalRate_UsesResolvedDisputesAsDenominator()
+        {
+            // Create a customer and rentals for multiple disputes
+            var customer = CreateCustomer(MembershipType.Basic);
+            var rental1 = CreateReturnedRental(customer.Id);
+            var rental2 = CreateReturnedRental(customer.Id);
+            var rental3 = CreateReturnedRental(customer.Id);
+
+            // Submit 3 disputes
+            _service.SubmitDispute(customer.Id, rental1.Id, DisputeType.LateFee,
+                "Dispute one for approval rate test.", rental1.LateFee);
+            _service.SubmitDispute(customer.Id, rental2.Id, DisputeType.LateFee,
+                "Dispute two for approval rate test.", rental2.LateFee);
+            _service.SubmitDispute(customer.Id, rental3.Id, DisputeType.Overcharge,
+                "Dispute three for approval rate test.", 3.00m);
+
+            // Approve dispute 1, deny dispute 2, leave dispute 3 open
+            var disputes = _disputeRepo.GetByCustomer(customer.Id).ToList();
+            _service.Approve(disputes[0].Id, "Admin", "Approved");
+            _service.Deny(disputes[1].Id, "Admin", "Not valid charge dispute");
+
+            var summary = _service.GetSummary();
+
+            // 1 approved out of 2 resolved = 50%, NOT 1/3 = 33%
+            Assert.AreEqual(2, summary.Approved + summary.Denied);
+            Assert.AreEqual(1, summary.OpenDisputes);
+            Assert.AreEqual(50.0, summary.ApprovalRate, 0.1,
+                "ApprovalRate should use resolved disputes as denominator, not total disputes.");
+        }
+
+        [TestMethod]
+        public void GetSummary_AllDisputesOpen_ApprovalRateIsZero()
+        {
+            var customer = CreateCustomer(MembershipType.Basic);
+            var rental = CreateReturnedRental(customer.Id);
+
+            _service.SubmitDispute(customer.Id, rental.Id, DisputeType.LateFee,
+                "Open dispute for zero rate test.", rental.LateFee);
+
+            var summary = _service.GetSummary();
+
+            Assert.AreEqual(1, summary.OpenDisputes);
+            Assert.AreEqual(0.0, summary.ApprovalRate, 0.01,
+                "ApprovalRate should be 0 when no disputes are resolved.");
+        }
+
+        [TestMethod]
+        public void GetSummary_AllResolved_AllApproved_RateIs100()
+        {
+            var customer = CreateCustomer(MembershipType.Basic);
+            var rental1 = CreateReturnedRental(customer.Id);
+            var rental2 = CreateReturnedRental(customer.Id);
+
+            _service.SubmitDispute(customer.Id, rental1.Id, DisputeType.LateFee,
+                "First dispute for 100% rate test.", rental1.LateFee);
+            _service.SubmitDispute(customer.Id, rental2.Id, DisputeType.Overcharge,
+                "Second dispute for 100% rate test.", 2.00m);
+
+            var disputes = _disputeRepo.GetByCustomer(customer.Id).ToList();
+            _service.Approve(disputes[0].Id, "Admin");
+            _service.Approve(disputes[1].Id, "Admin");
+
+            var summary = _service.GetSummary();
+            Assert.AreEqual(100.0, summary.ApprovalRate, 0.1);
+        }
     }
 }
