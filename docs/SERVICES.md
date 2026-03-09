@@ -25,6 +25,9 @@ domain-specific business logic for the Vidly rental platform.
   - [CustomerActivityService](#customeractivityservice)
   - [ChurnPredictorService](#churnpredictorservice)
   - [ParentalControlService](#parentalcontrolservice)
+  - [AchievementService](#achievementservice)
+  - [ReferralService](#referralservice)
+  - [SubscriptionService](#subscriptionservice)
 - [Discovery & Content](#discovery--content)
   - [RecommendationService](#recommendationservice)
   - [MovieSimilarityService](#moviesimilarityservice)
@@ -37,6 +40,8 @@ domain-specific business logic for the Vidly rental platform.
   - [MovieNightPlannerService](#movienightplannerservice)
   - [FranchiseTrackerService](#franchisetrackerservice)
   - [MovieComparisonService](#moviecomparisonservice)
+  - [MovieQuizService](#moviequizservice)
+  - [MovieRequestService](#movierequestservice)
 - [Commerce & Promotions](#commerce--promotions)
   - [CouponService](#couponservice)
   - [GiftCardService](#giftcardservice)
@@ -50,6 +55,10 @@ domain-specific business logic for the Vidly rental platform.
   - [DashboardService](#dashboardservice)
   - [StaffPerformanceService](#staffperformanceservice)
   - [NotificationService](#notificationservice)
+  - [LateReturnPredictorService](#latereturnpredictorservice)
+  - [RentalSurveyService](#rentalsurveyservice)
+  - [StaffSchedulingService](#staffschedulingservice)
+  - [StoreEventService](#storeeventservice)
 
 ---
 
@@ -270,6 +279,58 @@ _MPAA-style content rating for movies._
 | `GetAdvisoryDistribution` | `Dictionary<ContentAdvisory, int>` | `—` |
 | `GetFamilyFriendlyPercent` | `double` | `—` |
 
+### AchievementService
+
+_Gamification system that awards badges and tracks milestones based on customer rental behavior. Badges are evaluated dynamically from rental history — no persistent badge state needed._
+
+**Source:** `Vidly/Services/AchievementService.cs` (31 KB) · **Methods:** 3
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `GetProfile` | `AchievementProfile` | `int customerId` |
+| `GetLeaderboard` | `List<AchievementLeaderboardEntry>` | `int top = 10` |
+| `GetStats` | `AchievementStats` | `—` |
+
+### ReferralService
+
+_Manages the customer referral program: create referrals, convert them when referred friends sign up, track rewards, and provide analytics._
+
+**Source:** `Vidly/Services/ReferralService.cs` (16 KB) · **Methods:** 10
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `GenerateReferralCode` | `string` | `int customerId` |
+| `CreateReferral` | `Referral` | `int referrerId, string referredName, string referredEmail` |
+| `ConvertReferral` | `Referral` | `string referralCode, int newCustomerId` |
+| `ExpireOldReferrals` | `int` | `—` |
+| `GetReferralsByCustomer` | `IReadOnlyList<Referral>` | `int customerId` |
+| `GetByCode` | `Referral` | `string code` |
+| `GetCustomerSummary` | `ReferralSummary` | `int customerId` |
+| `GetProgramStats` | `ReferralProgramStats` | `—` |
+| `GetAll` | `IReadOnlyList<Referral>` | `ReferralStatus? status = null` |
+| `IsValidEmailFormat` | `static bool` | `string email` |
+
+### SubscriptionService
+
+_Manages subscription rental plans: subscribe, cancel, pause/resume, upgrade/downgrade, billing, and usage tracking._
+
+**Source:** `Vidly/Services/SubscriptionService.cs` (22 KB) · **Methods:** 12
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `GetPlan` | `static SubscriptionPlan` | `SubscriptionPlanType planType` |
+| `GetAvailablePlans` | `static IReadOnlyList<SubscriptionPlan>` | `—` |
+| `Subscribe` | `CustomerSubscription` | `int customerId, SubscriptionPlanType planType` |
+| `Cancel` | `CustomerSubscription` | `int subscriptionId, string reason` |
+| `Pause` | `CustomerSubscription` | `int subscriptionId` |
+| `Resume` | `CustomerSubscription` | `int subscriptionId` |
+| `ChangePlan` | `CustomerSubscription` | `int subscriptionId, SubscriptionPlanType newPlanType` |
+| `RecordRental` | `int` | `int subscriptionId` |
+| `ProcessRenewals` | `RenewalSummary` | `—` |
+| `GetUsage` | `SubscriptionUsage` | `int subscriptionId` |
+| `GetByCustomerId` | `CustomerSubscription` | `int customerId` |
+| `GetRevenueBreakdown` | `SubscriptionRevenue` | `—` |
+
 
 ## Discovery & Content
 
@@ -454,6 +515,46 @@ _Compares movies side-by-side across multiple dimensions:_
 |--------|---------|------------|
 | `Compare` | `MovieComparisonResult` | `IEnumerable<int> movieIds` |
 | `GetAvailableMovies` | `IReadOnlyList<Movie>` | `—` |
+
+### MovieQuizService
+
+_Movie trivia quiz engine that generates questions from the store's movie catalog. Supports difficulty levels, category filtering, daily challenges, streak tracking, loyalty point rewards, and leaderboards._
+
+**Source:** `Vidly/Services/MovieQuizService.cs` (26 KB) · **Methods:** 11
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `StartQuiz` | `QuizSession` | `int customerId, QuizDifficulty difficulty, QuizCategory category, int questio...` |
+| `SubmitAnswer` | `QuizAnswer` | `int sessionId, int questionId, int selectedOptionIndex, double responseTimeSe...` |
+| `CompleteQuiz` | `QuizSession` | `int sessionId` |
+| `AbandonQuiz` | `void` | `int sessionId` |
+| `GetSession` | `QuizSession` | `int sessionId` |
+| `GetCustomerSessions` | `IReadOnlyList<QuizSession>` | `int customerId` |
+| `GetDailyChallenge` | `DailyChallenge` | `DateTime? date = null` |
+| `SubmitDailyAnswer` | `QuizAnswer` | `int customerId, int selectedOptionIndex, double responseTimeSeconds = 0` |
+| `GetCustomerStats` | `QuizStats` | `int customerId` |
+| `GetLeaderboard` | `List<LeaderboardEntry>` | `int top = 10` |
+| `GetHint` | `string` | `int sessionId, int questionId` |
+
+### MovieRequestService
+
+_Manages customer movie requests — submission, voting, trending, fulfillment, and demand analytics._
+
+**Source:** `Vidly/Services/MovieRequestService.cs` (12 KB) · **Methods:** 11
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `SubmitRequest` | `MovieRequest` | `int customerId, string title, int? year = null, Genre? genre = null, string r...` |
+| `Upvote` | `bool` | `int requestId, int customerId` |
+| `RemoveVote` | `bool` | `int requestId, int customerId` |
+| `MarkUnderReview` | `MovieRequest` | `int requestId, string staffNote = null` |
+| `Fulfill` | `MovieRequest` | `int requestId, string staffNote = null` |
+| `Decline` | `MovieRequest` | `int requestId, string staffNote` |
+| `GetTrending` | `IReadOnlyList<TrendingRequest>` | `int count = 10` |
+| `GetCustomerRequests` | `IReadOnlyList<MovieRequest>` | `int customerId` |
+| `Search` | `IReadOnlyList<MovieRequest>` | `string query, MovieRequestStatus? status = null, Genre? genre = null` |
+| `GetStats` | `MovieRequestStats` | `—` |
+| `GetGenreBreakdown` | `IDictionary<string, int>` | `—` |
 
 
 ## Commerce & Promotions
@@ -654,8 +755,96 @@ _Generates in-app notifications for customers: overdue rentals,_
 | `GetNotifications` | `NotificationResult` | `int customerId` |
 | `GetSummary` | `NotificationSummary` | `—` |
 
+### LateReturnPredictorService
+
+_Predicts which active rentals are at risk of being returned late. Analyzes customer history, rental timing patterns, and current rental state to produce a risk score (0–100) with actionable recommendations._
+
+**Source:** `Vidly/Services/LateReturnPredictorService.cs` (10 KB) · **Methods:** 3
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `PredictAll` | `List<LateReturnPrediction>` | `—` |
+| `PredictForRental` | `LateReturnPrediction` | `int rentalId` |
+| `GetSummary` | `PredictionSummary` | `—` |
+
+### RentalSurveyService
+
+_Manages post-rental satisfaction surveys: submission, validation, NPS calculation, reporting, trend analysis, and actionable insights._
+
+**Source:** `Vidly/Services/RentalSurveyService.cs` (21 KB) · **Methods:** 10
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `Submit` | `RentalSurvey` | `int customerId, int rentalId, int npsScore, int overallSatisfaction, ...` |
+| `GetCustomerSurveys` | `List<RentalSurvey>` | `int customerId` |
+| `CalculateNps` | `double?` | `List<RentalSurvey> surveys = null` |
+| `GenerateReport` | `SurveyReport` | `DateTime? from = null, DateTime? to = null` |
+| `GetAtRiskCustomers` | `List<AtRiskCustomer>` | `—` |
+| `GetImprovementOpportunities` | `List<ImprovementOpportunity>` | `—` |
+| `GenerateInvitations` | `List<SurveyInvitation>` | `—` |
+| `GetPendingInvitations` | `List<SurveyInvitation>` | `—` |
+| `GetAll` | `List<RentalSurvey>` | `—` |
+| `GetById` | `RentalSurvey` | `int id` |
+
+### StaffSchedulingService
+
+_Manages staff scheduling: shift CRUD, availability tracking, conflict detection, coverage analysis, swap requests, and weekly hour enforcement._
+
+**Source:** `Vidly/Services/StaffSchedulingService.cs` (19 KB) · **Methods:** 24
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `ScheduleShift` | `Shift` | `int staffId, DateTime start, DateTime end, ShiftType type = ShiftType.Regula...` |
+| `GetShift` | `Shift` | `int shiftId` |
+| `GetShiftsForDate` | `IReadOnlyList<Shift>` | `DateTime date` |
+| `GetShiftsForStaff` | `IReadOnlyList<Shift>` | `int staffId, DateTime? from = null, DateTime? to = null` |
+| `CancelShift` | `bool` | `int shiftId` |
+| `ConfirmShift` | `bool` | `int shiftId` |
+| `GetConflictingShifts` | `IReadOnlyList<Shift>` | `int staffId, DateTime start, DateTime end` |
+| `CheckRestViolation` | `string` | `int staffId, DateTime start, DateTime end` |
+| `SetAvailability` | `StaffAvailability` | `int staffId, DayOfWeek day, TimeSpan from, TimeSpan to` |
+| `GetAvailability` | `IReadOnlyList<StaffAvailability>` | `int staffId` |
+| `GetAvailableStaffForDay` | `IReadOnlyList<StaffAvailability>` | `DayOfWeek day` |
+| `IsStaffAvailable` | `bool` | `int staffId, DateTime start, DateTime end` |
+| `GetCoverageReport` | `CoverageReport` | `DateTime date` |
+| `GetWeeklyCoverage` | `IReadOnlyList<CoverageReport>` | `DateTime weekStart` |
+| `GetUnderstaffedDays` | `IReadOnlyList<CoverageReport>` | `DateTime from, DateTime to` |
+| `GetWeeklySummary` | `StaffWeeklySummary` | `int staffId, DateTime weekStart` |
+| `GetAllWeeklySummaries` | `IReadOnlyList<StaffWeeklySummary>` | `DateTime weekStart` |
+| `GetOvertimeRisk` | `IReadOnlyList<StaffWeeklySummary>` | `DateTime weekStart, double additionalHours = 0` |
+| `RequestSwap` | `ShiftSwapRequest` | `int staffId, int shiftId, SwapRequestType type, int? targetStaffId = null` |
+| `ApproveSwap` | `bool` | `int requestId, int? coveringStaffId = null` |
+| `DenySwap` | `bool` | `int requestId` |
+| `GetPendingSwapRequests` | `IReadOnlyList<ShiftSwapRequest>` | `—` |
+| `GetSwapHistory` | `IReadOnlyList<ShiftSwapRequest>` | `int staffId` |
+| `GetSchedulingFairness` | `double` | `DateTime weekStart` |
+
+### StoreEventService
+
+_Manages in-store events (screenings, trivia nights, release parties), including RSVPs, attendance tracking, capacity management, and event recommendations based on customer rental history._
+
+**Source:** `Vidly/Services/StoreEventService.cs` (15 KB) · **Methods:** 15
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `CreateEvent` | `StoreEvent` | `StoreEvent ev` |
+| `GetEvents` | `IReadOnlyList<StoreEvent>` | `StoreEventStatus? status = null` |
+| `GetById` | `StoreEvent` | `int eventId` |
+| `GetUpcoming` | `IReadOnlyList<StoreEvent>` | `—` |
+| `CancelEvent` | `void` | `int eventId` |
+| `CompleteEvent` | `void` | `int eventId` |
+| `Rsvp` | `EventRsvp` | `int eventId, int customerId, int guestCount = 1, string dietaryNotes = null` |
+| `CancelRsvp` | `void` | `int eventId, int customerId` |
+| `RecordAttendance` | `void` | `int eventId, int customerId` |
+| `GetEventRsvps` | `IReadOnlyList<EventRsvp>` | `int eventId` |
+| `GetCustomerEvents` | `IReadOnlyList<StoreEvent>` | `int customerId` |
+| `GetRemainingCapacity` | `int` | `int eventId` |
+| `GetRecommendations` | `IReadOnlyList<EventSuggestion>` | `int customerId, List<Rental> rentals, List<Movie> movies, int limit = 5` |
+| `GetStats` | `EventStats` | `—` |
+| `GetEventsInRange` | `IReadOnlyList<StoreEvent>` | `int days` |
+
 ---
 
-**Total:** 33 services, 280 public methods across 5 domains.
+**Total:** 42 services, 379 public methods across 5 domains.
 
-*Auto-generated from source. Last updated: 2026-03-06.*
+*Auto-generated from source. Last updated: 2026-03-09.*
