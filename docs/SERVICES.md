@@ -1,6 +1,6 @@
 # Vidly Services API Reference
 
-Complete reference for all 33 service classes in `Vidly/Services/`.
+Complete reference for all 44 service classes in `Vidly/Services/`.
 Each service is instantiated with in-memory data stores and provides
 domain-specific business logic for the Vidly rental platform.
 
@@ -18,6 +18,8 @@ domain-specific business logic for the Vidly rental platform.
   - [RentalHistoryService](#rentalhistoryservice)
   - [InventoryService](#inventoryservice)
   - [ReservationService](#reservationservice)
+  - [RentalInsuranceService](#rentalinsuranceservice)
+  - [RentalPolicyConstants](#rentalpolicyconstants)
 - [Customer Management](#customer-management)
   - [MembershipTierService](#membershiptierservice)
   - [LoyaltyPointsService](#loyaltypointsservice)
@@ -157,6 +159,60 @@ _Manages movie reservations (holds). Customers can reserve movies_
 | `GetStats` | `ReservationStats` | `—` |
 | `GetQueueSummary` | `string` | `int movieId` |
 | `ProcessExpiredReservations` | `int` | `—` |
+
+### RentalInsuranceService
+
+_Optional rental insurance — covers late fees, damage charges, and lost-disc replacement across three tiers._
+
+**Source:** `Vidly/Services/RentalInsuranceService.cs` (375 lines) · **Methods:** 15
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `Purchase` | `InsurancePolicy` | `int rentalId, int customerId, InsuranceTier tier` |
+| `CalculatePremium` | `decimal` | `decimal dailyRate, InsuranceTier tier` |
+| `FileClaim` | `InsuranceClaim` | `int policyId, ClaimType claimType, decimal amount` |
+| `DenyClaim` | `InsuranceClaim` | `int claimId, string reason` |
+| `GetPolicy` | `InsurancePolicy` | `int policyId` |
+| `GetPolicyForRental` | `InsurancePolicy` | `int rentalId` |
+| `GetCustomerPolicies` | `List<InsurancePolicy>` | `int customerId` |
+| `GetClaimsForPolicy` | `List<InsuranceClaim>` | `int policyId` |
+| `GetCustomerClaims` | `List<InsuranceClaim>` | `int customerId` |
+| `CancelPolicy` | `InsurancePolicy` | `int policyId` |
+| `ExpirePolicy` | `InsurancePolicy` | `int policyId` |
+| `GetAnalytics` | `InsuranceAnalytics` | `—` |
+| `GetUptakeRate` | `decimal` | `—` |
+| `IsFrequentClaimer` | `bool` | `int customerId` |
+| `Reset` | `void` | `—` |
+
+**Tiers:**
+
+| Tier | Premium | Coverage Limit | Covered Claim Types |
+|------|---------|----------------|---------------------|
+| Basic | 15% of daily rate | $10.00 | Late fees |
+| Standard | 30% of daily rate | $25.00 | Late fees, damage |
+| Premium | 50% of daily rate | $50.00 | Late fees, damage, lost disc |
+
+**Models:** `InsurancePolicy`, `InsuranceClaim`, `InsuranceTier` (enum),
+`ClaimType` (enum: `LateFee`, `Damage`, `LostDisc`), `InsuranceAnalytics`.
+
+### RentalPolicyConstants
+
+_Single source of truth for rental policy constants shared across PricingService, RentalReturnService, and LoyaltyPointsService._
+
+**Source:** `Vidly/Services/RentalPolicyConstants.cs` (87 lines) · **Type:** static class
+
+| Constant/Property | Type | Description |
+|-------------------|------|-------------|
+| `LateFeePerDay` | `decimal` | Per-day late fee before tier discount ($1.50) |
+| `MaxLateFeeCap` | `decimal` | Maximum late fee on any single rental ($25.00) |
+| `OnTimeReturnBonus` | `int` | Bonus loyalty points for on-time/early return (25) |
+| `TierPointsMultiplier` | `IReadOnlyDictionary<MembershipType, decimal>` | Loyalty points multiplier by membership tier |
+| `TierLateDiscount` | `IReadOnlyDictionary<MembershipType, decimal>` | Late-fee discount percentage by membership tier |
+| `TierGracePeriod` | `IReadOnlyDictionary<MembershipType, int>` | Grace period in days by membership tier |
+
+> **Why this exists:** Previously these values were independently declared
+> in each service with identical values, creating a divergence risk if one
+> service updated a constant without the others.
 
 
 ## Customer Management
