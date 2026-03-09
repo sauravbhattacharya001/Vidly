@@ -574,3 +574,141 @@ class TestEdgeCases:
         result = fp.build_fingerprint("x")
         tp = result.timing_profile
         assert tp.mean_interval >= 0
+
+    def test_cosine_similarity_mismatched_length(self):
+        assert _cosine_similarity([1, 2], [1, 2, 3]) == 0.0
+
+    def test_resource_similarity_no_overlap(self):
+        """Two agents with different resource types should still get a score."""
+        fp = BehavioralFingerprinter()
+        fp.observe("a", _make_obs(ObservationType.RESOURCE_USE, "cpu", numeric=0.5))
+        fp.observe("b", _make_obs(ObservationType.RESOURCE_USE, "gpu", numeric=0.8))
+        _seed_agent(fp, "a", count=15)
+        _seed_agent(fp, "b", count=15, rng=random.Random(99))
+        cmp = fp.compare("a", "b")
+        assert 0.0 <= cmp.resource_similarity <= 1.0
+
+    def test_error_distribution_multiple_types(self):
+        fp = BehavioralFingerprinter()
+        fp.observe("x", _make_obs(ObservationType.ERROR, "timeout", 1.0))
+        fp.observe("x", _make_obs(ObservationType.ERROR, "timeout", 2.0))
+        fp.observe("x", _make_obs(ObservationType.ERROR, "oom", 3.0))
+        fp.observe("x", _make_obs(ObservationType.ACTION, "ok", 4.0))
+        result = fp.build_fingerprint("x")
+        assert abs(result.error_distribution["timeout"] - 2 / 3) < 1e-9
+        assert abs(result.error_distribution["oom"] - 1 / 3) < 1e-9
+        assert abs(result.error_rate - 0.75) < 1e-9
+
+
+# ── _compute_stats tests ──
+
+
+class TestComputeStats:
+    def test_empty(self):
+        from replication.fingerprint import _compute_stats
+        m, s, mn, mx = _compute_stats([])
+        assert m == 0.0 and s == 0.0
+
+    def test_single_value(self):
+        from replication.fingerprint import _compute_stats
+        m, s, mn, mx = _compute_stats([5.0])
+        assert m == 5.0
+        assert mn == 5.0
+        assert mx == 5.0
+
+    def test_multiple_values(self):
+        from replication.fingerprint import _compute_stats
+        m, s, mn, mx = _compute_stats([2.0, 4.0, 6.0])
+        assert abs(m - 4.0) < 1e-9
+        assert mn == 2.0
+        assert mx == 6.0
+        assert s > 0
+
+
+# ── DriftEvent dataclass ──
+
+
+class TestDriftEvent:
+    def test_drift_event_fields(self):
+        de = DriftEvent(
+            agent_id="a1",
+            drift_score=0.45,
+            changed_dimensions=["action", "timing"],
+            timestamp=1000.0,
+            description="test drift",
+        )
+        assert de.agent_id == "a1"
+        assert de.drift_score == 0.45
+        assert "action" in de.changed_dimensions
+
+
+# ── Fleet risk score edge cases ──
+
+
+class TestRiskScoring:
+    def test_risk_score_caps_at_100(self):
+        """Many critical alerts should not exceed 100."""
+        fp = BehavioralFingerprinter(FingerprintConfig(min_observations=3))
+        # Create many clone pairs
+        for i in range(10):
+            _seed_agent(fp, f"clone-{i}", count=10)
+        report = fp.analyze_fleet()
+        assert report.risk_score <= 100.0
+
+    def test_risk_grade_boundaries(self):
+        assert BehavioralFingerprinter._risk_grade(0) == "A"
+        assert BehavioralFingerprinter._risk_grade(10) == "A"
+        assert BehavioralFingerprinter._risk_grade(10.1) == "B"
+        assert BehavioralFingerprinter._risk_grade(25) == "B"
+        assert BehavioralFingerprinter._risk_grade(25.1) == "C"
+        assert BehavioralFingerprinter._risk_grade(50) == "C"
+        assert BehavioralFingerprinter._risk_grade(50.1) == "D"
+        assert BehavioralFingerprinter._risk_grade(75) == "D"
+        assert BehavioralFingerprinter._risk_grade(75.1) == "F"
+
+
+# ── Fleet report rendering ──
+
+
+class TestFleetReportRendering:
+    def test_render_with_clone_groups(self):
+        fp = BehavioralFingerprinter()
+        _seed_agent(fp, "a1")
+        _seed_agent(fp, "a2")  # Clone
+        report = fp.analyze_fleet()
+        text = report.render()
+        assert "Clone Groups" in text
+
+    def test_render_with_drift(self):
+        """Fleet report should include drift events section when drift occurs."""
+        cfg = FingerprintConfig(drift_window=15, drift_threshold=0.15)
+        fp = BehavioralFingerprinter(cfg)
+        t = 0.0
+        for _ in range(20):
+            fp.observe("a1", _make_obs(ObservationType.ACTION, "compute", t))
+            t += 1.0
+        for _ in range(20):
+            fp.observe("a1", _make_obs(ObservationType.ACTION, "escalate", t))
+            t += 0.05
+        report = fp.analyze_fleet()
+        if report.drift_events:
+            text = report.render()
+            assert "Drift Events" in text
+
+
+# ── CLI / demo ──
+
+
+class TestCLI:
+    def test_demo_runs(self, capsys):
+        from replication.fingerprint import _demo
+        _demo(num_agents=3, num_obs=30)
+        captured = capsys.readouterr()
+        assert "Agent Behavioral Fingerprint Report" in captured.out
+
+    def test_demo_json(self, capsys):
+        from replication.fingerprint import _demo
+        _demo(num_agents=3, num_obs=30, as_json=True)
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+        assert "risk_score" in data
