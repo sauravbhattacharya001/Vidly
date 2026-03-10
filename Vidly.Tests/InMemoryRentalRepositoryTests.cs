@@ -555,5 +555,77 @@ namespace Vidly.Tests
             // Clean up
             repo.Remove(rental.Id);
         }
+
+        [TestMethod]
+        [ExpectedException(typeof(InvalidOperationException))]
+        public void Checkout_OverdueRentalsCountAgainstConcurrentLimit()
+        {
+            // Regression test: overdue rentals must count against the concurrent
+            // rental limit. Previously only Active rentals were counted, so a
+            // customer whose rentals went overdue could bypass the cap entirely.
+            var repo = new InMemoryRentalRepository();
+
+            // Check out a movie that will immediately go overdue
+            var overdueRental = new Rental
+            {
+                CustomerId = 50,
+                CustomerName = "Limit Bypass Tester",
+                MovieId = 800,
+                MovieName = "Overdue Movie 1",
+                RentalDate = DateTime.Today.AddDays(-14),
+                DueDate = DateTime.Today.AddDays(-7),
+                DailyRate = 3.99m
+            };
+            repo.Add(overdueRental);
+
+            // Verify it's overdue
+            var fetched = repo.GetById(overdueRental.Id);
+            Assert.AreEqual(RentalStatus.Overdue, fetched.Status);
+
+            // Now try to checkout another movie with maxConcurrentRentals = 1.
+            // This should throw because the overdue rental counts against the limit.
+            var newRental = new Rental
+            {
+                CustomerId = 50,
+                CustomerName = "Limit Bypass Tester",
+                MovieId = 801,
+                MovieName = "Should Be Blocked",
+                DailyRate = 3.99m
+            };
+            repo.Checkout(newRental, maxConcurrentRentals: 1);
+        }
+
+        [TestMethod]
+        public void Checkout_ReturnedRentalDoesNotCountAgainstLimit()
+        {
+            var repo = new InMemoryRentalRepository();
+
+            // Create and return a rental
+            var rental = new Rental
+            {
+                CustomerId = 51,
+                CustomerName = "Returned Tester",
+                MovieId = 810,
+                MovieName = "Already Returned",
+                DailyRate = 3.99m
+            };
+            var created = repo.Checkout(rental);
+            repo.ReturnRental(created.Id);
+
+            // Should succeed — returned rental doesn't count
+            var newRental = new Rental
+            {
+                CustomerId = 51,
+                CustomerName = "Returned Tester",
+                MovieId = 811,
+                MovieName = "New Movie After Return",
+                DailyRate = 3.99m
+            };
+            var result = repo.Checkout(newRental, maxConcurrentRentals: 1);
+            Assert.IsNotNull(result);
+
+            // Clean up
+            repo.Remove(result.Id);
+        }
     }
 }

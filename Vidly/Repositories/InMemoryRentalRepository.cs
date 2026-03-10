@@ -319,13 +319,21 @@ namespace Vidly.Repositories
                         "This movie is currently rented out.");
                 }
 
-                // Enforce membership tier concurrent rental limit
+                // Enforce membership tier concurrent rental limit.
+                // Count both Active AND Overdue rentals — overdue movies are still
+                // checked out and must count against the limit. Previously only
+                // Active was counted, so customers with overdue rentals could bypass
+                // the cap by letting their rentals go overdue (bug fix).
                 if (maxConcurrentRentals < int.MaxValue)
                 {
-                    var activeCount = _rentals.Values.Count(r =>
+                    // Refresh statuses first so Overdue is accurate
+                    foreach (var r in _rentals.Values)
+                        RefreshStatus(r);
+
+                    var outstandingCount = _rentals.Values.Count(r =>
                         r.CustomerId == rental.CustomerId &&
-                        r.Status == RentalStatus.Active);
-                    if (activeCount >= maxConcurrentRentals)
+                        r.Status != RentalStatus.Returned);
+                    if (outstandingCount >= maxConcurrentRentals)
                     {
                         throw new InvalidOperationException(
                             $"Customer has reached their concurrent rental limit of {maxConcurrentRentals}.");
