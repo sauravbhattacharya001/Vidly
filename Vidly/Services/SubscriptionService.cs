@@ -144,7 +144,9 @@ namespace Vidly.Services
         }
 
         /// <summary>
-        /// Cancel a subscription. Remains active until the current period ends.
+        /// Cancel a subscription immediately. The subscription status changes to
+        /// Cancelled right away, blocking further rentals. When the current billing
+        /// period ends, <see cref="ProcessRenewals"/> transitions it to Expired.
         /// </summary>
         public CustomerSubscription Cancel(int subscriptionId, string reason)
         {
@@ -402,7 +404,21 @@ namespace Vidly.Services
                             _subscriptionRepo.Update(sub);
                             renewed++;
                         }
-                    }
+                }
+                }
+                else if (sub.Status == SubscriptionStatus.Cancelled)
+                {
+                    // Cancelled subscriptions that have reached their period end
+                    // should transition to Expired for proper lifecycle tracking
+                    sub.Status = SubscriptionStatus.Expired;
+                    _subscriptionRepo.AddBillingEvent(sub.Id, new SubscriptionBillingEvent
+                    {
+                        EventType = "expiration",
+                        Amount = 0m,
+                        Description = "Cancelled subscription period ended"
+                    });
+                    _subscriptionRepo.Update(sub);
+                    expired++;
                 }
             }
 
@@ -443,7 +459,7 @@ namespace Vidly.Services
                     : 0,
                 TotalBilled = sub.TotalBilled,
                 Status = sub.Status,
-                PausesRemaining = plan.MaxPausesPerYear - sub.PausesUsedThisYear
+                PausesRemaining = Math.Max(0, plan.MaxPausesPerYear - sub.PausesUsedThisYear)
             };
         }
 
