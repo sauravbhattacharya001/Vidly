@@ -463,5 +463,135 @@ namespace Vidly.Tests
             Assert.AreEqual(1, _service.RecordRental(sub.Id)); // 2-1=1
             Assert.AreEqual(0, _service.RecordRental(sub.Id)); // 2-2=0
         }
+
+        // --- ProcessRenewals ---
+
+        [TestMethod]
+        public void ProcessRenewals_ActivePastPeriod_RenewsAndCharges()
+        {
+            var sub = _service.Subscribe(1, SubscriptionPlanType.Basic);
+            var plan = SubscriptionService.GetPlan(SubscriptionPlanType.Basic);
+
+            // Force period to have ended by backdating
+            sub.CurrentPeriodEnd = DateTime.Now.AddDays(-1);
+            sub.CurrentPeriodStart = DateTime.Now.AddDays(-31);
+            _subRepo.Update(sub);
+
+            var summary = _service.ProcessRenewals();
+            Assert.AreEqual(1, summary.Renewed);
+
+            var renewed = _subRepo.GetById(sub.Id);
+            Assert.AreEqual(SubscriptionStatus.Active, renewed.Status);
+            Assert.AreEqual(0, renewed.RentalsUsedThisPeriod);
+            Assert.AreEqual(plan.MonthlyPrice * 2, renewed.TotalBilled);
+        }
+
+        [TestMethod]
+        public void ProcessRenewals_PastDueBeyondGrace_ExpiresSubscription()
+        {
+            var sub = _service.Subscribe(2, SubscriptionPlanType.Standard);
+
+            sub.Status = SubscriptionStatus.PastDue;
+            sub.CurrentPeriodEnd = DateTime.Now.AddDays(-(SubscriptionService.PastDueGraceDays + 1));
+            _subRepo.Update(sub);
+
+            var summary = _service.ProcessRenewals();
+            Assert.AreEqual(1, summary.Expired);
+
+            var expired = _subRepo.GetById(sub.Id);
+            Assert.AreEqual(SubscriptionStatus.Expired, expired.Status);
+        }
+
+        [TestMethod]
+        public void ProcessRenewals_PastDueWithinGrace_StaysPastDue()
+        {
+            var sub = _service.Subscribe(2, SubscriptionPlanType.Standard);
+
+            sub.Status = SubscriptionStatus.PastDue;
+            sub.CurrentPeriodEnd = DateTime.Now.AddDays(-2); // within 7-day grace
+            _subRepo.Update(sub);
+
+            var summary = _service.ProcessRenewals();
+            Assert.AreEqual(0, summary.Expired);
+            Assert.AreEqual(1, summary.StillPastDue);
+
+            var still = _subRepo.GetById(sub.Id);
+            Assert.AreEqual(SubscriptionStatus.PastDue, still.Status);
+        }
+
+        [TestMethod]
+        public void ProcessRenewals_PausedBeyondMaxDays_AutoResumes()
+        {
+            var sub = _service.Subscribe(3, SubscriptionPlanType.Standard);
+            _service.Pause(sub.Id);
+
+            // Backdate pause and period end to exceed MaxPauseDays
+            sub = _subRepo.GetById(sub.Id);
+            sub.PausedDate = DateTime.Now.AddDays(-(SubscriptionService.MaxPauseDays + 1));
+            sub.CurrentPeriodEnd = DateTime.Now.AddDays(-1);
+            _subRepo.Update(sub);
+
+            var summary = _service.ProcessRenewals();
+            Assert.AreEqual(1, summary.Renewed);
+
+            var resumed = _subRepo.GetById(sub.Id);
+            Assert.AreEqual(SubscriptionStatus.Active, resumed.Status);
+            Assert.IsNull(resumed.PausedDate);
+            Assert.AreEqual(0, resumed.RentalsUsedThisPeriod);
+        }
+
+        [TestMethod]
+        public void ProcessRenewals_ActiveNotExpired_DoesNothing()
+        {
+            _service.Subscribe(1, SubscriptionPlanType.Basic);
+            var summary = _service.ProcessRenewals();
+            Assert.AreEqual(0, summary.Renewed);
+            Assert.AreEqual(0, summary.Expired);
+            Assert.AreEqual(0, summary.StillPastDue);
+        }
+
+        // --- ChangePlan edge cases ---
+
+        [TestMethod]
+        public void ChangePlan_Downgrade_NetChargeNeverNegative()
+        {
+            var sub = _service.Subscribe(1, SubscriptionPlanType.Premium);
+
+            var changed = _service.ChangePlan(sub.Id, SubscriptionPlanType.Basic);
+
+            var lastEvent = changed.BillingHistory.Last();
+            Assert.AreEqual("plan_change", lastEvent.EventType);
+            Assert.IsTrue(lastEvent.Amount >= 0, "Net charge should never be negative.");
+        }
+
+        [TestMethod]
+        public void ChangePlan_ResetsUsageCounter()
+        {
+            var sub = _service.Subscribe(3, SubscriptionPlanType.Standard);
+            _service.RecordRental(sub.Id);
+            _service.RecordRental(sub.Id);
+            Assert.AreEqual(2, _subRepo.GetById(sub.Id).RentalsUsedThisPeriod);
+
+            _service.ChangePlan(sub.Id, SubscriptionPlanType.Premium);
+            Assert.AreEqual(0, _subRepo.GetById(sub.Id).RentalsUsedThisPeriod);
+        }
+
+        // --- GetByCustomerId ---
+
+        [TestMethod]
+        public void GetByCustomerId_ReturnsActiveSubscription()
+        {
+            var sub = _service.Subscribe(1, SubscriptionPlanType.Basic);
+            var found = _service.GetByCustomerId(1);
+            Assert.IsNotNull(found);
+            Assert.AreEqual(sub.Id, found.Id);
+        }
+
+        [TestMethod]
+        public void GetByCustomerId_NoSubscription_ReturnsNull()
+        {
+            var found = _service.GetByCustomerId(999);
+            Assert.IsNull(found);
+        }
     }
 }

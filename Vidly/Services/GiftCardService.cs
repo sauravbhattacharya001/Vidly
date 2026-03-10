@@ -94,7 +94,8 @@ namespace Vidly.Services
                 RecipientName = recipientName,
                 Message = message,
                 IsActive = true,
-                ExpirationDate = expirationDate
+                ExpirationDate = expirationDate,
+                CreatedDate = DateTime.Now
             };
 
             _giftCardRepository.Add(card);
