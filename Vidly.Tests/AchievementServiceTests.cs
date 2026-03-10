@@ -922,7 +922,7 @@ namespace Vidly.Tests
 
         [TestMethod]
         [ExpectedException(typeof(KeyNotFoundException))]
-        public void GetProfile_UnknownCustomer_Throws()
+        public void GetProfile_UnknownCustomer_EmptyLists_Throws()
         {
             var svc = CreateService(
                 customers: new List<Customer>(),
