@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Vidly.Models;
 using Vidly.Services;
-using Xunit;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Vidly.Tests
 {
@@ -27,99 +27,99 @@ namespace Vidly.Tests
 
         private DateTime Today => new DateTime(2026, 3, 9); // Monday
 
-        [Fact]
+        [TestMethod]
         public void Constructor_NullStaff_Throws()
         {
-            Assert.Throws<ArgumentNullException>(() => new StaffSchedulingService(null));
+            Assert.ThrowsException<ArgumentNullException>(() => new StaffSchedulingService(null));
         }
 
-        [Fact]
+        [TestMethod]
         public void Constructor_EmptyStaff_Works()
         {
             var svc = new StaffSchedulingService(new List<StaffMember>());
-            Assert.Equal(0, svc.TotalShifts);
+            Assert.AreEqual(0, svc.TotalShifts);
         }
 
-        [Fact]
+        [TestMethod]
         public void ScheduleShift_ValidInput_CreatesShift()
         {
             var shift = _service.ScheduleShift(1, Today.AddHours(9), Today.AddHours(17), ShiftType.FullDay);
-            Assert.NotNull(shift);
-            Assert.Equal(1, shift.StaffId);
-            Assert.Equal("Alice", shift.StaffName);
-            Assert.Equal(ShiftType.FullDay, shift.Type);
-            Assert.Equal(8.0, shift.DurationHours);
-            Assert.False(shift.IsConfirmed);
+            Assert.IsNotNull(shift);
+            Assert.AreEqual(1, shift.StaffId);
+            Assert.AreEqual("Alice", shift.StaffName);
+            Assert.AreEqual(ShiftType.FullDay, shift.Type);
+            Assert.AreEqual(8.0, shift.DurationHours);
+            Assert.IsFalse(shift.IsConfirmed);
         }
 
-        [Fact]
+        [TestMethod]
         public void ScheduleShift_StartAfterEnd_Throws()
         {
-            Assert.Throws<ArgumentException>(() =>
+            Assert.ThrowsException<ArgumentException>(() =>
                 _service.ScheduleShift(1, Today.AddHours(17), Today.AddHours(9)));
         }
 
-        [Fact]
+        [TestMethod]
         public void ScheduleShift_Over12Hours_Throws()
         {
-            Assert.Throws<ArgumentException>(() =>
+            Assert.ThrowsException<ArgumentException>(() =>
                 _service.ScheduleShift(1, Today.AddHours(6), Today.AddHours(19)));
         }
 
-        [Fact]
+        [TestMethod]
         public void ScheduleShift_TooShort_Throws()
         {
-            Assert.Throws<ArgumentException>(() =>
+            Assert.ThrowsException<ArgumentException>(() =>
                 _service.ScheduleShift(1, Today.AddHours(9), Today.AddHours(9).AddMinutes(15)));
         }
 
-        [Fact]
+        [TestMethod]
         public void ScheduleShift_UnknownStaff_Throws()
         {
-            Assert.Throws<ArgumentException>(() =>
+            Assert.ThrowsException<ArgumentException>(() =>
                 _service.ScheduleShift(99, Today.AddHours(9), Today.AddHours(17)));
         }
 
-        [Fact]
+        [TestMethod]
         public void ScheduleShift_InactiveStaff_Throws()
         {
-            Assert.Throws<InvalidOperationException>(() =>
+            Assert.ThrowsException<InvalidOperationException>(() =>
                 _service.ScheduleShift(5, Today.AddHours(9), Today.AddHours(17)));
         }
 
-        [Fact]
+        [TestMethod]
         public void ScheduleShift_WithNotes_Stored()
         {
             var shift = _service.ScheduleShift(1, Today.AddHours(9), Today.AddHours(17), notes: "Training day");
-            Assert.Equal("Training day", shift.Notes);
+            Assert.AreEqual("Training day", shift.Notes);
         }
 
-        [Fact]
+        [TestMethod]
         public void ScheduleShift_OverlappingShift_Throws()
         {
             _service.ScheduleShift(1, Today.AddHours(9), Today.AddHours(13));
-            Assert.Throws<InvalidOperationException>(() =>
+            Assert.ThrowsException<InvalidOperationException>(() =>
                 _service.ScheduleShift(1, Today.AddHours(12), Today.AddHours(17)));
         }
 
-        [Fact]
+        [TestMethod]
         public void ScheduleShift_AdjacentShifts_OK()
         {
             _service.ScheduleShift(1, Today.AddHours(6), Today.AddHours(9));
             _service.MinRestHoursBetweenShifts = 0;
             var s2 = _service.ScheduleShift(1, Today.AddHours(9), Today.AddHours(13));
-            Assert.NotNull(s2);
+            Assert.IsNotNull(s2);
         }
 
-        [Fact]
+        [TestMethod]
         public void ScheduleShift_DifferentStaff_NoConflict()
         {
             _service.ScheduleShift(1, Today.AddHours(9), Today.AddHours(17));
             var s2 = _service.ScheduleShift(2, Today.AddHours(9), Today.AddHours(17));
-            Assert.NotNull(s2);
+            Assert.IsNotNull(s2);
         }
 
-        [Fact]
+        [TestMethod]
         public void GetConflictingShifts_FindsOverlap()
         {
             _service.ScheduleShift(1, Today.AddHours(9), Today.AddHours(13));
@@ -127,80 +127,80 @@ namespace Vidly.Tests
             Assert.Single(conflicts);
         }
 
-        [Fact]
+        [TestMethod]
         public void GetConflictingShifts_NoOverlap_Empty()
         {
             _service.ScheduleShift(1, Today.AddHours(9), Today.AddHours(13));
             var conflicts = _service.GetConflictingShifts(1, Today.AddHours(14), Today.AddHours(17));
-            Assert.Empty(conflicts);
+            Assert.IsFalse(conflicts.Any());
         }
 
-        [Fact]
+        [TestMethod]
         public void ScheduleShift_InsufficientRest_Throws()
         {
             _service.ScheduleShift(1, Today.AddHours(14), Today.AddHours(22));
-            Assert.Throws<InvalidOperationException>(() =>
+            Assert.ThrowsException<InvalidOperationException>(() =>
                 _service.ScheduleShift(1, Today.AddDays(1).AddHours(4), Today.AddDays(1).AddHours(12)));
         }
 
-        [Fact]
+        [TestMethod]
         public void ScheduleShift_SufficientRest_OK()
         {
             _service.ScheduleShift(1, Today.AddHours(9), Today.AddHours(14));
             var s2 = _service.ScheduleShift(1, Today.AddHours(22), Today.AddDays(1).AddHours(2));
-            Assert.NotNull(s2);
+            Assert.IsNotNull(s2);
         }
 
-        [Fact]
+        [TestMethod]
         public void CheckRestViolation_ReturnsNull_WhenOK()
         {
             _service.ScheduleShift(1, Today.AddHours(9), Today.AddHours(13));
             var result = _service.CheckRestViolation(1, Today.AddHours(22), Today.AddDays(1).AddHours(4));
-            Assert.Null(result);
+            Assert.IsNull(result);
         }
 
-        [Fact]
+        [TestMethod]
         public void GetShift_ExistingId_Found()
         {
             var shift = _service.ScheduleShift(1, Today.AddHours(9), Today.AddHours(17));
-            Assert.NotNull(_service.GetShift(shift.Id));
+            Assert.IsNotNull(_service.GetShift(shift.Id));
         }
 
-        [Fact]
+        [TestMethod]
         public void GetShift_InvalidId_Null()
         {
-            Assert.Null(_service.GetShift(999));
+            Assert.IsNull(_service.GetShift(999));
         }
 
-        [Fact]
+        [TestMethod]
         public void CancelShift_Removes()
         {
             var shift = _service.ScheduleShift(1, Today.AddHours(9), Today.AddHours(17));
-            Assert.True(_service.CancelShift(shift.Id));
-            Assert.Null(_service.GetShift(shift.Id));
+            Assert.IsTrue(_service.CancelShift(shift.Id));
+            Assert.IsNull(_service.GetShift(shift.Id));
         }
 
-        [Fact]
+        [TestMethod]
         public void CancelShift_InvalidId_False()
         {
-            Assert.False(_service.CancelShift(999));
+            Assert.IsFalse(_service.CancelShift(999));
         }
 
-        [Fact]
+        [TestMethod]
         public void ConfirmShift_SetsFlag()
         {
             var shift = _service.ScheduleShift(1, Today.AddHours(9), Today.AddHours(17));
-            Assert.True(_service.ConfirmShift(shift.Id));
-            Assert.True(_service.GetShift(shift.Id).IsConfirmed);
+            Assert.IsTrue(_service.ConfirmShift(shift.Id));
+            Assert.IsTrue(_service.GetShift(shift.Id).IsConfirmed);
         }
 
-        [Fact]
+        [TestMethod]
         public void ConfirmShift_InvalidId_False()
         {
-            Assert.False(_service.ConfirmShift(999));
+            Assert.IsFalse(_service.ConfirmShift(999));
         }
 
-        [Fact]
+        [TestMethod]
         public void GetShiftsForDate_FiltersCorrectly()
         {
             _service.ScheduleShift(1, Today.AddHours(9), Today.AddHours(17));
@@ -208,10 +208,10 @@ namespace Vidly.Tests
             _service.ScheduleShift(3, Today.AddDays(1).AddHours(9), Today.AddDays(1).AddHours(17));
 
             var todayShifts = _service.GetShiftsForDate(Today);
-            Assert.Equal(2, todayShifts.Count);
+            Assert.AreEqual(2, todayShifts.Count);
         }
 
-        [Fact]
+        [TestMethod]
         public void GetShiftsForStaff_DateRange_Works()
         {
             _service.MinRestHoursBetweenShifts = 0;
@@ -220,43 +220,43 @@ namespace Vidly.Tests
             _service.ScheduleShift(1, Today.AddDays(5).AddHours(9), Today.AddDays(5).AddHours(13));
 
             var inRange = _service.GetShiftsForStaff(1, Today, Today.AddDays(2));
-            Assert.Equal(2, inRange.Count);
+            Assert.AreEqual(2, inRange.Count);
         }
 
-        [Fact]
+        [TestMethod]
         public void SetAvailability_CreatesRecord()
         {
             var avail = _service.SetAvailability(1, DayOfWeek.Monday, new TimeSpan(9, 0, 0), new TimeSpan(17, 0, 0));
-            Assert.NotNull(avail);
-            Assert.Equal(1, avail.StaffId);
-            Assert.Equal(8.0, avail.AvailableHours);
+            Assert.IsNotNull(avail);
+            Assert.AreEqual(1, avail.StaffId);
+            Assert.AreEqual(8.0, avail.AvailableHours);
         }
 
-        [Fact]
+        [TestMethod]
         public void SetAvailability_InvalidRange_Throws()
         {
-            Assert.Throws<ArgumentException>(() =>
+            Assert.ThrowsException<ArgumentException>(() =>
                 _service.SetAvailability(1, DayOfWeek.Monday, new TimeSpan(17, 0, 0), new TimeSpan(9, 0, 0)));
         }
 
-        [Fact]
+        [TestMethod]
         public void SetAvailability_ReplacesExisting()
         {
             _service.SetAvailability(1, DayOfWeek.Monday, new TimeSpan(9, 0, 0), new TimeSpan(13, 0, 0));
             _service.SetAvailability(1, DayOfWeek.Monday, new TimeSpan(8, 0, 0), new TimeSpan(16, 0, 0));
             var avail = _service.GetAvailability(1);
             Assert.Single(avail);
-            Assert.Equal(new TimeSpan(8, 0, 0), avail[0].AvailableFrom);
+            Assert.AreEqual(new TimeSpan(8, 0, 0), avail[0].AvailableFrom);
         }
 
-        [Fact]
+        [TestMethod]
         public void SetAvailability_UnknownStaff_Throws()
         {
-            Assert.Throws<ArgumentException>(() =>
+            Assert.ThrowsException<ArgumentException>(() =>
                 _service.SetAvailability(99, DayOfWeek.Monday, new TimeSpan(9, 0, 0), new TimeSpan(17, 0, 0)));
         }
 
-        [Fact]
+        [TestMethod]
         public void GetAvailableStaffForDay_ReturnsMatching()
         {
             _service.SetAvailability(1, DayOfWeek.Monday, new TimeSpan(9, 0, 0), new TimeSpan(17, 0, 0));
@@ -264,38 +264,38 @@ namespace Vidly.Tests
             _service.SetAvailability(3, DayOfWeek.Tuesday, new TimeSpan(9, 0, 0), new TimeSpan(17, 0, 0));
 
             var monday = _service.GetAvailableStaffForDay(DayOfWeek.Monday);
-            Assert.Equal(2, monday.Count);
+            Assert.AreEqual(2, monday.Count);
         }
 
-        [Fact]
+        [TestMethod]
         public void IsStaffAvailable_WithinWindow_True()
         {
             _service.SetAvailability(1, DayOfWeek.Monday, new TimeSpan(9, 0, 0), new TimeSpan(17, 0, 0));
-            Assert.True(_service.IsStaffAvailable(1, Today.AddHours(10), Today.AddHours(15)));
+            Assert.IsTrue(_service.IsStaffAvailable(1, Today.AddHours(10), Today.AddHours(15)));
         }
 
-        [Fact]
+        [TestMethod]
         public void IsStaffAvailable_OutsideWindow_False()
         {
             _service.SetAvailability(1, DayOfWeek.Monday, new TimeSpan(9, 0, 0), new TimeSpan(14, 0, 0));
-            Assert.False(_service.IsStaffAvailable(1, Today.AddHours(10), Today.AddHours(17)));
+            Assert.IsFalse(_service.IsStaffAvailable(1, Today.AddHours(10), Today.AddHours(17)));
         }
 
-        [Fact]
+        [TestMethod]
         public void IsStaffAvailable_NoAvailabilitySet_True()
         {
-            Assert.True(_service.IsStaffAvailable(1, Today.AddHours(9), Today.AddHours(17)));
+            Assert.IsTrue(_service.IsStaffAvailable(1, Today.AddHours(9), Today.AddHours(17)));
         }
 
-        [Fact]
+        [TestMethod]
         public void GetCoverageReport_EmptyDay()
         {
             var report = _service.GetCoverageReport(Today);
-            Assert.Equal(0, report.TotalShifts);
-            Assert.False(report.HasManagerOnDuty);
+            Assert.AreEqual(0, report.TotalShifts);
+            Assert.IsFalse(report.HasManagerOnDuty);
         }
 
-        [Fact]
+        [TestMethod]
         public void GetCoverageReport_FullCoverage()
         {
             _service.ScheduleShift(1, Today.AddHours(9), Today.AddHours(13));
@@ -306,21 +306,21 @@ namespace Vidly.Tests
             _service.ScheduleShift(3, Today.AddHours(17), Today.AddHours(21));
 
             var report = _service.GetCoverageReport(Today);
-            Assert.Equal(6, report.TotalShifts);
-            Assert.True(report.HasManagerOnDuty);
-            Assert.True(report.MeetsMinimumCoverage);
+            Assert.AreEqual(6, report.TotalShifts);
+            Assert.IsTrue(report.HasManagerOnDuty);
+            Assert.IsTrue(report.MeetsMinimumCoverage);
         }
 
-        [Fact]
+        [TestMethod]
         public void GetCoverageReport_IdentifiesGaps()
         {
             _service.ScheduleShift(3, Today.AddHours(9), Today.AddHours(13));
             var report = _service.GetCoverageReport(Today);
-            Assert.True(report.CoverageGaps.Any(g => g.Contains("Morning")));
-            Assert.True(report.CoverageGaps.Any(g => g.Contains("manager")));
+            Assert.IsTrue(report.CoverageGaps.Any(g => g.Contains("Morning")));
+            Assert.IsTrue(report.CoverageGaps.Any(g => g.Contains("manager")));
         }
 
-        [Fact]
+        [TestMethod]
         public void GetCoverageReport_CountsConfirmed()
         {
             var s1 = _service.ScheduleShift(1, Today.AddHours(9), Today.AddHours(17));
@@ -328,18 +328,18 @@ namespace Vidly.Tests
             _service.ConfirmShift(s1.Id);
 
             var report = _service.GetCoverageReport(Today);
-            Assert.Equal(1, report.ConfirmedShifts);
-            Assert.Equal(1, report.UnconfirmedShifts);
+            Assert.AreEqual(1, report.ConfirmedShifts);
+            Assert.AreEqual(1, report.UnconfirmedShifts);
         }
 
-        [Fact]
+        [TestMethod]
         public void GetWeeklyCoverage_Returns7Days()
         {
             var coverage = _service.GetWeeklyCoverage(Today);
-            Assert.Equal(7, coverage.Count);
+            Assert.AreEqual(7, coverage.Count);
         }
 
-        [Fact]
+        [TestMethod]
         public void GetUnderstaffedDays_FiltersCorrectly()
         {
             _service.ScheduleShift(1, Today.AddHours(9), Today.AddHours(17));
@@ -348,10 +348,10 @@ namespace Vidly.Tests
             _service.ScheduleShift(4, Today.AddHours(17), Today.AddHours(21));
 
             var understaffed = _service.GetUnderstaffedDays(Today, Today.AddDays(1));
-            Assert.True(understaffed.Any(d => d.Date == Today.AddDays(1).Date));
+            Assert.IsTrue(understaffed.Any(d => d.Date == Today.AddDays(1).Date));
         }
 
-        [Fact]
+        [TestMethod]
         public void GetWeeklySummary_CalculatesHours()
         {
             _service.MinRestHoursBetweenShifts = 0;
@@ -360,12 +360,12 @@ namespace Vidly.Tests
             _service.ScheduleShift(1, Today.AddDays(2).AddHours(9), Today.AddDays(2).AddHours(13));
 
             var summary = _service.GetWeeklySummary(1, Today);
-            Assert.Equal(3, summary.ShiftCount);
-            Assert.Equal(20.0, summary.TotalHours);
-            Assert.False(summary.ExceedsMaxHours);
+            Assert.AreEqual(3, summary.ShiftCount);
+            Assert.AreEqual(20.0, summary.TotalHours);
+            Assert.IsFalse(summary.ExceedsMaxHours);
         }
 
-        [Fact]
+        [TestMethod]
         public void GetWeeklySummary_DetectsOvertime()
         {
             _service.MaxWeeklyHours = 20;
@@ -374,24 +374,24 @@ namespace Vidly.Tests
             _service.ScheduleShift(1, Today.AddDays(1).AddHours(6), Today.AddDays(1).AddHours(18));
 
             var summary = _service.GetWeeklySummary(1, Today);
-            Assert.True(summary.ExceedsMaxHours);
+            Assert.IsTrue(summary.ExceedsMaxHours);
         }
 
-        [Fact]
+        [TestMethod]
         public void GetWeeklySummary_UnknownStaff_Throws()
         {
-            Assert.Throws<ArgumentException>(() => _service.GetWeeklySummary(99, Today));
+            Assert.ThrowsException<ArgumentException>(() => _service.GetWeeklySummary(99, Today));
         }
 
-        [Fact]
+        [TestMethod]
         public void GetAllWeeklySummaries_ReturnsActiveOnly()
         {
             _service.ScheduleShift(1, Today.AddHours(9), Today.AddHours(17));
             var summaries = _service.GetAllWeeklySummaries(Today);
-            Assert.Equal(4, summaries.Count);
+            Assert.AreEqual(4, summaries.Count);
         }
 
-        [Fact]
+        [TestMethod]
         public void GetOvertimeRisk_IdentifiesAtRisk()
         {
             _service.MaxWeeklyHours = 10;
@@ -400,85 +400,85 @@ namespace Vidly.Tests
 
             var atRisk = _service.GetOvertimeRisk(Today);
             Assert.Single(atRisk);
-            Assert.Equal(1, atRisk[0].StaffId);
+            Assert.AreEqual(1, atRisk[0].StaffId);
         }
 
-        [Fact]
+        [TestMethod]
         public void RequestSwap_CreatesRequest()
         {
             var shift = _service.ScheduleShift(1, Today.AddHours(9), Today.AddHours(17));
             var request = _service.RequestSwap(1, shift.Id, SwapRequestType.Drop, reason: "Doctor appointment");
 
-            Assert.NotNull(request);
-            Assert.Equal(SwapRequestStatus.Pending, request.Status);
-            Assert.Equal("Doctor appointment", request.Reason);
+            Assert.IsNotNull(request);
+            Assert.AreEqual(SwapRequestStatus.Pending, request.Status);
+            Assert.AreEqual("Doctor appointment", request.Reason);
         }
 
-        [Fact]
+        [TestMethod]
         public void RequestSwap_NotOwnShift_Throws()
         {
             var shift = _service.ScheduleShift(1, Today.AddHours(9), Today.AddHours(17));
-            Assert.Throws<InvalidOperationException>(() =>
+            Assert.ThrowsException<InvalidOperationException>(() =>
                 _service.RequestSwap(2, shift.Id, SwapRequestType.Drop));
         }
 
-        [Fact]
+        [TestMethod]
         public void RequestSwap_InvalidShift_Throws()
         {
-            Assert.Throws<ArgumentException>(() =>
+            Assert.ThrowsException<ArgumentException>(() =>
                 _service.RequestSwap(1, 999, SwapRequestType.Drop));
         }
 
-        [Fact]
+        [TestMethod]
         public void RequestSwap_WithTarget_StoresTarget()
         {
             var shift = _service.ScheduleShift(1, Today.AddHours(9), Today.AddHours(17));
             var request = _service.RequestSwap(1, shift.Id, SwapRequestType.Swap, targetStaffId: 2);
-            Assert.Equal(2, request.TargetStaffId);
-            Assert.Equal("Bob", request.TargetStaffName);
+            Assert.AreEqual(2, request.TargetStaffId);
+            Assert.AreEqual("Bob", request.TargetStaffName);
         }
 
-        [Fact]
+        [TestMethod]
         public void ApproveSwap_ReassignsShift()
         {
             var shift = _service.ScheduleShift(1, Today.AddHours(9), Today.AddHours(17));
             var request = _service.RequestSwap(1, shift.Id, SwapRequestType.Cover, targetStaffId: 2);
-            Assert.True(_service.ApproveSwap(request.Id, coveringStaffId: 2));
+            Assert.IsTrue(_service.ApproveSwap(request.Id, coveringStaffId: 2));
 
             var updated = _service.GetShift(shift.Id);
-            Assert.True(updated.IsCovered);
-            Assert.Equal(2, updated.CoveredByStaffId);
-            Assert.Empty(_service.GetPendingSwapRequests());
+            Assert.IsTrue(updated.IsCovered);
+            Assert.AreEqual(2, updated.CoveredByStaffId);
+            Assert.AreEqual(0, _service.GetPendingSwapRequests().Count);
         }
 
-        [Fact]
+        [TestMethod]
         public void ApproveSwap_ConflictingCoverer_False()
         {
             var s1 = _service.ScheduleShift(1, Today.AddHours(9), Today.AddHours(17));
             _service.ScheduleShift(2, Today.AddHours(9), Today.AddHours(17));
             var request = _service.RequestSwap(1, s1.Id, SwapRequestType.Cover);
-            Assert.False(_service.ApproveSwap(request.Id, coveringStaffId: 2));
+            Assert.IsFalse(_service.ApproveSwap(request.Id, coveringStaffId: 2));
         }
 
-        [Fact]
+        [TestMethod]
         public void DenySwap_UpdatesStatus()
         {
             var shift = _service.ScheduleShift(1, Today.AddHours(9), Today.AddHours(17));
             var request = _service.RequestSwap(1, shift.Id, SwapRequestType.Drop);
-            Assert.True(_service.DenySwap(request.Id));
-            Assert.Empty(_service.GetPendingSwapRequests());
+            Assert.IsTrue(_service.DenySwap(request.Id));
+            Assert.AreEqual(0, _service.GetPendingSwapRequests().Count);
         }
 
-        [Fact]
+        [TestMethod]
         public void DenySwap_AlreadyResolved_False()
         {
             var shift = _service.ScheduleShift(1, Today.AddHours(9), Today.AddHours(17));
             var request = _service.RequestSwap(1, shift.Id, SwapRequestType.Drop);
             _service.DenySwap(request.Id);
-            Assert.False(_service.DenySwap(request.Id));
+            Assert.IsFalse(_service.DenySwap(request.Id));
         }
 
-        [Fact]
+        [TestMethod]
         public void GetSwapHistory_FiltersByStaff()
         {
             var s1 = _service.ScheduleShift(1, Today.AddHours(9), Today.AddHours(13));
@@ -490,28 +490,28 @@ namespace Vidly.Tests
             Assert.Single(_service.GetSwapHistory(2));
         }
 
-        [Fact]
+        [TestMethod]
         public void SuggestStaffForShift_ExcludesConflicts()
         {
             _service.ScheduleShift(1, Today.AddHours(9), Today.AddHours(17));
             var suggestions = _service.SuggestStaffForShift(Today.AddHours(9), Today.AddHours(17), Today);
 
-            Assert.DoesNotContain(suggestions, s => s.Staff.Id == 1);
-            Assert.DoesNotContain(suggestions, s => s.Staff.Id == 5);
+            Assert.IsFalse(s => s.Staff.Id == 1.Contains(suggestions));
+            Assert.IsFalse(s => s.Staff.Id == 5.Contains(suggestions));
         }
 
-        [Fact]
+        [TestMethod]
         public void SuggestStaffForShift_PrefersAvailable()
         {
             _service.SetAvailability(2, DayOfWeek.Monday, new TimeSpan(9, 0, 0), new TimeSpan(17, 0, 0));
             var suggestions = _service.SuggestStaffForShift(Today.AddHours(9), Today.AddHours(17), Today);
 
-            Assert.True(suggestions.Count > 0);
+            Assert.IsTrue(suggestions.Count > 0);
             var bob = suggestions.FirstOrDefault(s => s.Staff.Id == 2);
-            Assert.True(bob.IsAvailable);
+            Assert.IsTrue(bob.IsAvailable);
         }
 
-        [Fact]
+        [TestMethod]
         public void SuggestStaffForShift_ExcludesOvertimeRisk()
         {
             _service.MaxWeeklyHours = 10;
@@ -520,10 +520,10 @@ namespace Vidly.Tests
 
             var suggestions = _service.SuggestStaffForShift(
                 Today.AddDays(1).AddHours(6), Today.AddDays(1).AddHours(12), Today);
-            Assert.DoesNotContain(suggestions, s => s.Staff.Id == 2);
+            Assert.IsFalse(s => s.Staff.Id == 2.Contains(suggestions));
         }
 
-        [Fact]
+        [TestMethod]
         public void GetSchedulingFairness_EqualDistribution_Zero()
         {
             _service.MinRestHoursBetweenShifts = 0;
@@ -531,10 +531,10 @@ namespace Vidly.Tests
             _service.ScheduleShift(2, Today.AddHours(9), Today.AddHours(17));
 
             var fairness = _service.GetSchedulingFairness(Today);
-            Assert.Equal(0.0, fairness, 2);
+            Assert.AreEqual(0.0, fairness, 2);
         }
 
-        [Fact]
+        [TestMethod]
         public void GetSchedulingFairness_UnequalDistribution_NonZero()
         {
             _service.MinRestHoursBetweenShifts = 0;
@@ -543,54 +543,54 @@ namespace Vidly.Tests
             _service.ScheduleShift(2, Today.AddHours(9), Today.AddHours(13));
 
             var fairness = _service.GetSchedulingFairness(Today);
-            Assert.True(fairness > 0);
+            Assert.IsTrue(fairness > 0);
         }
 
-        [Fact]
+        [TestMethod]
         public void GetSchedulingFairness_SingleStaff_Zero()
         {
             _service.ScheduleShift(1, Today.AddHours(9), Today.AddHours(17));
-            Assert.Equal(0.0, _service.GetSchedulingFairness(Today));
+            Assert.AreEqual(0.0, _service.GetSchedulingFairness(Today));
         }
 
-        [Fact]
+        [TestMethod]
         public void TotalShifts_Tracks()
         {
-            Assert.Equal(0, _service.TotalShifts);
+            Assert.AreEqual(0, _service.TotalShifts);
             _service.ScheduleShift(1, Today.AddHours(9), Today.AddHours(17));
-            Assert.Equal(1, _service.TotalShifts);
+            Assert.AreEqual(1, _service.TotalShifts);
         }
 
-        [Fact]
+        [TestMethod]
         public void TotalAvailabilityRecords_Tracks()
         {
             _service.SetAvailability(1, DayOfWeek.Monday, new TimeSpan(9, 0, 0), new TimeSpan(17, 0, 0));
-            Assert.Equal(1, _service.TotalAvailabilityRecords);
+            Assert.AreEqual(1, _service.TotalAvailabilityRecords);
         }
 
-        [Fact]
+        [TestMethod]
         public void TotalSwapRequests_Tracks()
         {
             var shift = _service.ScheduleShift(1, Today.AddHours(9), Today.AddHours(17));
             _service.RequestSwap(1, shift.Id, SwapRequestType.Drop);
-            Assert.Equal(1, _service.TotalSwapRequests);
+            Assert.AreEqual(1, _service.TotalSwapRequests);
         }
 
-        [Fact]
+        [TestMethod]
         public void Shift_OverlapsWith_Works()
         {
             var shift = new Shift { StartTime = Today.AddHours(9), EndTime = Today.AddHours(17) };
-            Assert.True(shift.OverlapsWith(Today.AddHours(12), Today.AddHours(20)));
-            Assert.True(shift.OverlapsWith(Today.AddHours(5), Today.AddHours(10)));
-            Assert.False(shift.OverlapsWith(Today.AddHours(17), Today.AddHours(22)));
-            Assert.False(shift.OverlapsWith(Today.AddHours(5), Today.AddHours(9)));
+            Assert.IsTrue(shift.OverlapsWith(Today.AddHours(12), Today.AddHours(20)));
+            Assert.IsTrue(shift.OverlapsWith(Today.AddHours(5), Today.AddHours(10)));
+            Assert.IsFalse(shift.OverlapsWith(Today.AddHours(17), Today.AddHours(22)));
+            Assert.IsFalse(shift.OverlapsWith(Today.AddHours(5), Today.AddHours(9)));
         }
 
-        [Fact]
+        [TestMethod]
         public void Shift_ShiftDate_IsStartDate()
         {
             var shift = new Shift { StartTime = Today.AddHours(22), EndTime = Today.AddDays(1).AddHours(2) };
-            Assert.Equal(Today.Date, shift.ShiftDate);
+            Assert.AreEqual(Today.Date, shift.ShiftDate);
         }
     }
 }
