@@ -239,9 +239,17 @@ namespace Vidly.Services
             foreach (var movie in allMovies)
             {
                 if (!movie.Genre.HasValue) continue;
-                if (!byGenre.ContainsKey(movie.Genre.Value))
-                    byGenre[movie.Genre.Value] = new List<Movie>();
-                byGenre[movie.Genre.Value].Add(movie);
+                if (!byGenre.TryGetValue(movie.Genre.Value, out var _lst1))
+
+                {
+
+                    _lst1 = new List<Movie>();
+
+                    byGenre[movie.Genre.Value] = _lst1;
+
+                }
+
+                _lst1.Add(movie);
             }
             if (byGenre.Count == 0) return allMovies.Take(count).ToList();
 
@@ -287,8 +295,8 @@ namespace Vidly.Services
             var counts = new Dictionary<int, int>();
             foreach (var r in _rentalRepository.GetAll())
             {
-                if (!counts.ContainsKey(r.MovieId)) counts[r.MovieId] = 0;
-                counts[r.MovieId]++;
+                counts.TryGetValue(r.MovieId, out var _c1);
+                counts[r.MovieId] = _c1 + 1;
             }
             return counts;
         }

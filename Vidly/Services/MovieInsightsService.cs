@@ -135,9 +135,17 @@ namespace Vidly.Services
             var rentalsByMovie = new Dictionary<int, List<Rental>>();
             foreach (var r in allRentals)
             {
-                if (!rentalsByMovie.ContainsKey(r.MovieId))
-                    rentalsByMovie[r.MovieId] = new List<Rental>();
-                rentalsByMovie[r.MovieId].Add(r);
+                if (!rentalsByMovie.TryGetValue(r.MovieId, out var _lst1))
+
+                {
+
+                    _lst1 = new List<Rental>();
+
+                    rentalsByMovie[r.MovieId] = _lst1;
+
+                }
+
+                _lst1.Add(r);
             }
 
             int maxRentalCount = 0;
@@ -223,9 +231,8 @@ namespace Vidly.Services
             var customerCounts = new Dictionary<int, int>();
             foreach (var r in rentals)
             {
-                if (!customerCounts.ContainsKey(r.CustomerId))
-                    customerCounts[r.CustomerId] = 0;
-                customerCounts[r.CustomerId]++;
+                customerCounts.TryGetValue(r.CustomerId, out var _c1);
+                customerCounts[r.CustomerId] = _c1 + 1;
             }
             int repeatRenters = 0;
             foreach (var kvp in customerCounts)
@@ -295,9 +302,8 @@ namespace Vidly.Services
                 if (!customerLookup.TryGetValue(r.CustomerId, out customer)) continue;
 
                 var tier = customer.MembershipType.ToString();
-                if (!tierCounts.ContainsKey(tier))
-                    tierCounts[tier] = 0;
-                tierCounts[tier]++;
+                tierCounts.TryGetValue(tier, out var _c2);
+                tierCounts[tier] = _c2 + 1;
             }
 
             // Find top tier
@@ -384,9 +390,8 @@ namespace Vidly.Services
                 var customerCounts = new Dictionary<int, int>();
                 foreach (var r in movieRentals)
                 {
-                    if (!customerCounts.ContainsKey(r.CustomerId))
-                        customerCounts[r.CustomerId] = 0;
-                    customerCounts[r.CustomerId]++;
+                    customerCounts.TryGetValue(r.CustomerId, out var _c3);
+                    customerCounts[r.CustomerId] = _c3 + 1;
                 }
                 int repeaters = 0;
                 foreach (var count in customerCounts.Values)

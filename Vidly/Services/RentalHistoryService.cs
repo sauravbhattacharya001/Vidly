@@ -117,7 +117,7 @@ namespace Vidly.Services
 
             return rentals.Select(r =>
             {
-                var movie = movies.ContainsKey(r.MovieId) ? movies[r.MovieId] : null;
+                var movie = movies.TryGetValue(r.MovieId, out var _v1) ? _v1 : null;
                 var endDate = r.ReturnDate ?? DateTime.Today;
                 var days = Math.Max(1, (int)Math.Ceiling((endDate - r.RentalDate).TotalDays));
                 var wasLate = r.ReturnDate.HasValue && r.ReturnDate.Value > r.DueDate;

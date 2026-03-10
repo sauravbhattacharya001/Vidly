@@ -489,9 +489,8 @@ namespace Vidly.Services
                 {
                     var plan = GetPlan(sub.PlanType);
                     var key = plan.Name;
-                    if (!activeByPlan.ContainsKey(key))
-                        activeByPlan[key] = 0;
-                    activeByPlan[key]++;
+                    activeByPlan.TryGetValue(key, out var _c1);
+                    activeByPlan[key] = _c1 + 1;
 
                     if (sub.Status == SubscriptionStatus.Active)
                         mrr += plan.MonthlyPrice;
