@@ -1,0 +1,35 @@
+@model List<Vidly.Models.MovieTrend>
+@{ ViewBag.Title = "Trending Now"; }
+
+<h2><i class="glyphicon glyphicon-fire"></i> Trending Now</h2>
+<p class="text-muted">Movies gaining momentum in the last @ViewBag.WindowDays days, ranked by velocity.</p>
+
+@if (Model.Any())
+{
+    <table class="table table-striped">
+        <thead><tr><th>#</th><th>Movie</th><th>Genre</th><th>Rentals</th><th>Velocity</th><th>Trend</th></tr></thead>
+        <tbody>
+            @{ var rank = 1; }
+            @foreach (var m in Model)
+            {
+                <tr>
+                    <td>@(rank++)</td>
+                    <td><a href="@Url.Action("Movie", "Trends", new { id = m.MovieId, days = ViewBag.WindowDays })">@m.MovieName</a></td>
+                    <td>@(m.Genre.HasValue ? m.Genre.Value.ToString() : "—")</td>
+                    <td>@m.RentalCount</td>
+                    <td><strong>@m.VelocityScore</strong></td>
+                    <td>
+                        @switch (m.Direction) {
+                            case Vidly.Models.TrendDirection.Rising: <span class="label label-success">Rising +@m.ChangePercent%</span> break;
+                            case Vidly.Models.TrendDirection.NewEntry: <span class="label label-info">New</span> break;
+                            default: <span class="label label-default">@m.Direction</span> break;
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else { <div class="alert alert-info">No trending movies found.</div> }
+
+<p><a href="@Url.Action("Index", "Trends")" class="btn btn-default"><i class="glyphicon glyphicon-arrow-left"></i> Full Dashboard</a></p>
