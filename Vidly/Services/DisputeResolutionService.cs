@@ -17,6 +17,7 @@ namespace Vidly.Services
         private readonly IDisputeRepository _disputeRepo;
         private readonly IRentalRepository _rentalRepo;
         private readonly ICustomerRepository _customerRepo;
+        private readonly IDateTimeProvider _dateTime;
 
         // ── Policy constants ────────────────────────────────────────
 
@@ -38,7 +39,8 @@ namespace Vidly.Services
         public DisputeResolutionService(
             IDisputeRepository disputeRepo,
             IRentalRepository rentalRepo,
-            ICustomerRepository customerRepo)
+            ICustomerRepository customerRepo,
+            IDateTimeProvider dateTimeProvider = null)
         {
             _disputeRepo = disputeRepo
                 ?? throw new ArgumentNullException(nameof(disputeRepo));
@@ -46,6 +48,7 @@ namespace Vidly.Services
                 ?? throw new ArgumentNullException(nameof(rentalRepo));
             _customerRepo = customerRepo
                 ?? throw new ArgumentNullException(nameof(customerRepo));
+            _dateTime = dateTimeProvider ?? new SystemDateTimeProvider();
         }
 
         // ── Submission ──────────────────────────────────────────────
