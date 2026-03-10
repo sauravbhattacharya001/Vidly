@@ -185,6 +185,9 @@ namespace Vidly.Services
             if (!card.IsActive)
                 return GiftCardRedemptionResult.Fail("This gift card has been disabled.");
 
+            if (card.ExpirationDate.HasValue && DateTime.Today > card.ExpirationDate.Value)
+                return GiftCardRedemptionResult.Fail("This gift card has expired and cannot be topped up.");
+
             card.Balance += amount;
             _giftCardRepository.Update(card);
             _giftCardRepository.AddTransaction(card.Id, new GiftCardTransaction
