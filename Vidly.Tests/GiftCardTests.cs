@@ -116,6 +116,18 @@ namespace Vidly.Tests
         }
 
         [TestMethod]
+        public void GiftCardService_Create_SetsCreatedDate()
+        {
+            var service = CreateService(out _);
+            var before = DateTime.Now;
+            var card = service.Create(25m, "Bob");
+            var after = DateTime.Now;
+
+            Assert.IsTrue(card.CreatedDate >= before && card.CreatedDate <= after,
+                "CreatedDate should be set to approximately DateTime.Now on creation.");
+        }
+
+        [TestMethod]
         [ExpectedException(typeof(ArgumentOutOfRangeException))]
         public void GiftCardService_Create_TooLow_Throws()
         {
