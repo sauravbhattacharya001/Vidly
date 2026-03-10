@@ -94,8 +94,8 @@ jobs:
           }
 
           # Enforce minimum threshold (fail if below 40%)
-          $MIN_LINE = 40
-          $MIN_BRANCH = 20
+          $MIN_LINE = 50
+          $MIN_BRANCH = 30
           if ($lineRate -lt $MIN_LINE) {
             Write-Host "::error::Line coverage ($lineRate%) is below minimum threshold ($MIN_LINE%)"
             exit 1
