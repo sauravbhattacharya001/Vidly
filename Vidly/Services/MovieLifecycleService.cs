@@ -195,7 +195,7 @@ namespace Vidly.Services
             var stageBreakdown = new Dictionary<LifecycleStage, StageStats>();
             foreach (LifecycleStage stage in Enum.GetValues(typeof(LifecycleStage)))
             {
-                var inStage = byStage.ContainsKey(stage) ? byStage[stage] : new List<MovieLifecycleProfile>();
+                var inStage = byStage.TryGetValue(stage, out var _v1) ? _v1 : new List<MovieLifecycleProfile>();
                 stageBreakdown[stage] = new StageStats
                 {
                     Count = inStage.Count,

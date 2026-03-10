@@ -194,9 +194,8 @@ namespace Vidly.Services
                 Movie m;
                 if (movieLookup.TryGetValue(r.MovieId, out m) && m.Genre.HasValue)
                 {
-                    if (!genreCounts.ContainsKey(m.Genre.Value))
-                        genreCounts[m.Genre.Value] = 0;
-                    genreCounts[m.Genre.Value]++;
+                    genreCounts.TryGetValue(m.Genre.Value, out var _c1);
+                    genreCounts[m.Genre.Value] = _c1 + 1;
                 }
             }
 

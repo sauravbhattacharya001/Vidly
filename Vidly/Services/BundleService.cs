@@ -156,7 +156,7 @@ namespace Vidly.Services
             {
                 MovieId = m.Id,
                 MovieName = m.Name,
-                DailyRate = dailyRates.ContainsKey(m.Id) ? dailyRates[m.Id] : 0
+                DailyRate = dailyRates.TryGetValue(m.Id, out var _v1) ? _v1 : 0
             }).ToList();
 
             var originalTotal = moviePrices.Sum(p => p.DailyRate * rentalDays);

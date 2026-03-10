@@ -93,10 +93,9 @@ namespace Vidly.Services
                     var movie = _movieRepository.GetById(item.MovieId);
                     if (movie?.Genre != null)
                     {
-                        if (genreCounts.ContainsKey(movie.Genre.Value))
-                            genreCounts[movie.Genre.Value]++;
-                        else
-                            genreCounts[movie.Genre.Value] = 1;
+                        genreCounts.TryGetValue(movie.Genre.Value, out var _ct1);
+
+                        genreCounts[movie.Genre.Value] = _ct1 + 1;
                     }
                 }
             }
