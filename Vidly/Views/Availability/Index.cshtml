@@ -1,0 +1,234 @@
+@model Vidly.ViewModels.AvailabilityViewModel
+@{
+    ViewBag.Title = "Movie Availability";
+}
+
+<h2><i class="glyphicon glyphicon-calendar"></i> Movie Availability</h2>
+
+@* ── Summary Cards ─── *@
+<div class="row" style="margin-bottom: 20px;">
+    <div class="col-md-3">
+        <div class="panel panel-success">
+            <div class="panel-heading"><strong>Available Now</strong></div>
+            <div class="panel-body text-center">
+                <h3 class="text-success">@Model.Summary.AvailableNow</h3>
+                <small>@Model.Summary.AvailabilityRate% of catalog</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="panel panel-info">
+            <div class="panel-heading"><strong>Rented Out</strong></div>
+            <div class="panel-body text-center">
+                <h3 class="text-info">@Model.Summary.RentedOut</h3>
+                <small>@Model.Summary.ComingSoonCount coming soon</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="panel panel-warning">
+            <div class="panel-heading"><strong>Overdue</strong></div>
+            <div class="panel-body text-center">
+                <h3 class="text-warning">@Model.Summary.Overdue</h3>
+                <small>Past due date</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong>Total Catalog</strong></div>
+            <div class="panel-body text-center">
+                <h3>@Model.Summary.TotalMovies</h3>
+                <small>
+                    @if (Model.Summary.BestAvailabilityGenre != null)
+                    {
+                        <text>Best: @Model.Summary.BestAvailabilityGenre</text>
+                    }
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ── Tabs ─── *@
+<ul class="nav nav-tabs" style="margin-bottom: 15px;">
+    <li class="@(Model.ActiveTab == "list" ? "active" : "")">
+        <a href="@Url.Action("Index", new { genre = Model.SelectedGenre, availableOnly = Model.AvailableOnly, query = Model.Query, tab = "list" })">
+            <i class="glyphicon glyphicon-th-list"></i> List View
+        </a>
+    </li>
+    <li class="@(Model.ActiveTab == "calendar" ? "active" : "")">
+        <a href="@Url.Action("Index", new { genre = Model.SelectedGenre, days = Model.CalendarDays, tab = "calendar" })">
+            <i class="glyphicon glyphicon-calendar"></i> Calendar View
+        </a>
+    </li>
+</ul>
+
+@if (Model.ActiveTab == "list")
+{
+    @* ── Filters ─── *@
+    <form method="get" class="form-inline" style="margin-bottom: 15px;">
+        <input type="hidden" name="tab" value="list" />
+        <div class="form-group">
+            <input type="text" name="query" class="form-control" placeholder="Search movies..."
+                   value="@Model.Query" />
+        </div>
+        <div class="form-group">
+            <select name="genre" class="form-control">
+                <option value="">All Genres</option>
+                @foreach (Vidly.Models.Genre g in Enum.GetValues(typeof(Vidly.Models.Genre)))
+                {
+                    <option value="@g" @(Model.SelectedGenre == g ? "selected" : "")>@g</option>
+                }
+            </select>
+        </div>
+        <div class="checkbox">
+            <label>
+                <input type="checkbox" name="availableOnly" value="true"
+                       @(Model.AvailableOnly ? "checked" : "") /> Available only
+            </label>
+        </div>
+        <button type="submit" class="btn btn-default">Filter</button>
+        <a href="@Url.Action("Index", new { tab = "list" })" class="btn btn-link">Clear</a>
+    </form>
+
+    @* ── Movie List ─── *@
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>Status</th>
+                <th>Movie</th>
+                <th>Genre</th>
+                <th>Rating</th>
+                <th>Available</th>
+                <th>Queue</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var movie in Model.Movies)
+            {
+                var rowClass = movie.IsAvailable ? "success"
+                    : movie.IsOverdue ? "danger"
+                    : movie.Category == Vidly.Models.AvailabilityCategory.ComingSoon ? "info"
+                    : "";
+                <tr class="@rowClass">
+                    <td>
+                        @if (movie.IsAvailable)
+                        {
+                            <span class="label label-success">Available</span>
+                        }
+                        else if (movie.IsOverdue)
+                        {
+                            <span class="label label-danger">Overdue</span>
+                        }
+                        else if (movie.Category == Vidly.Models.AvailabilityCategory.ComingSoon)
+                        {
+                            <span class="label label-info">@movie.DaysUntilAvailable day(s)</span>
+                        }
+                        else
+                        {
+                            <span class="label label-default">Rented</span>
+                        }
+                    </td>
+                    <td>
+                        @Html.ActionLink(movie.MovieName, "Details", "Movies", new { id = movie.MovieId }, null)
+                    </td>
+                    <td>@(movie.Genre?.ToString() ?? "—")</td>
+                    <td>
+                        @if (movie.Rating.HasValue)
+                        {
+                            for (int i = 0; i < movie.Rating.Value; i++)
+                            {
+                                <text>★</text>
+                            }
+                        }
+                        else
+                        {
+                            <text>—</text>
+                        }
+                    </td>
+                    <td>
+                        @if (movie.IsAvailable)
+                        {
+                            <strong class="text-success">Now</strong>
+                        }
+                        else if (movie.ExpectedReturnDate.HasValue)
+                        {
+                            @movie.ExpectedReturnDate.Value.ToString("MMM d")
+                            <br /><small class="text-muted">@movie.RentedByCustomer</small>
+                        }
+                    </td>
+                    <td>
+                        @if (movie.ReservationQueueLength > 0)
+                        {
+                            <span class="badge">@movie.ReservationQueueLength</span>
+                        }
+                        else
+                        {
+                            <text>—</text>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @if (Model.Movies.Count == 0)
+    {
+        <div class="alert alert-info">No movies match your filters.</div>
+    }
+}
+else
+{
+    @* ── Calendar View ─── *@
+    <div class="row">
+        @foreach (var day in Model.Calendar)
+        {
+            var panelClass = day.IsToday ? "panel-primary"
+                : day.EventCount > 0 ? "panel-info"
+                : "panel-default";
+            <div class="col-md-2 col-sm-3 col-xs-6" style="margin-bottom: 10px;">
+                <div class="panel @panelClass">
+                    <div class="panel-heading" style="padding: 5px 10px;">
+                        <strong>@day.Date.ToString("ddd")</strong>
+                        <span class="pull-right">@day.Date.ToString("MMM d")</span>
+                    </div>
+                    <div class="panel-body" style="padding: 8px; min-height: 80px;">
+                        @if (day.EventCount == 0)
+                        {
+                            <small class="text-muted">No returns</small>
+                        }
+                        else
+                        {
+                            foreach (var evt in day.ReturningMovies)
+                            {
+                                <div style="margin-bottom: 4px;">
+                                    <span class="glyphicon glyphicon-film" style="color: #337ab7;"></span>
+                                    <small>@evt.MovieName</small>
+                                </div>
+                            }
+                            foreach (var evt in day.ExpiringReservations)
+                            {
+                                <div style="margin-bottom: 4px;">
+                                    <span class="glyphicon glyphicon-time" style="color: #f0ad4e;"></span>
+                                    <small>@evt.MovieName</small>
+                                </div>
+                            }
+                        }
+                    </div>
+                    @if (day.EventCount > 0)
+                    {
+                        <div class="panel-footer" style="padding: 3px 10px;">
+                            <small>@day.EventCount event(s)</small>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<div style="margin-top: 20px;">
+    @Html.ActionLink("← Coming Soon", "ComingSoon", null, new { @class = "btn btn-info" })
+    @Html.ActionLink("Back to Movies", "Index", "Movies", null, new { @class = "btn btn-default" })
+</div>

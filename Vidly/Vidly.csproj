@@ -156,6 +156,10 @@
     <Compile Include="Repositories\InMemoryWatchlistRepository.cs" />
     <Compile Include="Controllers\WatchlistController.cs" />
     <Compile Include="ViewModels\WatchlistViewModel.cs" />
+    <Compile Include="Models\AvailabilityModels.cs" />
+    <Compile Include="Services\AvailabilityService.cs" />
+    <Compile Include="Controllers\AvailabilityController.cs" />
+    <Compile Include="ViewModels\AvailabilityViewModel.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Content\bootstrap-lumen.css" />
@@ -211,6 +215,9 @@
     <Content Include="Views\Recommendations\Index.cshtml" />
     <Content Include="Views\Watchlist\Index.cshtml" />
     <Content Include="Views\Watchlist\Add.cshtml" />
+    <Content Include="Views\Availability\Index.cshtml" />
+    <Content Include="Views\Availability\Movie.cshtml" />
+    <Content Include="Views\Availability\ComingSoon.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />

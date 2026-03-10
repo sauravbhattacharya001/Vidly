@@ -1,0 +1,54 @@
+@model List<Vidly.Models.MovieAvailability>
+@{
+    ViewBag.Title = "Coming Soon";
+}
+
+<h2><i class="glyphicon glyphicon-time"></i> Coming Soon</h2>
+<p class="lead">Movies returning within the next @ViewBag.WithinDays day(s).</p>
+
+@if (Model.Count == 0)
+{
+    <div class="alert alert-info">
+        No movies are due back within @ViewBag.WithinDays day(s). Check the
+        @Html.ActionLink("full availability calendar", "Index", new { tab = "calendar" }).
+    </div>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Movie</th>
+                <th>Genre</th>
+                <th>Expected Return</th>
+                <th>Days Left</th>
+                <th>Queue</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var movie in Model)
+            {
+                <tr>
+                    <td>@Html.ActionLink(movie.MovieName, "Movie", new { id = movie.MovieId })</td>
+                    <td>@(movie.Genre?.ToString() ?? "—")</td>
+                    <td>@movie.ExpectedReturnDate?.ToString("MMM d")</td>
+                    <td><span class="badge">@movie.DaysUntilAvailable</span></td>
+                    <td>
+                        @if (movie.ReservationQueueLength > 0)
+                        {
+                            <span class="badge">@movie.ReservationQueueLength waiting</span>
+                        }
+                        else
+                        {
+                            <text>—</text>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<div style="margin-top: 20px;">
+    @Html.ActionLink("← Back to Availability", "Index", null, new { @class = "btn btn-default" })
+</div>

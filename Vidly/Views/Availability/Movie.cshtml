@@ -1,0 +1,78 @@
+@model Vidly.Models.MovieAvailability
+@{
+    ViewBag.Title = Model.MovieName + " - Availability";
+}
+
+<h2>@Model.MovieName</h2>
+
+<div class="panel panel-default">
+    <div class="panel-heading">
+        <h3 class="panel-title">Availability Details</h3>
+    </div>
+    <div class="panel-body">
+        <dl class="dl-horizontal">
+            <dt>Status</dt>
+            <dd>
+                @if (Model.IsAvailable)
+                {
+                    <span class="label label-success" style="font-size: 14px;">Available Now</span>
+                }
+                else if (Model.IsOverdue)
+                {
+                    <span class="label label-danger" style="font-size: 14px;">Overdue</span>
+                }
+                else
+                {
+                    <span class="label label-warning" style="font-size: 14px;">Rented Out</span>
+                }
+            </dd>
+
+            <dt>Genre</dt>
+            <dd>@(Model.Genre?.ToString() ?? "Not set")</dd>
+
+            <dt>Rating</dt>
+            <dd>
+                @if (Model.Rating.HasValue)
+                {
+                    for (int i = 0; i < Model.Rating.Value; i++) { <text>★</text> }
+                }
+                else
+                {
+                    <text>Not rated</text>
+                }
+            </dd>
+
+            @if (!Model.IsAvailable)
+            {
+                <dt>Expected Return</dt>
+                <dd>
+                    @if (Model.ExpectedReturnDate.HasValue)
+                    {
+                        @Model.ExpectedReturnDate.Value.ToString("MMMM d, yyyy")
+                        <text> (@Model.DaysUntilAvailable day(s))</text>
+                    }
+                </dd>
+
+                <dt>Rented By</dt>
+                <dd>@(Model.RentedByCustomer ?? "Unknown")</dd>
+            }
+
+            <dt>Reservation Queue</dt>
+            <dd>
+                @if (Model.ReservationQueueLength > 0)
+                {
+                    <text>@Model.ReservationQueueLength customer(s) waiting</text>
+                }
+                else
+                {
+                    <text>No reservations</text>
+                }
+            </dd>
+        </dl>
+    </div>
+</div>
+
+<div>
+    @Html.ActionLink("← Back to Availability", "Index", null, new { @class = "btn btn-default" })
+    @Html.ActionLink("Movie Details", "Details", "Movies", new { id = Model.MovieId }, new { @class = "btn btn-primary" })
+</div>
