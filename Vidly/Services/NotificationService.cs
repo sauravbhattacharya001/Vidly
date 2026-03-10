@@ -17,12 +17,14 @@ namespace Vidly.Services
         private readonly IMovieRepository _movieRepository;
         private readonly ICustomerRepository _customerRepository;
         private readonly IWatchlistRepository _watchlistRepository;
+        private readonly IDateTimeProvider _dateTime;
 
         public NotificationService()
             : this(new InMemoryRentalRepository(),
                    new InMemoryMovieRepository(),
                    new InMemoryCustomerRepository(),
-                   new InMemoryWatchlistRepository())
+                   new InMemoryWatchlistRepository(),
+                   new SystemDateTimeProvider())
         {
         }
 
@@ -30,12 +32,14 @@ namespace Vidly.Services
             IRentalRepository rentalRepository,
             IMovieRepository movieRepository,
             ICustomerRepository customerRepository,
-            IWatchlistRepository watchlistRepository)
+            IWatchlistRepository watchlistRepository,
+            IDateTimeProvider dateTimeProvider = null)
         {
             _rentalRepository = rentalRepository ?? throw new ArgumentNullException(nameof(rentalRepository));
             _movieRepository = movieRepository ?? throw new ArgumentNullException(nameof(movieRepository));
             _customerRepository = customerRepository ?? throw new ArgumentNullException(nameof(customerRepository));
             _watchlistRepository = watchlistRepository ?? throw new ArgumentNullException(nameof(watchlistRepository));
+            _dateTime = dateTimeProvider ?? new SystemDateTimeProvider();
         }
 
         /// <summary>
@@ -142,9 +146,9 @@ namespace Vidly.Services
             {
                 // Use the actual DueDate from the rental — it already accounts for
                 // membership-tier extended rental periods (Silver +1, Gold +2, Platinum +3).
-                if (DateTime.Today > rental.DueDate)
+                if (_dateTime.Today > rental.DueDate)
                 {
-                    var daysOverdue = (int)(DateTime.Today - rental.DueDate).TotalDays;
+                    var daysOverdue = (int)(_dateTime.Today - rental.DueDate).TotalDays;
                     movieLookup.TryGetValue(rental.MovieId, out var movie);
                     yield return new Notification
                     {
@@ -152,7 +156,7 @@ namespace Vidly.Services
                         Priority = NotificationPriority.Urgent,
                         Title = "Overdue Rental",
                         Message = $"\"{movie?.Name ?? "Unknown"}\" was due {daysOverdue} day(s) ago. Late fees may apply.",
-                        Timestamp = DateTime.Now,
+                        Timestamp = _dateTime.Now,
                         RelatedMovieId = rental.MovieId,
                         Icon = "⚠️"
                     };
@@ -169,7 +173,7 @@ namespace Vidly.Services
             {
                 // Use the actual DueDate — it already accounts for membership-tier
                 // extended rental periods. Alert when due within 2 days.
-                var daysUntilDue = (int)(rental.DueDate - DateTime.Today).TotalDays;
+                var daysUntilDue = (int)(rental.DueDate - _dateTime.Today).TotalDays;
                 if (daysUntilDue >= 0 && daysUntilDue <= 2)
                 {
                     movieLookup.TryGetValue(rental.MovieId, out var movie);
@@ -179,7 +183,7 @@ namespace Vidly.Services
                         Priority = NotificationPriority.High,
                         Title = "Rental Due Soon",
                         Message = $"\"{movie?.Name ?? "Unknown"}\" is due in {daysUntilDue} day(s). Return it to avoid late fees!",
-                        Timestamp = DateTime.Now,
+                        Timestamp = _dateTime.Now,
                         RelatedMovieId = rental.MovieId,
                         Icon = "⏰"
                     };
@@ -216,7 +220,7 @@ namespace Vidly.Services
                     Priority = NotificationPriority.Normal,
                     Title = "New Arrival",
                     Message = $"\"{movie.Name}\" just arrived in {movie.Genre}! Based on your rental history, you might enjoy it.",
-                    Timestamp = DateTime.Now,
+                    Timestamp = _dateTime.Now,
                     RelatedMovieId = movie.Id,
                     Icon = "🎬"
                 };
@@ -240,7 +244,7 @@ namespace Vidly.Services
                         Priority = NotificationPriority.High,
                         Title = "Watchlist Movie Available",
                         Message = $"\"{item.MovieName}\" from your must-watch list is available to rent now!",
-                        Timestamp = DateTime.Now,
+                        Timestamp = _dateTime.Now,
                         RelatedMovieId = item.MovieId,
                         Icon = "🌟"
                     };
@@ -254,14 +258,14 @@ namespace Vidly.Services
             if (!customer.MemberSince.HasValue)
                 yield break;
 
-            var memberDays = (DateTime.Today - customer.MemberSince.Value).TotalDays;
+            var memberDays = (_dateTime.Today - customer.MemberSince.Value).TotalDays;
             var years = (int)(memberDays / 365);
 
             // Anniversary: compute by building the actual anniversary date this year,
             // avoiding DayOfYear which is unreliable across leap/non-leap year boundaries
             // (e.g., Mar 1 is day 60 in non-leap years but day 61 in leap years, and
             // Feb 29 anniversaries have no direct equivalent in non-leap years).
-            var today = DateTime.Today;
+            var today = _dateTime.Today;
             var memberMonth = customer.MemberSince.Value.Month;
             var memberDay = customer.MemberSince.Value.Day;
 
@@ -289,7 +293,7 @@ namespace Vidly.Services
                     Priority = NotificationPriority.Normal,
                     Title = "Membership Anniversary",
                     Message = $"Your {years}-year membership anniversary is coming up! Thank you for being a loyal {customer.MembershipType} member.",
-                    Timestamp = DateTime.Now,
+                    Timestamp = _dateTime.Now,
                     Icon = "🎉"
                 };
             }
@@ -309,7 +313,7 @@ namespace Vidly.Services
                         Priority = NotificationPriority.Normal,
                         Title = "Upgrade Available",
                         Message = $"With {rentalCount} rentals, you qualify for {nextTier} membership! Enjoy better rates and perks.",
-                        Timestamp = DateTime.Now,
+                        Timestamp = _dateTime.Now,
                         Icon = "⬆️"
                     };
                 }
