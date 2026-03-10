@@ -100,15 +100,13 @@ namespace Vidly.Services
             {
                 if (r.Status == RentalStatus.Returned) continue;
 
-                if (!activeCounts.ContainsKey(r.MovieId))
-                    activeCounts[r.MovieId] = 0;
-                activeCounts[r.MovieId]++;
+                activeCounts.TryGetValue(r.MovieId, out var _c1);
+                activeCounts[r.MovieId] = _c1 + 1;
 
                 if (r.DueDate < DateTime.Today)
                 {
-                    if (!overdueCounts.ContainsKey(r.MovieId))
-                        overdueCounts[r.MovieId] = 0;
-                    overdueCounts[r.MovieId]++;
+                    overdueCounts.TryGetValue(r.MovieId, out var _c2);
+                    overdueCounts[r.MovieId] = _c2 + 1;
                 }
 
                 if (!earliestReturns.ContainsKey(r.MovieId)

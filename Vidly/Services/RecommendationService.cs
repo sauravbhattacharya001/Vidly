@@ -155,10 +155,9 @@ namespace Vidly.Services
                 if (movieLookup.TryGetValue(rental.MovieId, out movie) && movie.Genre.HasValue)
                 {
                     var genre = movie.Genre.Value;
-                    if (rentalCounts.ContainsKey(genre))
-                        rentalCounts[genre]++;
-                    else
-                        rentalCounts[genre] = 1;
+                    rentalCounts.TryGetValue(genre, out var _ct1);
+
+                    rentalCounts[genre] = _ct1 + 1;
                 }
             }
 
