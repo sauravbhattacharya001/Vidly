@@ -297,9 +297,8 @@ namespace Vidly.Services
                 foreach (var mid in theirMovies)
                 {
                     if (mid == movieId) continue;
-                    if (!coRentalCounts.ContainsKey(mid))
-                        coRentalCounts[mid] = 0;
-                    coRentalCounts[mid]++;
+                    coRentalCounts.TryGetValue(mid, out var _c1);
+                    coRentalCounts[mid] = _c1 + 1;
                 }
             }
 

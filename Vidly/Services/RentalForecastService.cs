@@ -48,7 +48,7 @@ namespace Vidly.Services
 
             foreach (DayOfWeek day in Enum.GetValues(typeof(DayOfWeek)))
             {
-                var count = grouped.ContainsKey(day) ? grouped[day] : 0;
+                var count = grouped.TryGetValue(day, out var _v1) ? _v1 : 0;
                 dayCounts[day] = new DayStats
                 {
                     Day = day,
@@ -199,7 +199,7 @@ namespace Vidly.Services
                     var first = movieRentals.First().RentalDate;
                     var last = movieRentals.Last().RentalDate;
                     var spanDays = Math.Max(1, (last - first).TotalDays);
-                    var movie = movies.ContainsKey(g.Key) ? movies[g.Key] : null;
+                    var movie = movies.TryGetValue(g.Key, out var _v2) ? _v2 : null;
 
                     double avgGap = 0;
                     if (movieRentals.Count > 1)
@@ -278,7 +278,7 @@ namespace Vidly.Services
             for (int i = 0; i < days; i++)
             {
                 var date = start.AddDays(i);
-                var dayAvg = dayAvgs.ContainsKey(date.DayOfWeek) ? dayAvgs[date.DayOfWeek] : 0;
+                var dayAvg = dayAvgs.TryGetValue(date.DayOfWeek, out var _v3) ? _v3 : 0;
                 var predicted = dayAvg * trendMultiplier;
                 var horizonPenalty = 1.0 - (i * 0.02);
 
@@ -368,7 +368,7 @@ namespace Vidly.Services
                     RentalDemand = g.TotalRentals,
                     Trend = g.Trend,
                     Suggestion = $"High demand ({g.TotalRentals} rentals) with " +
-                                 $"{(genreTitleCounts.ContainsKey(g.Genre) ? genreTitleCounts[g.Genre] : 0)} titles — consider adding more"
+                                 $"{(genreTitleCounts.TryGetValue(g.Genre, out var _v4) ? _v4 : 0)} titles — consider adding more"
                 })
                 .ToList();
 
