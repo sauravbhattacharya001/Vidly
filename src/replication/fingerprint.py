@@ -861,6 +861,9 @@ class BehavioralFingerprinter:
         """Compare two timing profiles."""
         va = [a.mean_interval, a.std_interval, a.burst_ratio, a.idle_ratio]
         vb = [b.mean_interval, b.std_interval, b.burst_ratio, b.idle_ratio]
+        # Identical vectors (including all-zeros) are perfectly similar
+        if va == vb:
+            return 1.0
         # Normalize by max to avoid scale issues
         for i in range(len(va)):
             mx = max(abs(va[i]), abs(vb[i]), 1e-9)
@@ -877,6 +880,9 @@ class BehavioralFingerprinter:
             return 1.0
         va = [a.mean_values.get(t, 0.0) for t in sorted(all_types)]
         vb = [b.mean_values.get(t, 0.0) for t in sorted(all_types)]
+        # Identical vectors (including all-zeros) are perfectly similar
+        if va == vb:
+            return 1.0
         # Normalize
         for i in range(len(va)):
             mx = max(abs(va[i]), abs(vb[i]), 1e-9)
