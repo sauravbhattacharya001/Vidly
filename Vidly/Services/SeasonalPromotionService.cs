@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Vidly.Models;
 using Vidly.Repositories;
+using Vidly.Utilities;
 
 namespace Vidly.Services
 {
@@ -16,6 +17,7 @@ namespace Vidly.Services
     {
         private readonly IRentalRepository _rentalRepo;
         private readonly IMovieRepository _movieRepo;
+        private readonly IClock _clock;
         private readonly List<SeasonalPromotion> _promotions = new List<SeasonalPromotion>();
         private int _nextId = 1;
 
@@ -37,9 +39,16 @@ namespace Vidly.Services
         public SeasonalPromotionService(
             IRentalRepository rentalRepo,
             IMovieRepository movieRepo)
+            : this(rentalRepo, movieRepo, new SystemClock()) { }
+
+        public SeasonalPromotionService(
+            IRentalRepository rentalRepo,
+            IMovieRepository movieRepo,
+            IClock clock)
         {
             _rentalRepo = rentalRepo ?? throw new ArgumentNullException(nameof(rentalRepo));
             _movieRepo = movieRepo ?? throw new ArgumentNullException(nameof(movieRepo));
+            _clock = clock ?? throw new ArgumentNullException(nameof(clock));
         }
 
         // ── Promotion Management ────────────────────────────────────
@@ -98,7 +107,7 @@ namespace Vidly.Services
                 MaxRedemptions = maxRedemptions,
                 RedemptionCount = 0,
                 IsEnabled = true,
-                CreatedAt = DateTime.Now
+                CreatedAt = _clock.Now
             };
 
             _promotions.Add(promo);
@@ -122,7 +131,7 @@ namespace Vidly.Services
         {
             var promo = GetPromotionById(promotionId);
 
-            if (promo.EndDate < DateTime.Now)
+            if (promo.EndDate < _clock.Now)
                 throw new InvalidOperationException("Cannot update an expired promotion.");
 
             if (name != null)
@@ -199,7 +208,7 @@ namespace Vidly.Services
         /// </summary>
         public List<SeasonalPromotion> GetActivePromotions(DateTime? asOf = null)
         {
-            var date = asOf ?? DateTime.Now;
+            var date = asOf ?? _clock.Now;
             return _promotions
                 .Where(p => p.IsEnabled && p.StartDate <= date && p.EndDate >= date)
                 .Where(p => !p.MaxRedemptions.HasValue || p.RedemptionCount < p.MaxRedemptions.Value)
@@ -413,9 +422,9 @@ namespace Vidly.Services
             var promo = GetPromotionById(promotionId);
 
             var totalDays = Math.Max(1, (int)Math.Ceiling((promo.EndDate - promo.StartDate).TotalDays));
-            var elapsed = promo.EndDate < DateTime.Now
+            var elapsed = promo.EndDate < _clock.Now
                 ? totalDays
-                : Math.Max(0, (int)Math.Ceiling((DateTime.Now - promo.StartDate).TotalDays));
+                : Math.Max(0, (int)Math.Ceiling((_clock.Now - promo.StartDate).TotalDays));
 
             var redemptionsPerDay = elapsed > 0
                 ? (double)promo.RedemptionCount / elapsed
@@ -446,7 +455,7 @@ namespace Vidly.Services
         /// </summary>
         public PromotionSummary GetSummary()
         {
-            var now = DateTime.Now;
+            var now = _clock.Now;
             var all = _promotions;
 
             return new PromotionSummary
@@ -528,7 +537,7 @@ namespace Vidly.Services
         private string GetPromotionStatus(SeasonalPromotion promo)
         {
             if (!promo.IsEnabled) return "Disabled";
-            var now = DateTime.Now;
+            var now = _clock.Now;
             if (now < promo.StartDate) return "Upcoming";
             if (now > promo.EndDate) return "Expired";
             if (promo.MaxRedemptions.HasValue && promo.RedemptionCount >= promo.MaxRedemptions.Value)
