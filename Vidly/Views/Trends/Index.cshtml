@@ -1,0 +1,195 @@
+@model Vidly.ViewModels.TrendsViewModel
+@{
+    ViewBag.Title = "Rental Trends";
+}
+
+<h2><i class="glyphicon glyphicon-fire"></i> Rental Trends</h2>
+
+<div class="row" style="margin-bottom: 20px;">
+    <div class="col-md-12">
+        <form method="get" class="form-inline">
+            <div class="form-group">
+                <label for="days">Time Window:</label>
+                <select name="days" id="days" class="form-control" style="margin-left: 5px;">
+                    @foreach (var preset in Vidly.ViewModels.TrendsViewModel.WindowPresets)
+                    {
+                        <option value="@preset.Days" @(Model.WindowDays == preset.Days ? "selected" : "")>@preset.Label</option>
+                    }
+                </select>
+            </div>
+            <div class="form-group" style="margin-left: 15px;">
+                <label for="top">Show Top:</label>
+                <select name="top" id="top" class="form-control" style="margin-left: 5px;">
+                    @foreach (var n in new[] { 5, 10, 15, 20 })
+                    {
+                        <option value="@n" @(Model.TopCount == n ? "selected" : "")>@n</option>
+                    }
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary" style="margin-left: 15px;">
+                <i class="glyphicon glyphicon-refresh"></i> Update
+            </button>
+        </form>
+    </div>
+</div>
+
+@{ var r = Model.Report; }
+
+<div class="row" style="margin-bottom: 25px;">
+    <div class="col-md-3">
+        <div class="panel panel-info">
+            <div class="panel-heading"><strong>Total Rentals</strong></div>
+            <div class="panel-body text-center">
+                <h3>@r.TotalRentals</h3>
+                <small>
+                    @if (r.OverallChangePercent > 0) { <span class="text-success"><i class="glyphicon glyphicon-arrow-up"></i> @r.OverallChangePercent%</span> }
+                    else if (r.OverallChangePercent < 0) { <span class="text-danger"><i class="glyphicon glyphicon-arrow-down"></i> @Math.Abs(r.OverallChangePercent)%</span> }
+                    else { <span class="text-muted">No change</span> }
+                    vs previous period
+                </small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong>Daily Average</strong></div>
+            <div class="panel-body text-center">
+                <h3>@r.AverageRentalsPerDay.ToString("F1")</h3>
+                <small>rentals per day</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong>Peak Day</strong></div>
+            <div class="panel-body text-center">
+                @if (r.PeakDay.HasValue) { <h3>@r.PeakDayRentals</h3><small>@r.PeakDay.Value.ToString("MMM dd")</small> }
+                else { <h3>—</h3><small>No data</small> }
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong>Period</strong></div>
+            <div class="panel-body text-center">
+                <h3>@r.PeriodDays days</h3>
+                <small>@r.PeriodStart.ToString("MMM dd") — @r.PeriodEnd.ToString("MMM dd")</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong><i class="glyphicon glyphicon-star"></i> Top Movies</strong></div>
+            <table class="table table-striped">
+                <thead><tr><th>#</th><th>Movie</th><th>Genre</th><th>Rentals</th><th>Trend</th><th>Change</th></tr></thead>
+                <tbody>
+                    @foreach (var movie in r.TopMovies)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@movie.Rank</strong>
+                                @if (movie.RankChange.HasValue && movie.RankChange.Value > 0) { <span class="text-success"><i class="glyphicon glyphicon-arrow-up"></i></span> }
+                                else if (movie.RankChange.HasValue && movie.RankChange.Value < 0) { <span class="text-danger"><i class="glyphicon glyphicon-arrow-down"></i></span> }
+                            </td>
+                            <td><a href="@Url.Action("Movie", "Trends", new { id = movie.MovieId, days = Model.WindowDays })">@movie.MovieName</a></td>
+                            <td>@(movie.Genre.HasValue ? movie.Genre.Value.ToString() : "—")</td>
+                            <td>@movie.RentalCount</td>
+                            <td>
+                                @switch (movie.Direction)
+                                {
+                                    case Vidly.Models.TrendDirection.Rising: <span class="label label-success">Rising</span> break;
+                                    case Vidly.Models.TrendDirection.Cooling: <span class="label label-warning">Cooling</span> break;
+                                    case Vidly.Models.TrendDirection.NewEntry: <span class="label label-info">New</span> break;
+                                    default: <span class="label label-default">Stable</span> break;
+                                }
+                            </td>
+                            <td>
+                                @if (movie.ChangePercent > 0) { <span class="text-success">+@movie.ChangePercent%</span> }
+                                else if (movie.ChangePercent < 0) { <span class="text-danger">@movie.ChangePercent%</span> }
+                                else { <span class="text-muted">0%</span> }
+                            </td>
+                        </tr>
+                    }
+                    @if (!r.TopMovies.Any()) { <tr><td colspan="6" class="text-center text-muted">No rental data for this period.</td></tr> }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong><i class="glyphicon glyphicon-tags"></i> Genre Trends</strong></div>
+            <table class="table table-condensed">
+                <thead><tr><th>Genre</th><th>Share</th><th>Trend</th></tr></thead>
+                <tbody>
+                    @foreach (var genre in r.GenreTrends)
+                    {
+                        <tr>
+                            <td>@genre.Genre</td><td>@genre.MarketShare%</td>
+                            <td>
+                                @switch (genre.Direction)
+                                {
+                                    case Vidly.Models.TrendDirection.Rising: <span class="text-success"><i class="glyphicon glyphicon-arrow-up"></i></span> break;
+                                    case Vidly.Models.TrendDirection.Cooling: <span class="text-danger"><i class="glyphicon glyphicon-arrow-down"></i></span> break;
+                                    default: <span class="text-muted"><i class="glyphicon glyphicon-minus"></i></span> break;
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong><i class="glyphicon glyphicon-calendar"></i> Busiest Days</strong></div>
+            <table class="table table-condensed">
+                <tbody>
+                    @foreach (var day in r.DayOfWeekBreakdown)
+                    {
+                        <tr class="@(day.IsPeak ? "success" : "")">
+                            <td>@day.Day</td><td>@day.RentalCount</td>
+                            <td>
+                                <div class="progress" style="margin-bottom: 0; min-width: 80px;">
+                                    <div class="progress-bar @(day.IsPeak ? "progress-bar-success" : "")" style="width: @day.Percentage%;">@day.Percentage%</div>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@if (r.BiggestMovers.Any() || r.NewEntries.Any())
+{
+    <div class="row">
+        @if (r.BiggestMovers.Any())
+        {
+            <div class="col-md-6">
+                <div class="panel panel-success">
+                    <div class="panel-heading"><strong><i class="glyphicon glyphicon-arrow-up"></i> Biggest Movers</strong></div>
+                    <ul class="list-group">
+                        @foreach (var m in r.BiggestMovers.Take(5))
+                        { <li class="list-group-item"><span class="badge">+@m.ChangePercent%</span> @m.MovieName <small class="text-muted">(@m.RentalCount rentals)</small></li> }
+                    </ul>
+                </div>
+            </div>
+        }
+        @if (r.NewEntries.Any())
+        {
+            <div class="col-md-6">
+                <div class="panel panel-info">
+                    <div class="panel-heading"><strong><i class="glyphicon glyphicon-plus"></i> New Entries</strong></div>
+                    <ul class="list-group">
+                        @foreach (var m in r.NewEntries.Take(5))
+                        { <li class="list-group-item"><span class="badge">@m.RentalCount</span> @m.MovieName</li> }
+                    </ul>
+                </div>
+            </div>
+        }
+    </div>
+}
