@@ -14,8 +14,16 @@ namespace Vidly.Services
     {
         private readonly List<LostItem> _items = new List<LostItem>();
         private readonly List<LostItemClaim> _claims = new List<LostItemClaim>();
+        private readonly IClock _clock;
         private int _nextItemId = 1;
         private int _nextClaimId = 1;
+
+        public LostAndFoundService() : this(new SystemClock()) { }
+
+        public LostAndFoundService(IClock clock)
+        {
+            _clock = clock ?? throw new ArgumentNullException(nameof(clock));
+        }
 
         // ── Item Registration ──────────────────────────────────────
 
@@ -32,7 +40,7 @@ namespace Vidly.Services
 
             item.Id = _nextItemId++;
             item.Status = LostItemStatus.Found;
-            if (item.FoundAt == default) item.FoundAt = DateTime.Now;
+            if (item.FoundAt == default) item.FoundAt = _clock.Now;
             if (item.RetentionDays <= 0) item.RetentionDays = 30;
             _items.Add(item);
             return item;
@@ -101,7 +109,7 @@ namespace Vidly.Services
                 ItemId = itemId,
                 CustomerId = customerId,
                 CustomerDescription = description,
-                ClaimDate = DateTime.Now,
+                ClaimDate = _clock.Now,
                 Verified = false,
                 Rejected = false
             };
@@ -124,9 +132,9 @@ namespace Vidly.Services
 
             claim.Verified = true;
             claim.VerifiedByStaffId = staffId;
-            claim.VerifiedAt = DateTime.Now;
+            claim.VerifiedAt = _clock.Now;
             item.Status = LostItemStatus.Claimed;
-            item.ClaimedAt = DateTime.Now;
+            item.ClaimedAt = _clock.Now;
             item.ClaimedByCustomerId = claim.CustomerId;
 
             // Reject all other pending claims for this item
@@ -210,7 +218,7 @@ namespace Vidly.Services
         /// <summary>Get items that have exceeded their retention period.</summary>
         public List<LostItem> GetOverdueForDisposal(DateTime? asOf = null)
         {
-            var now = asOf ?? DateTime.Now;
+            var now = asOf ?? _clock.Now;
             return _items.Where(x => x.Status == LostItemStatus.Found &&
                 x.FoundAt.AddDays(x.RetentionDays) <= now)
                 .OrderBy(x => x.FoundAt).ToList();
@@ -223,8 +231,8 @@ namespace Vidly.Services
             if (item.Status != LostItemStatus.Found)
                 throw new InvalidOperationException($"Only items with Found status can be disposed. Current: {item.Status}");
             item.Status = LostItemStatus.Disposed;
-            item.DisposalDate = DateTime.Now;
-            item.Notes = (item.Notes ?? "") + $" | Disposed by {staffId} on {DateTime.Now:yyyy-MM-dd}";
+            item.DisposalDate = _clock.Now;
+            item.Notes = (item.Notes ?? "") + $" | Disposed by {staffId} on {_clock.Now:yyyy-MM-dd}";
             return item;
         }
 
@@ -235,8 +243,8 @@ namespace Vidly.Services
             if (item.Status != LostItemStatus.Found)
                 throw new InvalidOperationException($"Only items with Found status can be donated. Current: {item.Status}");
             item.Status = LostItemStatus.Donated;
-            item.DisposalDate = DateTime.Now;
-            var note = $"Donated by {staffId} on {DateTime.Now:yyyy-MM-dd}";
+            item.DisposalDate = _clock.Now;
+            var note = $"Donated by {staffId} on {_clock.Now:yyyy-MM-dd}";
             if (!string.IsNullOrWhiteSpace(donationNotes)) note += $": {donationNotes}";
             item.Notes = (item.Notes ?? "") + $" | {note}";
             return item;
@@ -249,8 +257,8 @@ namespace Vidly.Services
             foreach (var item in overdue)
             {
                 item.Status = LostItemStatus.Disposed;
-                item.DisposalDate = DateTime.Now;
-                item.Notes = (item.Notes ?? "") + $" | Batch disposed by {staffId} on {DateTime.Now:yyyy-MM-dd}";
+                item.DisposalDate = _clock.Now;
+                item.Notes = (item.Notes ?? "") + $" | Batch disposed by {staffId} on {_clock.Now:yyyy-MM-dd}";
             }
             return overdue;
         }
@@ -260,7 +268,7 @@ namespace Vidly.Services
         /// <summary>Generate a comprehensive lost &amp; found report.</summary>
         public LostAndFoundReport GenerateReport(DateTime? asOf = null)
         {
-            var now = asOf ?? DateTime.Now;
+            var now = asOf ?? _clock.Now;
             var report = new LostAndFoundReport
             {
                 TotalItems = _items.Count,
