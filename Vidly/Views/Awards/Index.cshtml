@@ -1,0 +1,240 @@
+@model Vidly.ViewModels.AwardIndexViewModel
+@using Vidly.Models
+@{
+    ViewBag.Title = "Movie Awards";
+}
+
+<h2><i class="glyphicon glyphicon-star"></i> Movie Awards Tracker</h2>
+
+@if (!string.IsNullOrEmpty(Model.Message))
+{
+    <div class="alert alert-@(Model.IsError ? "danger" : "success") alert-dismissible" role="alert">
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+        @Model.Message
+    </div>
+}
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="panel panel-primary">
+            <div class="panel-heading">
+                <h3 class="panel-title"><i class="glyphicon glyphicon-plus"></i> Add Nomination</h3>
+            </div>
+            <div class="panel-body">
+                @using (Html.BeginForm("Add", "Awards", FormMethod.Post))
+                {
+                    @Html.AntiForgeryToken()
+                    <div class="form-group">
+                        <label for="movieId">Movie</label>
+                        <select name="movieId" id="movieId" class="form-control" required="required">
+                            <option value="">-- Select Movie --</option>
+                            @foreach (var m in Model.Movies)
+                            {
+                                <option value="@m.Id">@m.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="awardBody">Award Body</label>
+                        <select name="awardBody" id="awardBody" class="form-control" required="required">
+                            @foreach (AwardBody ab in Enum.GetValues(typeof(AwardBody)))
+                            {
+                                <option value="@ab">@ab</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="category">Category</label>
+                        <select name="category" id="category" class="form-control" required="required">
+                            @foreach (AwardCategory ac in Enum.GetValues(typeof(AwardCategory)))
+                            {
+                                <option value="@ac">@ac</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="year">Year</label>
+                        <input type="number" name="year" id="year" class="form-control"
+                               min="1927" max="2100" value="@DateTime.Now.Year" required="required" />
+                    </div>
+                    <div class="form-group">
+                        <label for="nominee">Nominee (optional)</label>
+                        <input type="text" name="nominee" id="nominee" class="form-control"
+                               placeholder="e.g., Actor name, Director..." maxlength="200" />
+                    </div>
+                    <div class="checkbox">
+                        <label>
+                            <input type="checkbox" name="won" value="true" /> Won the award
+                        </label>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">
+                        <i class="glyphicon glyphicon-star"></i> Add Nomination
+                    </button>
+                }
+            </div>
+        </div>
+
+        @if (Model.Leaderboard.Any())
+        {
+            <div class="panel panel-warning">
+                <div class="panel-heading">
+                    <h3 class="panel-title"><i class="glyphicon glyphicon-trophy"></i> Most Decorated</h3>
+                </div>
+                <table class="table table-condensed">
+                    <thead>
+                        <tr>
+                            <th>Movie</th>
+                            <th class="text-center">Noms</th>
+                            <th class="text-center">Wins</th>
+                            <th class="text-center">Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var s in Model.Leaderboard)
+                        {
+                            <tr>
+                                <td>
+                                    <a href="@Url.Action("Index", new { movieId = s.MovieId })">@s.MovieName</a>
+                                </td>
+                                <td class="text-center">@s.TotalNominations</td>
+                                <td class="text-center">
+                                    @if (s.TotalWins > 0)
+                                    {
+                                        <span class="label label-success">@s.TotalWins</span>
+                                    }
+                                    else
+                                    {
+                                        <span>0</span>
+                                    }
+                                </td>
+                                <td class="text-center">@s.WinRate%</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    <div class="col-md-8">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title"><i class="glyphicon glyphicon-filter"></i> Filter Nominations</h3>
+            </div>
+            <div class="panel-body">
+                @using (Html.BeginForm("Index", "Awards", FormMethod.Get))
+                {
+                    <div class="row">
+                        <div class="col-sm-3">
+                            <select name="movieId" class="form-control input-sm">
+                                <option value="">All Movies</option>
+                                @foreach (var m in Model.Movies)
+                                {
+                                    <option value="@m.Id" @(Model.FilterMovieId == m.Id ? "selected=\"selected\"" : "")>@m.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-sm-2">
+                            <select name="body" class="form-control input-sm">
+                                <option value="">All Bodies</option>
+                                @foreach (AwardBody ab in Enum.GetValues(typeof(AwardBody)))
+                                {
+                                    <option value="@ab" @(Model.FilterBody == ab ? "selected=\"selected\"" : "")>@ab</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-sm-2">
+                            <select name="category" class="form-control input-sm">
+                                <option value="">All Categories</option>
+                                @foreach (AwardCategory ac in Enum.GetValues(typeof(AwardCategory)))
+                                {
+                                    <option value="@ac" @(Model.FilterCategory == ac ? "selected=\"selected\"" : "")>@ac</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-sm-2">
+                            <input type="number" name="year" class="form-control input-sm"
+                                   placeholder="Year" value="@Model.FilterYear" />
+                        </div>
+                        <div class="col-sm-1">
+                            <label style="margin-top:5px" title="Wins only">
+                                <input type="checkbox" name="wonOnly" value="true"
+                                       @(Model.FilterWonOnly == true ? "checked=\"checked\"" : "") /> W
+                            </label>
+                        </div>
+                        <div class="col-sm-2">
+                            <button type="submit" class="btn btn-sm btn-default btn-block">Filter</button>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @if (!Model.Nominations.Any())
+        {
+            <div class="alert alert-info">
+                <i class="glyphicon glyphicon-info-sign"></i>
+                No nominations found. Add one using the form on the left!
+            </div>
+        }
+        else
+        {
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Movie</th>
+                        <th>Award Body</th>
+                        <th>Category</th>
+                        <th>Year</th>
+                        <th>Nominee</th>
+                        <th class="text-center">Result</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var n in Model.Nominations)
+                    {
+                        <tr class="@(n.Won ? "success" : "")">
+                            <td><strong>@n.MovieName</strong></td>
+                            <td>@n.AwardBody</td>
+                            <td>@n.Category</td>
+                            <td>@n.Year</td>
+                            <td>@(string.IsNullOrEmpty(n.Nominee) ? "—" : n.Nominee)</td>
+                            <td class="text-center">
+                                @if (n.Won)
+                                {
+                                    <span class="label label-success">Won</span>
+                                }
+                                else
+                                {
+                                    <span class="label label-default">Nominated</span>
+                                }
+                            </td>
+                            <td class="text-center">
+                                @using (Html.BeginForm("ToggleWin", "Awards", new { id = n.Id }, FormMethod.Post, new { style = "display:inline" }))
+                                {
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-xs @(n.Won ? "btn-warning" : "btn-success")"
+                                            title="@(n.Won ? "Revert to nomination" : "Mark as winner")">
+                                        <i class="glyphicon @(n.Won ? "glyphicon-remove" : "glyphicon-ok")"></i>
+                                    </button>
+                                }
+                                @using (Html.BeginForm("Delete", "Awards", new { id = n.Id }, FormMethod.Post, new { style = "display:inline" }))
+                                {
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-xs btn-danger"
+                                            title="Delete" onclick="return confirm('Remove this nomination?')">
+                                        <i class="glyphicon glyphicon-trash"></i>
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <p class="text-muted">
+                Showing @Model.Nominations.Count nomination(s).
+            </p>
+        }
+    </div>
+</div>
