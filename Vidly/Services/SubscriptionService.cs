@@ -14,6 +14,7 @@ namespace Vidly.Services
     {
         private readonly ISubscriptionRepository _subscriptionRepo;
         private readonly ICustomerRepository _customerRepo;
+        private readonly IClock _clock;
 
         /// <summary>Maximum days a subscription can be paused.</summary>
         public const int MaxPauseDays = 30;
@@ -71,11 +72,18 @@ namespace Vidly.Services
         public SubscriptionService(
             ISubscriptionRepository subscriptionRepo,
             ICustomerRepository customerRepo)
+            : this(subscriptionRepo, customerRepo, new SystemClock()) { }
+
+        public SubscriptionService(
+            ISubscriptionRepository subscriptionRepo,
+            ICustomerRepository customerRepo,
+            IClock clock)
         {
             _subscriptionRepo = subscriptionRepo
                 ?? throw new ArgumentNullException("subscriptionRepo");
             _customerRepo = customerRepo
                 ?? throw new ArgumentNullException("customerRepo");
+            _clock = clock ?? throw new ArgumentNullException("clock");
         }
 
         /// <summary>
@@ -115,7 +123,7 @@ namespace Vidly.Services
                     "Cancel or let it expire first.");
 
             var plan = GetPlan(planType);
-            var now = DateTime.Now;
+            var now = _clock.Now;
 
             var subscription = new CustomerSubscription
             {
@@ -158,7 +166,7 @@ namespace Vidly.Services
                 throw new InvalidOperationException("Subscription is already cancelled.");
 
             sub.Status = SubscriptionStatus.Cancelled;
-            sub.CancelledDate = DateTime.Now;
+            sub.CancelledDate = _clock.Now;
 
             _subscriptionRepo.AddBillingEvent(subscriptionId, new SubscriptionBillingEvent
             {
@@ -191,7 +199,7 @@ namespace Vidly.Services
                     "Maximum pauses reached (" + plan.MaxPausesPerYear + "/year for " + plan.Name + " plan).");
 
             sub.Status = SubscriptionStatus.Paused;
-            sub.PausedDate = DateTime.Now;
+            sub.PausedDate = _clock.Now;
             sub.PausesUsedThisYear++;
 
             _subscriptionRepo.AddBillingEvent(subscriptionId, new SubscriptionBillingEvent
@@ -218,7 +226,7 @@ namespace Vidly.Services
                 throw new InvalidOperationException("Subscription is not paused.");
 
             // Calculate how many days were paused and extend the period
-            var pauseDays = (int)(DateTime.Now - sub.PausedDate.Value).TotalDays;
+            var pauseDays = (int)(_clock.Now - sub.PausedDate.Value).TotalDays;
             if (pauseDays > MaxPauseDays)
                 pauseDays = MaxPauseDays;
 
@@ -255,7 +263,7 @@ namespace Vidly.Services
 
             var oldPlan = GetPlan(sub.PlanType);
             var newPlan = GetPlan(newPlanType);
-            var now = DateTime.Now;
+            var now = _clock.Now;
 
             // Prorate: credit remaining days on old plan, charge full new plan
             var totalDays = (sub.CurrentPeriodEnd - sub.CurrentPeriodStart).TotalDays;
@@ -327,7 +335,7 @@ namespace Vidly.Services
         /// <returns>Summary of processed subscriptions.</returns>
         public RenewalSummary ProcessRenewals()
         {
-            var now = DateTime.Now;
+            var now = _clock.Now;
             var all = _subscriptionRepo.GetAll();
             int renewed = 0;
             int expired = 0;
@@ -442,7 +450,7 @@ namespace Vidly.Services
 
             var plan = GetPlan(sub.PlanType);
             var daysInPeriod = (sub.CurrentPeriodEnd - sub.CurrentPeriodStart).TotalDays;
-            var daysElapsed = (DateTime.Now - sub.CurrentPeriodStart).TotalDays;
+            var daysElapsed = (_clock.Now - sub.CurrentPeriodStart).TotalDays;
             if (daysElapsed < 0) daysElapsed = 0;
             if (daysElapsed > daysInPeriod) daysElapsed = daysInPeriod;
 
