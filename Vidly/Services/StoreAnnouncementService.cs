@@ -14,8 +14,14 @@ namespace Vidly.Services
         private readonly List<Announcement> _announcements = new List<Announcement>();
         private readonly List<AnnouncementAcknowledgment> _acks = new List<AnnouncementAcknowledgment>();
         private readonly List<AnnouncementPin> _pins = new List<AnnouncementPin>();
+        private readonly IClock _clock;
         private int _nextId = 1;
         private int _nextAckId = 1;
+
+        public StoreAnnouncementService(IClock clock = null)
+        {
+            _clock = clock ?? new SystemClock();
+        }
 
         // ── CRUD ──────────────────────────────────────────────────
 
@@ -32,7 +38,7 @@ namespace Vidly.Services
 
             a.Id = _nextId++;
             a.Status = AnnouncementStatus.Draft;
-            a.CreatedAt = DateTime.Now;
+            a.CreatedAt = _clock.Now;
             a.ViewCount = 0;
             _announcements.Add(a);
             return a;
@@ -47,7 +53,7 @@ namespace Vidly.Services
             modifier(a);
             if (string.IsNullOrWhiteSpace(a.Title))
                 throw new ArgumentException("Title cannot be empty.");
-            a.LastEditedAt = DateTime.Now;
+            a.LastEditedAt = _clock.Now;
             return a;
         }
 
@@ -69,14 +75,14 @@ namespace Vidly.Services
             if (a.Status != AnnouncementStatus.Draft)
                 throw new InvalidOperationException($"Can only publish drafts, current status: {a.Status}.");
 
-            if (a.ScheduledStart.HasValue && a.ScheduledStart.Value > DateTime.Now)
+            if (a.ScheduledStart.HasValue && a.ScheduledStart.Value > _clock.Now)
             {
                 a.Status = AnnouncementStatus.Scheduled;
             }
             else
             {
                 a.Status = AnnouncementStatus.Active;
-                a.PublishedAt = DateTime.Now;
+                a.PublishedAt = _clock.Now;
             }
             return a;
         }
@@ -84,7 +90,7 @@ namespace Vidly.Services
         /// <summary>Activate scheduled announcements whose start time has arrived.</summary>
         public List<Announcement> ActivateScheduled()
         {
-            var now = DateTime.Now;
+            var now = _clock.Now;
             var toActivate = _announcements
                 .Where(a => a.Status == AnnouncementStatus.Scheduled
                          && a.ScheduledStart.HasValue
@@ -102,7 +108,7 @@ namespace Vidly.Services
         /// <summary>Expire announcements past their expiry date.</summary>
         public List<Announcement> ExpireStale()
         {
-            var now = DateTime.Now;
+            var now = _clock.Now;
             var toExpire = _announcements
                 .Where(a => a.Status == AnnouncementStatus.Active
                          && a.ExpiresAt.HasValue
@@ -138,7 +144,7 @@ namespace Vidly.Services
             _pins.Add(new AnnouncementPin
             {
                 AnnouncementId = announcementId,
-                PinnedAt = DateTime.Now,
+                PinnedAt = _clock.Now,
                 PinnedByStaffId = staffId
             });
         }
@@ -171,7 +177,7 @@ namespace Vidly.Services
                 Id = _nextAckId++,
                 AnnouncementId = announcementId,
                 CustomerId = customerId,
-                AcknowledgedAt = DateTime.Now
+                AcknowledgedAt = _clock.Now
             };
             _acks.Add(ack);
             return ack;
