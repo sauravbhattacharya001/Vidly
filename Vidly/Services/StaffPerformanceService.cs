@@ -25,7 +25,6 @@ namespace Vidly.Services
         private readonly double _satisfactionWeight;
         private readonly double _upsellWeight;
         private readonly double _speedWeight;
-        private readonly IClock _clock;
 
         /// <summary>
         /// Creates a StaffPerformanceService with configurable scoring weights.
