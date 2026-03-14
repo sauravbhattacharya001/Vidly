@@ -21,7 +21,6 @@ namespace Vidly.Services
         // In-memory stores (production would use a DB)
         private readonly List<InsurancePolicy> _policies = new List<InsurancePolicy>();
         private readonly List<InsuranceClaim> _claims = new List<InsuranceClaim>();
-        private readonly IClock _clock;
         private int _nextPolicyId = 1;
         private int _nextClaimId = 1;
 

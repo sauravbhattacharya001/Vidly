@@ -19,7 +19,6 @@ namespace Vidly.Services
 
         // In-memory ledger (would be a DB table in production)
         private readonly List<PointsTransaction> _ledger = new List<PointsTransaction>();
-        private readonly IClock _clock;
 
         /// <summary>Base points earned per dollar spent.</summary>
         public const int PointsPerDollar = 10;
