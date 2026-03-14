@@ -14,6 +14,12 @@ namespace Vidly.Services
     {
         private readonly List<StoreEvent> _events = new List<StoreEvent>();
         private readonly List<EventRsvp> _rsvps = new List<EventRsvp>();
+        private readonly IClock _clock;
+
+        public StoreEventService(IClock clock = null)
+        {
+            _clock = clock ?? new SystemClock();
+        }
         private int _nextEventId = 1;
         private int _nextRsvpId = 1;
 
@@ -33,7 +39,7 @@ namespace Vidly.Services
 
             ev.Id = _nextEventId++;
             ev.Status = StoreEventStatus.Upcoming;
-            ev.CreatedDate = DateTime.Now;
+            ev.CreatedDate = _clock.Now;
             _events.Add(ev);
             return ev;
         }
@@ -53,7 +59,7 @@ namespace Vidly.Services
         public IReadOnlyList<StoreEvent> GetUpcoming()
         {
             return _events
-                .Where(e => e.Status == StoreEventStatus.Upcoming && e.StartTime > DateTime.Now)
+                .Where(e => e.Status == StoreEventStatus.Upcoming && e.StartTime > _clock.Now)
                 .OrderBy(e => e.StartTime)
                 .ToList();
         }
@@ -113,7 +119,7 @@ namespace Vidly.Services
                 EventId = eventId,
                 CustomerId = customerId,
                 GuestCount = guestCount,
-                RsvpDate = DateTime.Now
+                RsvpDate = _clock.Now
             };
             _rsvps.Add(rsvp);
 
@@ -200,7 +206,7 @@ namespace Vidly.Services
             }
 
             var upcoming = _events
-                .Where(e => e.Status == StoreEventStatus.Upcoming && e.StartTime > DateTime.Now)
+                .Where(e => e.Status == StoreEventStatus.Upcoming && e.StartTime > _clock.Now)
                 .ToList();
 
             var suggestions = new List<EventSuggestion>();
@@ -340,10 +346,10 @@ namespace Vidly.Services
         public IReadOnlyList<StoreEvent> GetEventsInRange(int days)
         {
             if (days <= 0) throw new ArgumentException("Days must be positive.");
-            var cutoff = DateTime.Now.AddDays(days);
+            var cutoff = _clock.Now.AddDays(days);
             return _events
                 .Where(e => e.Status == StoreEventStatus.Upcoming &&
-                            e.StartTime > DateTime.Now && e.StartTime <= cutoff)
+                            e.StartTime > _clock.Now && e.StartTime <= cutoff)
                 .OrderBy(e => e.StartTime)
                 .ToList();
         }

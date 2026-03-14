@@ -16,10 +16,12 @@ namespace Vidly.Services
     {
         private readonly IRentalRepository _rentalRepo;
         private readonly ICustomerRepository _customerRepo;
+        private readonly IClock _clock;
 
         // In-memory stores (production would use a DB)
         private readonly List<InsurancePolicy> _policies = new List<InsurancePolicy>();
         private readonly List<InsuranceClaim> _claims = new List<InsuranceClaim>();
+        private readonly IClock _clock;
         private int _nextPolicyId = 1;
         private int _nextClaimId = 1;
 
@@ -54,10 +56,13 @@ namespace Vidly.Services
 
         public RentalInsuranceService(
             IRentalRepository rentalRepo,
-            ICustomerRepository customerRepo)
+            ICustomerRepository customerRepo,
+            IClock clock = null)
         {
             _rentalRepo = rentalRepo ?? throw new ArgumentNullException(nameof(rentalRepo));
+            _clock = clock ?? new SystemClock();
             _customerRepo = customerRepo ?? throw new ArgumentNullException(nameof(customerRepo));
+            _clock = clock ?? new SystemClock();
         }
 
         // ── Purchase ─────────────────────────────────────────────────
@@ -91,7 +96,7 @@ namespace Vidly.Services
                 CustomerId = customerId,
                 Tier = tier,
                 Premium = premium,
-                PurchasedAt = DateTime.Now,
+                PurchasedAt = _clock.Now,
                 Status = InsurancePolicyStatus.Active,
                 CoverageLimit = coverageLimit,
                 TotalClaimed = 0
@@ -167,7 +172,7 @@ namespace Vidly.Services
                 CustomerId = policy.CustomerId,
                 ClaimType = claimType,
                 Amount = approvedAmount,
-                FiledAt = DateTime.Now,
+                FiledAt = _clock.Now,
                 Status = ClaimStatus.Approved
             };
 

@@ -15,6 +15,7 @@ namespace Vidly.Services
         private readonly IMovieRepository _movieRepository;
         private readonly IReviewRepository _reviewRepository;
         private readonly IRentalRepository _rentalRepository;
+        private readonly IClock _clock;
 
         public MovieComparisonService()
             : this(new InMemoryMovieRepository(),
@@ -26,7 +27,8 @@ namespace Vidly.Services
         public MovieComparisonService(
             IMovieRepository movieRepository,
             IReviewRepository reviewRepository,
-            IRentalRepository rentalRepository)
+            IRentalRepository rentalRepository,
+            IClock clock = null)
         {
             _movieRepository = movieRepository
                 ?? throw new ArgumentNullException(nameof(movieRepository));
@@ -101,7 +103,7 @@ namespace Vidly.Services
                 CheapestId = cheapest.Movie.Id,
                 MostPopularId = mostPopular.Movie.Id,
                 MostReviewedId = mostReviewed.Movie.Id,
-                ComparedAt = DateTime.Now
+                ComparedAt = _clock.Now
             };
         }
 

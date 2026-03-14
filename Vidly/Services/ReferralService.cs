@@ -17,6 +17,7 @@ namespace Vidly.Services
         private readonly ICustomerRepository _customerRepository;
         private readonly List<Referral> _referrals = new List<Referral>();
         private readonly object _lock = new object();
+        private readonly IClock _clock;
         private int _nextId = 1;
 
         /// <summary>Points awarded to referrer when a referral converts.</summary>
@@ -31,10 +32,11 @@ namespace Vidly.Services
         /// <summary>Max active (pending) referrals per customer.</summary>
         public const int MaxPendingPerCustomer = 10;
 
-        public ReferralService(ICustomerRepository customerRepository)
+        public ReferralService(ICustomerRepository customerRepository, IClock clock = null)
         {
             _customerRepository = customerRepository
                 ?? throw new ArgumentNullException(nameof(customerRepository));
+            _clock = clock ?? new SystemClock();
         }
 
         /// <summary>
@@ -127,7 +129,7 @@ namespace Vidly.Services
                     ReferredName = referredName.Trim(),
                     ReferredEmail = referredEmail.Trim().ToLowerInvariant(),
                     ReferralCode = GenerateReferralCode(referrerId),
-                    CreatedDate = DateTime.Now,
+                    CreatedDate = _clock.Now,
                     Status = ReferralStatus.Pending,
                     PointsAwarded = 0
                 };
@@ -163,14 +165,14 @@ namespace Vidly.Services
                         $"Referral is {referral.Status}, not Pending.");
 
                 // Check expiration
-                if ((DateTime.Now - referral.CreatedDate).TotalDays > ExpirationDays)
+                if ((_clock.Now - referral.CreatedDate).TotalDays > ExpirationDays)
                 {
                     referral.Status = ReferralStatus.Expired;
                     throw new InvalidOperationException("Referral code has expired.");
                 }
 
                 referral.Status = ReferralStatus.Converted;
-                referral.ConvertedDate = DateTime.Now;
+                referral.ConvertedDate = _clock.Now;
                 referral.ReferredCustomerId = newCustomerId;
                 referral.PointsAwarded = ConversionBonusPoints;
 
@@ -185,7 +187,7 @@ namespace Vidly.Services
         {
             lock (_lock)
             {
-                var now = DateTime.Now;
+                var now = _clock.Now;
                 var expired = _referrals.Where(r =>
                     r.Status == ReferralStatus.Pending &&
                     (now - r.CreatedDate).TotalDays > ExpirationDays).ToList();
@@ -298,7 +300,7 @@ namespace Vidly.Services
                     leaderboard[i].Rank = i + 1;
 
                 // Monthly trends (last 6 months)
-                var sixMonthsAgo = DateTime.Now.AddMonths(-6);
+                var sixMonthsAgo = _clock.Now.AddMonths(-6);
                 var trends = all
                     .Where(r => r.CreatedDate >= sixMonthsAgo)
                     .GroupBy(r => new { r.CreatedDate.Year, r.CreatedDate.Month })

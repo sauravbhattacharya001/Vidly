@@ -14,11 +14,13 @@ namespace Vidly.Services
         private readonly IReviewRepository _reviewRepository;
         private readonly ICustomerRepository _customerRepository;
         private readonly IMovieRepository _movieRepository;
+        private readonly IClock _clock;
 
         public ReviewService(
             IReviewRepository reviewRepository,
             ICustomerRepository customerRepository,
-            IMovieRepository movieRepository)
+            IMovieRepository movieRepository,
+            IClock clock = null)
         {
             _reviewRepository = reviewRepository
                 ?? throw new ArgumentNullException(nameof(reviewRepository));
@@ -65,7 +67,7 @@ namespace Vidly.Services
                 MovieId = movieId,
                 Stars = stars,
                 ReviewText = reviewText?.Trim(),
-                CreatedDate = DateTime.Now,
+                CreatedDate = _clock.Now,
                 CustomerName = customer.Name,
                 MovieName = movie.Name,
             };

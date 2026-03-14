@@ -86,15 +86,20 @@ namespace Vidly.Services
         private readonly IRentalRepository _rentalRepository;
         private readonly ICustomerRepository _customerRepository;
         private readonly IMovieRepository _movieRepository;
+        private readonly IClock _clock;
 
         public RentalHistoryService(
             IRentalRepository rentalRepository,
             ICustomerRepository customerRepository,
-            IMovieRepository movieRepository)
+            IMovieRepository movieRepository,
+            IClock clock = null)
         {
             _rentalRepository = rentalRepository ?? throw new ArgumentNullException(nameof(rentalRepository));
+            _clock = clock ?? new SystemClock();
             _customerRepository = customerRepository ?? throw new ArgumentNullException(nameof(customerRepository));
+            _clock = clock ?? new SystemClock();
             _movieRepository = movieRepository ?? throw new ArgumentNullException(nameof(movieRepository));
+            _clock = clock ?? new SystemClock();
         }
 
         /// <inheritdoc />
@@ -439,7 +444,7 @@ namespace Vidly.Services
             var report = new RentalReport
             {
                 Type = type,
-                GeneratedAt = DateTime.Now
+                GeneratedAt = _clock.Now
             };
 
             switch (type)

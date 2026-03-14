@@ -19,6 +19,12 @@ namespace Vidly.Services
         private readonly List<ClubPoll> _polls = new List<ClubPoll>();
         private readonly List<ClubMeeting> _meetings = new List<ClubMeeting>();
 
+        private readonly IClock _clock;
+
+        public MovieClubService(IClock clock = null)
+        {
+            _clock = clock ?? new SystemClock();
+        }
         private int _nextClubId = 1;
         private int _nextMembershipId = 1;
         private int _nextWatchlistId = 1;
@@ -49,7 +55,7 @@ namespace Vidly.Services
                 MaxMembers = maxMembers,
                 GroupDiscountPercent = groupDiscountPercent,
                 Status = ClubStatus.Active,
-                CreatedDate = DateTime.Now,
+                CreatedDate = _clock.Now,
                 FounderId = founderId
             };
             _clubs.Add(club);
@@ -61,7 +67,7 @@ namespace Vidly.Services
                 ClubId = club.Id,
                 CustomerId = founderId,
                 Role = ClubRole.Founder,
-                JoinedDate = DateTime.Now,
+                JoinedDate = _clock.Now,
                 IsActive = true
             });
 
@@ -139,7 +145,7 @@ namespace Vidly.Services
                 ClubId = clubId,
                 CustomerId = customerId,
                 Role = ClubRole.Member,
-                JoinedDate = DateTime.Now,
+                JoinedDate = _clock.Now,
                 IsActive = true
             };
             _memberships.Add(membership);
@@ -208,7 +214,7 @@ namespace Vidly.Services
                 ClubId = clubId,
                 MovieId = movieId,
                 AddedByCustomerId = customerId,
-                AddedDate = DateTime.Now,
+                AddedDate = _clock.Now,
                 IsWatched = false
             };
             _watchlist.Add(item);
@@ -222,7 +228,7 @@ namespace Vidly.Services
             if (item == null)
                 throw new InvalidOperationException("Watchlist item not found.");
             item.IsWatched = true;
-            item.WatchedDate = DateTime.Now;
+            item.WatchedDate = _clock.Now;
             if (rating.HasValue)
             {
                 if (rating.Value < 1 || rating.Value > 5)
@@ -262,7 +268,7 @@ namespace Vidly.Services
                 ClubId = clubId,
                 Title = title,
                 Status = PollStatus.Open,
-                CreatedDate = DateTime.Now,
+                CreatedDate = _clock.Now,
                 CreatedByCustomerId = createdByCustomerId,
                 Options = options.Select((o, i) => new ClubPollOption
                 {
@@ -309,7 +315,7 @@ namespace Vidly.Services
             RequireModeratorOrFounder(poll.ClubId, requesterId);
 
             poll.Status = PollStatus.Closed;
-            poll.ClosedDate = DateTime.Now;
+            poll.ClosedDate = _clock.Now;
 
             return poll.Options.OrderByDescending(o => o.VoterIds.Count).FirstOrDefault();
         }
@@ -335,7 +341,7 @@ namespace Vidly.Services
 
             if (string.IsNullOrWhiteSpace(title))
                 throw new ArgumentException("Meeting title is required.", nameof(title));
-            if (scheduledDate <= DateTime.Now)
+            if (scheduledDate <= _clock.Now)
                 throw new ArgumentException("Meeting must be scheduled in the future.", nameof(scheduledDate));
 
             var meeting = new ClubMeeting
@@ -370,7 +376,7 @@ namespace Vidly.Services
         public IReadOnlyList<ClubMeeting> GetUpcomingMeetings(int clubId)
         {
             return _meetings
-                .Where(m => m.ClubId == clubId && m.ScheduledDate > DateTime.Now)
+                .Where(m => m.ClubId == clubId && m.ScheduledDate > _clock.Now)
                 .OrderBy(m => m.ScheduledDate).ToList();
         }
 
@@ -400,7 +406,7 @@ namespace Vidly.Services
             var watched = _watchlist.Where(w => w.ClubId == clubId && w.IsWatched).ToList();
             var unwatched = _watchlist.Where(w => w.ClubId == clubId && !w.IsWatched).ToList();
             var closedPolls = _polls.Count(p => p.ClubId == clubId && p.Status == PollStatus.Closed);
-            var pastMeetings = _meetings.Count(m => m.ClubId == clubId && m.ScheduledDate <= DateTime.Now);
+            var pastMeetings = _meetings.Count(m => m.ClubId == clubId && m.ScheduledDate <= _clock.Now);
 
             var avgRating = watched.Where(w => w.AverageRating.HasValue)
                 .Select(w => w.AverageRating.Value).DefaultIfEmpty(0).Average();

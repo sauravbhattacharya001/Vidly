@@ -25,6 +25,7 @@ namespace Vidly.Services
     {
         private readonly ITagRepository _tagRepository;
         private readonly IMovieRepository _movieRepository;
+        private readonly IClock _clock;
 
         // Predefined genre-to-tag suggestions
         private static readonly Dictionary<Genre, string[]> GenreTagSuggestions =
@@ -44,7 +45,8 @@ namespace Vidly.Services
 
         public TaggingService(
             ITagRepository tagRepository,
-            IMovieRepository movieRepository)
+            IMovieRepository movieRepository,
+            IClock clock = null)
         {
             _tagRepository = tagRepository
                 ?? throw new ArgumentNullException(nameof(tagRepository));
@@ -84,7 +86,7 @@ namespace Vidly.Services
                 Color = color,
                 IsStaffPick = isStaffPick,
                 CreatedBy = createdBy ?? "system",
-                CreatedDate = DateTime.Now,
+                CreatedDate = _clock.Now,
                 IsActive = true,
             };
 
@@ -227,7 +229,7 @@ namespace Vidly.Services
                 TagName = tag.Name,
                 MovieName = movie.Name,
                 AppliedBy = appliedBy ?? "system",
-                AppliedDate = DateTime.Now,
+                AppliedDate = _clock.Now,
             };
 
             return _tagRepository.AddAssignment(assignment);
@@ -350,7 +352,7 @@ namespace Vidly.Services
                     TagName = tag.Name,
                     MovieName = movie.Name,
                     AppliedBy = appliedBy ?? "system",
-                    AppliedDate = DateTime.Now,
+                    AppliedDate = _clock.Now,
                 });
                 count++;
             }
@@ -396,7 +398,7 @@ namespace Vidly.Services
                     TagName = tag.Name,
                     MovieName = movie.Name,
                     AppliedBy = appliedBy ?? "system",
-                    AppliedDate = DateTime.Now,
+                    AppliedDate = _clock.Now,
                 });
                 count++;
             }

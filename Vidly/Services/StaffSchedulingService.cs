@@ -16,6 +16,7 @@ namespace Vidly.Services
         private readonly List<StaffAvailability> _availability = new List<StaffAvailability>();
         private readonly List<ShiftSwapRequest> _swapRequests = new List<ShiftSwapRequest>();
         private readonly List<StaffMember> _staff;
+        private readonly IClock _clock;
 
         private int _nextShiftId = 1;
         private int _nextAvailId = 1;
@@ -25,7 +26,8 @@ namespace Vidly.Services
         public int MinimumStaffPerPeriod { get; set; } = 2;
         public double MinRestHoursBetweenShifts { get; set; } = 8.0;
 
-        public StaffSchedulingService(IEnumerable<StaffMember> staff)
+        public StaffSchedulingService(IEnumerable<StaffMember> staff,
+            IClock clock = null)
         {
             _staff = staff?.ToList()
                 ?? throw new ArgumentNullException(nameof(staff));
@@ -376,7 +378,7 @@ namespace Vidly.Services
             }
 
             request.Status = SwapRequestStatus.Approved;
-            request.ResolvedAt = DateTime.Now;
+            request.ResolvedAt = _clock.Now;
             return true;
         }
 
@@ -387,7 +389,7 @@ namespace Vidly.Services
                 return false;
 
             request.Status = SwapRequestStatus.Denied;
-            request.ResolvedAt = DateTime.Now;
+            request.ResolvedAt = _clock.Now;
             return true;
         }
 
