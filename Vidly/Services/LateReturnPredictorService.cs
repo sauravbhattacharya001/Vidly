@@ -152,7 +152,7 @@ namespace Vidly.Services
 
             // Factor 4: Currently overdue other rentals (0-15 points)
             var otherOverdue = customerHistory.Count(r =>
-                r.Status == RentalStatus.Overdue || r.Status == RentalStatus.Active && DateTime.Today > r.DueDate);
+                r.Status == RentalStatus.Overdue || (r.Status == RentalStatus.Active && DateTime.Today > r.DueDate));
             if (otherOverdue > 0)
             {
                 int points = Math.Min(15, otherOverdue * 8);
