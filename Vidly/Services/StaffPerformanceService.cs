@@ -14,6 +14,7 @@ namespace Vidly.Services
     {
         private readonly List<StaffMember> _staff = new List<StaffMember>();
         private readonly List<StaffTransaction> _transactions = new List<StaffTransaction>();
+        private readonly IClock _clock;
         private int _nextStaffId = 1;
         private int _nextTransactionId = 1;
 
@@ -24,6 +25,7 @@ namespace Vidly.Services
         private readonly double _satisfactionWeight;
         private readonly double _upsellWeight;
         private readonly double _speedWeight;
+        private readonly IClock _clock;
 
         /// <summary>
         /// Creates a StaffPerformanceService with configurable scoring weights.
@@ -35,7 +37,8 @@ namespace Vidly.Services
             double revenueWeight = 0.25,
             double satisfactionWeight = 0.30,
             double upsellWeight = 0.15,
-            double speedWeight = 0.10)
+            double speedWeight = 0.10,
+            IClock clock = null)
         {
             if (volumeWeight < 0 || revenueWeight < 0 || satisfactionWeight < 0 ||
                 upsellWeight < 0 || speedWeight < 0)
@@ -156,7 +159,7 @@ namespace Vidly.Services
                 CustomerName = null,
                 MovieId = movieId,
                 Type = type,
-                Timestamp = timestamp ?? DateTime.Now,
+                Timestamp = timestamp ?? _clock.Now,
                 Revenue = revenue,
                 DurationSeconds = durationSeconds,
                 UpsellAttempted = upsellAttempted,

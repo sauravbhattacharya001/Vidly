@@ -15,9 +15,11 @@ namespace Vidly.Services
     {
         private readonly ICustomerRepository _customerRepository;
         private readonly IRentalRepository _rentalRepository;
+        private readonly IClock _clock;
 
         // In-memory ledger (would be a DB table in production)
         private readonly List<PointsTransaction> _ledger = new List<PointsTransaction>();
+        private readonly IClock _clock;
 
         /// <summary>Base points earned per dollar spent.</summary>
         public const int PointsPerDollar = 10;
@@ -33,7 +35,8 @@ namespace Vidly.Services
 
         public LoyaltyPointsService(
             ICustomerRepository customerRepository,
-            IRentalRepository rentalRepository)
+            IRentalRepository rentalRepository,
+            IClock clock = null)
         {
             _customerRepository = customerRepository
                 ?? throw new ArgumentNullException(nameof(customerRepository));
@@ -112,7 +115,7 @@ namespace Vidly.Services
                 Description = $"Earned {earnedPoints} pts for rental #{rentalId}" +
                     (bonus > 0 ? $" + {bonus} on-time bonus" : "") +
                     $" ({multiplier:0.##}x {customer.MembershipType} multiplier)",
-                Timestamp = DateTime.Now
+                Timestamp = _clock.Now
             };
 
             _ledger.Add(tx);
@@ -145,7 +148,7 @@ namespace Vidly.Services
                 Points = -cost,
                 Type = TransactionType.Redeemed,
                 Description = $"Redeemed {cost} pts for {GetRewardDescription(reward)}",
-                Timestamp = DateTime.Now
+                Timestamp = _clock.Now
             };
 
             _ledger.Add(tx);

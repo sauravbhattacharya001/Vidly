@@ -12,6 +12,7 @@ namespace Vidly.Services
     public class GiftCardService
     {
         private readonly IGiftCardRepository _giftCardRepository;
+        private readonly IClock _clock;
         /// <summary>
         /// Maximum retry attempts for code generation to prevent unbounded
         /// recursion if the code space becomes saturated.
@@ -20,7 +21,8 @@ namespace Vidly.Services
 
         public GiftCardService() : this(new InMemoryGiftCardRepository()) { }
 
-        public GiftCardService(IGiftCardRepository giftCardRepository)
+        public GiftCardService(IGiftCardRepository giftCardRepository,
+            IClock clock = null)
         {
             _giftCardRepository = giftCardRepository
                 ?? throw new ArgumentNullException(nameof(giftCardRepository));
@@ -95,7 +97,7 @@ namespace Vidly.Services
                 Message = message,
                 IsActive = true,
                 ExpirationDate = expirationDate,
-                CreatedDate = DateTime.Now
+                CreatedDate = _clock.Now
             };
 
             _giftCardRepository.Add(card);

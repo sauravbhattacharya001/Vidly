@@ -15,11 +15,13 @@ namespace Vidly.Services
         private readonly IRentalRepository _rentalRepository;
         private readonly IMovieRepository _movieRepository;
         private readonly ICustomerRepository _customerRepository;
+        private readonly IClock _clock;
 
         public RevenueAnalyticsService(
             IRentalRepository rentalRepository,
             IMovieRepository movieRepository,
-            ICustomerRepository customerRepository)
+            ICustomerRepository customerRepository,
+            IClock clock = null)
         {
             _rentalRepository = rentalRepository
                 ?? throw new ArgumentNullException(nameof(rentalRepository));
@@ -102,7 +104,7 @@ namespace Vidly.Services
             if (days <= 0)
                 throw new ArgumentException("days must be positive.");
 
-            var end = asOf ?? DateTime.Now;
+            var end = asOf ?? _clock.Now;
             var start = end.AddDays(-days);
             return GetReport(start, end, topCount);
         }
@@ -164,7 +166,7 @@ namespace Vidly.Services
             if (forecastDays <= 0)
                 throw new ArgumentException("forecastDays must be positive.");
 
-            var end = asOf ?? DateTime.Now;
+            var end = asOf ?? _clock.Now;
             var allRentals = _rentalRepository.GetAll()
                 .Where(r => r.RentalDate <= end)
                 .ToList();

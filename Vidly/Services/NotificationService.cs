@@ -18,6 +18,7 @@ namespace Vidly.Services
         private readonly ICustomerRepository _customerRepository;
         private readonly IWatchlistRepository _watchlistRepository;
 
+        private readonly IClock _clock;
         public NotificationService()
             : this(new InMemoryRentalRepository(),
                    new InMemoryMovieRepository(),
@@ -30,12 +31,14 @@ namespace Vidly.Services
             IRentalRepository rentalRepository,
             IMovieRepository movieRepository,
             ICustomerRepository customerRepository,
-            IWatchlistRepository watchlistRepository)
+            IWatchlistRepository watchlistRepository),
+            IClock clock = null)
         {
             _rentalRepository = rentalRepository ?? throw new ArgumentNullException(nameof(rentalRepository));
             _movieRepository = movieRepository ?? throw new ArgumentNullException(nameof(movieRepository));
             _customerRepository = customerRepository ?? throw new ArgumentNullException(nameof(customerRepository));
             _watchlistRepository = watchlistRepository ?? throw new ArgumentNullException(nameof(watchlistRepository));
+            _clock = clock ?? new SystemClock();
         }
 
         /// <summary>
@@ -152,7 +155,7 @@ namespace Vidly.Services
                         Priority = NotificationPriority.Urgent,
                         Title = "Overdue Rental",
                         Message = $"\"{movie?.Name ?? "Unknown"}\" was due {daysOverdue} day(s) ago. Late fees may apply.",
-                        Timestamp = DateTime.Now,
+                        Timestamp = _clock.Now,
                         RelatedMovieId = rental.MovieId,
                         Icon = "⚠️"
                     };
@@ -179,7 +182,7 @@ namespace Vidly.Services
                         Priority = NotificationPriority.High,
                         Title = "Rental Due Soon",
                         Message = $"\"{movie?.Name ?? "Unknown"}\" is due in {daysUntilDue} day(s). Return it to avoid late fees!",
-                        Timestamp = DateTime.Now,
+                        Timestamp = _clock.Now,
                         RelatedMovieId = rental.MovieId,
                         Icon = "⏰"
                     };
@@ -216,7 +219,7 @@ namespace Vidly.Services
                     Priority = NotificationPriority.Normal,
                     Title = "New Arrival",
                     Message = $"\"{movie.Name}\" just arrived in {movie.Genre}! Based on your rental history, you might enjoy it.",
-                    Timestamp = DateTime.Now,
+                    Timestamp = _clock.Now,
                     RelatedMovieId = movie.Id,
                     Icon = "🎬"
                 };
@@ -240,7 +243,7 @@ namespace Vidly.Services
                         Priority = NotificationPriority.High,
                         Title = "Watchlist Movie Available",
                         Message = $"\"{item.MovieName}\" from your must-watch list is available to rent now!",
-                        Timestamp = DateTime.Now,
+                        Timestamp = _clock.Now,
                         RelatedMovieId = item.MovieId,
                         Icon = "🌟"
                     };
@@ -289,7 +292,7 @@ namespace Vidly.Services
                     Priority = NotificationPriority.Normal,
                     Title = "Membership Anniversary",
                     Message = $"Your {years}-year membership anniversary is coming up! Thank you for being a loyal {customer.MembershipType} member.",
-                    Timestamp = DateTime.Now,
+                    Timestamp = _clock.Now,
                     Icon = "🎉"
                 };
             }
@@ -309,7 +312,7 @@ namespace Vidly.Services
                         Priority = NotificationPriority.Normal,
                         Title = "Upgrade Available",
                         Message = $"With {rentalCount} rentals, you qualify for {nextTier} membership! Enjoy better rates and perks.",
-                        Timestamp = DateTime.Now,
+                        Timestamp = _clock.Now,
                         Icon = "⬆️"
                     };
                 }

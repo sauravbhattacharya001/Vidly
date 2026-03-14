@@ -16,10 +16,12 @@ namespace Vidly.Services
     {
         private readonly IRentalRepository _rentalRepository;
         private readonly IMovieRepository _movieRepository;
+        private readonly IClock _clock;
 
         public RentalForecastService(
             IRentalRepository rentalRepository,
-            IMovieRepository movieRepository)
+            IMovieRepository movieRepository,
+            IClock clock = null)
         {
             _rentalRepository = rentalRepository
                 ?? throw new ArgumentNullException(nameof(rentalRepository));
@@ -378,7 +380,7 @@ namespace Vidly.Services
                 DeadStockMovies = deadStock,
                 NeverRentedMovies = neverRented,
                 GenreGaps = genreGaps,
-                GeneratedAt = DateTime.Now
+                GeneratedAt = _clock.Now
             };
         }
 

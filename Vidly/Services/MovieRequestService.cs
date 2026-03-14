@@ -27,11 +27,13 @@ namespace Vidly.Services
         private readonly IMovieRequestRepository _requestRepository;
         private readonly IMovieRepository _movieRepository;
         private readonly ICustomerRepository _customerRepository;
+        private readonly IClock _clock;
 
         public MovieRequestService(
             IMovieRequestRepository requestRepository,
             IMovieRepository movieRepository,
-            ICustomerRepository customerRepository)
+            ICustomerRepository customerRepository,
+            IClock clock = null)
         {
             _requestRepository = requestRepository
                 ?? throw new ArgumentNullException(nameof(requestRepository));
@@ -93,7 +95,7 @@ namespace Vidly.Services
                 Year = year,
                 Genre = genre,
                 Reason = reason,
-                RequestedDate = DateTime.Now,
+                RequestedDate = _clock.Now,
                 Status = MovieRequestStatus.Open,
                 UpvoteCount = 0
             };
@@ -127,7 +129,7 @@ namespace Vidly.Services
             {
                 RequestId = requestId,
                 CustomerId = customerId,
-                VotedDate = DateTime.Now
+                VotedDate = _clock.Now
             };
 
             return _requestRepository.AddVote(vote);
@@ -176,7 +178,7 @@ namespace Vidly.Services
                 throw new InvalidOperationException("Cannot fulfill a declined request.");
 
             request.Status = MovieRequestStatus.Fulfilled;
-            request.FulfilledDate = DateTime.Now;
+            request.FulfilledDate = _clock.Now;
             request.StaffNote = staffNote;
             _requestRepository.Update(request);
             return request;
@@ -210,7 +212,7 @@ namespace Vidly.Services
             var reviewRequests = _requestRepository.GetByStatus(MovieRequestStatus.UnderReview);
             var all = openRequests.Concat(reviewRequests).ToList();
 
-            var cutoff = DateTime.Now.AddDays(-TrendingWindowDays);
+            var cutoff = _clock.Now.AddDays(-TrendingWindowDays);
 
             var trending = all.Select(r =>
             {

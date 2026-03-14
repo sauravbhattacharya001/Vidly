@@ -16,10 +16,12 @@ namespace Vidly.Services
         private readonly List<QuizSession> _sessions = new List<QuizSession>();
         private readonly List<DailyChallenge> _dailyChallenges = new List<DailyChallenge>();
         private readonly Dictionary<int, List<int>> _streaks = new Dictionary<int, List<int>>();
+        private readonly IClock _clock;
         private int _nextSessionId = 1;
         private int _nextQuestionId = 1;
         private readonly Random _rng;
 
+        private readonly IClock _clock;
         // ── Point values by difficulty ──────────────────────────
         private static readonly Dictionary<QuizDifficulty, int> BasePoints =
             new Dictionary<QuizDifficulty, int>
@@ -36,12 +38,13 @@ namespace Vidly.Services
         private const double SpeedBonusThreshold = 5.0;
         private const double SpeedBonusMultiplier = 1.5;
 
-        public MovieQuizService(IEnumerable<Movie> movies, int? seed = null)
+        public MovieQuizService(IEnumerable<Movie> movies, int? seed = null, IClock clock = null)
         {
             _movies = movies?.ToList() ?? throw new ArgumentNullException(nameof(movies));
             if (_movies.Count < 4)
                 throw new ArgumentException("Need at least 4 movies to generate quizzes.");
             _rng = seed.HasValue ? new Random(seed.Value) : new Random();
+            _clock = clock ?? new SystemClock();
         }
 
         // ════════════════════════════════════════════════════════
@@ -67,7 +70,7 @@ namespace Vidly.Services
                 CustomerId = customerId,
                 Difficulty = difficulty,
                 Category = category,
-                StartedAt = DateTime.Now,
+                StartedAt = _clock.Now,
                 Status = QuizStatus.InProgress,
                 Questions = questions,
                 TimeLimitMinutes = timeLimitMinutes,
@@ -90,11 +93,11 @@ namespace Vidly.Services
             // Check time limit
             if (session.TimeLimitMinutes > 0)
             {
-                var elapsed = (DateTime.Now - session.StartedAt).TotalMinutes;
+                var elapsed = (_clock.Now - session.StartedAt).TotalMinutes;
                 if (elapsed > session.TimeLimitMinutes)
                 {
                     session.Status = QuizStatus.TimedOut;
-                    session.CompletedAt = DateTime.Now;
+                    session.CompletedAt = _clock.Now;
                     throw new InvalidOperationException("Quiz has timed out.");
                 }
             }
@@ -128,7 +131,7 @@ namespace Vidly.Services
                 SelectedOptionIndex = selectedOptionIndex,
                 IsCorrect = correct,
                 PointsEarned = points,
-                AnsweredAt = DateTime.Now,
+                AnsweredAt = _clock.Now,
                 ResponseTimeSeconds = responseTimeSeconds
             };
 
@@ -150,7 +153,7 @@ namespace Vidly.Services
                 return session;
 
             session.Status = QuizStatus.Completed;
-            session.CompletedAt = DateTime.Now;
+            session.CompletedAt = _clock.Now;
 
             // Calculate loyalty points
             session.LoyaltyPointsAwarded = session.TotalPoints / QuizPointsPerLoyaltyPoint;
@@ -171,7 +174,7 @@ namespace Vidly.Services
             var session = _sessions.FirstOrDefault(s => s.Id == sessionId);
             if (session == null) throw new ArgumentException("Session not found.");
             session.Status = QuizStatus.Abandoned;
-            session.CompletedAt = DateTime.Now;
+            session.CompletedAt = _clock.Now;
             UpdateStreak(session.CustomerId, false);
         }
 
@@ -442,7 +445,7 @@ namespace Vidly.Services
                 SelectedOptionIndex = selectedOptionIndex,
                 IsCorrect = correct,
                 PointsEarned = points,
-                AnsweredAt = DateTime.Now,
+                AnsweredAt = _clock.Now,
                 ResponseTimeSeconds = responseTimeSeconds
             };
         }

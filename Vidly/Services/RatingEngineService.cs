@@ -17,6 +17,7 @@ namespace Vidly.Services
     {
         private readonly IReviewRepository _reviewRepo;
         private readonly IMovieRepository _movieRepo;
+        private readonly IClock _clock;
 
         /// <summary>
         /// Minimum number of reviews for a movie to qualify for ranked lists.
@@ -32,7 +33,8 @@ namespace Vidly.Services
 
         public RatingEngineService(
             IReviewRepository reviewRepo,
-            IMovieRepository movieRepo)
+            IMovieRepository movieRepo,
+            IClock clock = null)
         {
             _reviewRepo = reviewRepo
                 ?? throw new ArgumentNullException(nameof(reviewRepo));
@@ -199,7 +201,7 @@ namespace Vidly.Services
             if (movie == null) return null;
 
             var reviews = _reviewRepo.GetByMovie(movieId);
-            var now = asOf ?? DateTime.Now;
+            var now = asOf ?? _clock.Now;
             var lambda = Math.Log(2) / TrendingHalfLifeDays;
 
             double weightedSum = 0;

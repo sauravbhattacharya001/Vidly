@@ -26,6 +26,7 @@ namespace Vidly.Services
         private readonly List<ConditionInspection> _inspections = new List<ConditionInspection>();
         private readonly IMovieRepository _movieRepo;
         private readonly IRentalRepository _rentalRepo;
+        private readonly IClock _clock;
         private int _nextId = 1;
 
         /// <summary>
@@ -45,10 +46,13 @@ namespace Vidly.Services
         public const int MaxWorstCopies = 10;
 
         public CopyConditionService(IMovieRepository movieRepo,
-                                     IRentalRepository rentalRepo)
+                                     IRentalRepository rentalRepo,
+            IClock clock = null)
         {
             _movieRepo = movieRepo ?? throw new ArgumentNullException(nameof(movieRepo));
+            _clock = clock ?? new SystemClock();
             _rentalRepo = rentalRepo ?? throw new ArgumentNullException(nameof(rentalRepo));
+            _clock = clock ?? new SystemClock();
         }
 
         // ── Recording inspections ───────────────────────────────────
@@ -83,7 +87,7 @@ namespace Vidly.Services
                 CaseGrade = caseGrade,
                 Notes = notes,
                 InspectorName = inspectorName,
-                InspectedAt = DateTime.Now
+                InspectedAt = _clock.Now
             };
             _inspections.Add(inspection);
             return inspection;
@@ -118,7 +122,7 @@ namespace Vidly.Services
                 CaseGrade = caseGrade,
                 Notes = notes,
                 InspectorName = inspectorName,
-                InspectedAt = DateTime.Now
+                InspectedAt = _clock.Now
             };
             _inspections.Add(inspection);
             return inspection;
@@ -148,7 +152,7 @@ namespace Vidly.Services
                 CaseGrade = caseGrade,
                 Notes = notes,
                 InspectorName = inspectorName,
-                InspectedAt = DateTime.Now
+                InspectedAt = _clock.Now
             };
             _inspections.Add(inspection);
             return inspection;
@@ -411,7 +415,7 @@ namespace Vidly.Services
                     .Take(MaxWorstCopies)
                     .ToList(),
                 HighRiskRenters = GetHighRiskRenters().ToList(),
-                GeneratedAt = DateTime.Now
+                GeneratedAt = _clock.Now
             };
 
             return report;

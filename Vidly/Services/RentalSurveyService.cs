@@ -18,6 +18,7 @@ namespace Vidly.Services
 
         private readonly List<RentalSurvey> _surveys = new List<RentalSurvey>();
         private readonly List<SurveyInvitation> _invitations = new List<SurveyInvitation>();
+        private readonly IClock _clock;
         private int _nextId = 1;
 
         /// <summary>Days after return before survey invitation is sent.</summary>
@@ -32,11 +33,13 @@ namespace Vidly.Services
         public RentalSurveyService(
             ICustomerRepository customerRepository,
             IRentalRepository rentalRepository,
-            IMovieRepository movieRepository)
+            IMovieRepository movieRepository),
+            IClock clock = null)
         {
             _customerRepository = customerRepository ?? throw new ArgumentNullException(nameof(customerRepository));
             _rentalRepository = rentalRepository ?? throw new ArgumentNullException(nameof(rentalRepository));
             _movieRepository = movieRepository ?? throw new ArgumentNullException(nameof(movieRepository));
+            _clock = clock ?? new SystemClock();
         }
 
         /// <summary>
@@ -84,7 +87,7 @@ namespace Vidly.Services
                 Id = _nextId++,
                 CustomerId = customerId,
                 RentalId = rentalId,
-                SubmittedAt = DateTime.Now,
+                SubmittedAt = _clock.Now,
                 NpsScore = npsScore,
                 OverallSatisfaction = overallSatisfaction,
                 CategoryRatings = categoryRatings ?? new Dictionary<SurveyCategory, int>(),
@@ -294,8 +297,8 @@ namespace Vidly.Services
         {
             var recentReturns = _rentalRepository.GetAll()
                 .Where(r => r.ReturnDate.HasValue &&
-                           (DateTime.Now - r.ReturnDate.Value).TotalDays >= InvitationDelayDays &&
-                           (DateTime.Now - r.ReturnDate.Value).TotalDays <= InvitationDelayDays + InvitationExpiryDays)
+                           (_clock.Now - r.ReturnDate.Value).TotalDays >= InvitationDelayDays &&
+                           (_clock.Now - r.ReturnDate.Value).TotalDays <= InvitationDelayDays + InvitationExpiryDays)
                 .ToList();
 
             var newInvitations = new List<SurveyInvitation>();
@@ -317,7 +320,7 @@ namespace Vidly.Services
                     MovieName = movie?.Name ?? rental.MovieName ?? "Movie",
                     RentalDate = rental.RentalDate,
                     ReturnDate = rental.ReturnDate.Value,
-                    InvitationSentAt = DateTime.Now,
+                    InvitationSentAt = _clock.Now,
                     IsCompleted = false
                 };
 
@@ -335,7 +338,7 @@ namespace Vidly.Services
         {
             return _invitations
                 .Where(i => !i.IsCompleted &&
-                           (DateTime.Now - i.InvitationSentAt).TotalDays <= InvitationExpiryDays)
+                           (_clock.Now - i.InvitationSentAt).TotalDays <= InvitationExpiryDays)
                 .OrderBy(i => i.InvitationSentAt)
                 .ToList();
         }
