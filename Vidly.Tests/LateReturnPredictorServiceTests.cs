@@ -680,5 +680,44 @@ namespace Vidly.Tests
             Assert.AreEqual(summary.TotalActiveRentals, countSum,
                 "Risk level counts must sum to total active rentals.");
         }
+
+        // ═══════════════════════════════════════════════════
+        // Regression: operator precedence in overdue counting
+        // ═══════════════════════════════════════════════════
+
+        [TestMethod]
+        public void OtherOverdueFactor_DoesNotCountReturnedRentalsAsOverdue()
+        {
+            // A customer with a Returned rental that happened to have
+            // Status=Returned (not Overdue). Before the fix, the missing
+            // parentheses around the && caused ALL Overdue-status rentals
+            // to be counted regardless of Active status, inflating the
+            // "Other Overdue Rentals" factor.
+            _rentalRepo.Add(new Rental
+            {
+                CustomerId = 99, CustomerName = "Prec Test",
+                MovieId = 900, MovieName = "Old Movie",
+                RentalDate = DateTime.Today.AddDays(-30),
+                DueDate = DateTime.Today.AddDays(-20),
+                ReturnDate = DateTime.Today.AddDays(-18),
+                DailyRate = 2.99m, Status = RentalStatus.Returned
+            });
+            _rentalRepo.Add(new Rental
+            {
+                CustomerId = 99, CustomerName = "Prec Test",
+                MovieId = 901, MovieName = "Current Movie",
+                RentalDate = DateTime.Today.AddDays(-3),
+                DueDate = DateTime.Today.AddDays(4),
+                DailyRate = 2.99m, Status = RentalStatus.Active
+            });
+
+            var added = _rentalRepo.GetAll().Last();
+            var prediction = _service.PredictForRental(added.Id);
+
+            // The returned rental should NOT generate an "Other Overdue Rentals" factor
+            Assert.IsFalse(
+                prediction.Factors.Any(f => f.Name == "Other Overdue Rentals"),
+                "Returned rentals should not count as overdue in risk factors.");
+        }
     }
 }
