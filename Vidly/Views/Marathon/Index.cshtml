@@ -1,0 +1,208 @@
+@model Vidly.ViewModels.MarathonViewModel
+@{
+    ViewBag.Title = "Movie Marathon Planner";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>
+    <span class="glyphicon glyphicon-time"></span>
+    Movie Marathon Planner
+</h2>
+<p class="text-muted">Plan an epic movie marathon — select movies, set your schedule, and get a complete viewing timeline.</p>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<div class="panel panel-default">
+    <div class="panel-heading">
+        <h3 class="panel-title"><span class="glyphicon glyphicon-list"></span> Build Your Marathon</h3>
+    </div>
+    <div class="panel-body">
+        @using (Html.BeginForm("Plan", "Marathon", FormMethod.Post, new { @class = "form-horizontal" }))
+        {
+            @Html.AntiForgeryToken()
+
+            <div class="form-group">
+                <label class="col-sm-3 control-label">Select Movies</label>
+                <div class="col-sm-6">
+                    @foreach (var movie in Model.AvailableMovies)
+                    {
+                        var isChecked = Model.Request?.MovieIds != null && Model.Request.MovieIds.Contains(movie.Id);
+                        <div class="checkbox">
+                            <label>
+                                <input type="checkbox" name="MovieIds" value="@movie.Id"
+                                       @(isChecked ? "checked" : "") />
+                                <strong>@movie.Name</strong>
+                                @if (movie.Genre.HasValue)
+                                {
+                                    <span class="label label-info">@movie.Genre</span>
+                                }
+                                @if (movie.Rating.HasValue)
+                                {
+                                    <span class="text-warning">
+                                        @for (int i = 0; i < movie.Rating.Value; i++)
+                                        {
+                                            <span class="glyphicon glyphicon-star"></span>
+                                        }
+                                    </span>
+                                }
+                            </label>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="col-sm-3 control-label">Start Time</label>
+                <div class="col-sm-4">
+                    <input type="datetime-local" name="StartTime" class="form-control"
+                           value="@(Model.Request?.StartTime.ToString("yyyy-MM-ddTHH:mm") ?? DateTime.Today.AddHours(18).ToString("yyyy-MM-ddTHH:mm"))" />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="col-sm-3 control-label">Avg Runtime (min)</label>
+                <div class="col-sm-3">
+                    <input type="number" name="AvgRuntimeMinutes" class="form-control"
+                           value="@(Model.Request?.AvgRuntimeMinutes ?? 120)" min="30" max="300" />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="col-sm-3 control-label">Break Between Movies (min)</label>
+                <div class="col-sm-3">
+                    <input type="number" name="BreakMinutes" class="form-control"
+                           value="@(Model.Request?.BreakMinutes ?? 15)" min="0" max="60" />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="col-sm-3 control-label">Viewing Order</label>
+                <div class="col-sm-4">
+                    <select name="Order" class="form-control">
+                        <option value="1" @(Model.Request?.Order == Vidly.Models.MarathonOrder.Chronological ? "selected" : "")>Release Date (Oldest First)</option>
+                        <option value="2" @(Model.Request?.Order == Vidly.Models.MarathonOrder.ReverseChronological ? "selected" : "")>Release Date (Newest First)</option>
+                        <option value="3" @(Model.Request?.Order == Vidly.Models.MarathonOrder.RatingDescending ? "selected" : "")>Highest Rated First</option>
+                        <option value="4" @(Model.Request?.Order == Vidly.Models.MarathonOrder.GenreGrouped ? "selected" : "")>Genre Grouped</option>
+                        <option value="5" @(Model.Request?.Order == Vidly.Models.MarathonOrder.Random ? "selected" : "")>Random Shuffle</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="col-sm-offset-3 col-sm-6">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <span class="glyphicon glyphicon-play"></span> Plan My Marathon
+                    </button>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@if (Model.Plan != null && Model.Plan.MovieCount > 0)
+{
+    <div class="panel panel-success">
+        <div class="panel-heading">
+            <h3 class="panel-title">
+                <span class="glyphicon glyphicon-ok-circle"></span>
+                Your Marathon: @Model.Plan.MovieCount movie(s) &mdash;
+                @Model.Plan.TotalDuration.Hours h @Model.Plan.TotalDuration.Minutes min total
+            </h3>
+        </div>
+        <div class="panel-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="well well-sm text-center">
+                        <h4>@Model.Plan.TotalWatchTime.Hours h @Model.Plan.TotalWatchTime.Minutes min</h4>
+                        <small class="text-muted">Watch Time</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="well well-sm text-center">
+                        <h4>@Model.Plan.TotalBreakTime.TotalMinutes min</h4>
+                        <small class="text-muted">Break Time</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="well well-sm text-center">
+                        <h4>$@Model.Plan.EstimatedCost.ToString("F2")</h4>
+                        <small class="text-muted">Est. Rental Cost</small>
+                    </div>
+                </div>
+            </div>
+
+            @if (Model.Plan.SpansMidnight)
+            {
+                <div class="alert alert-warning">
+                    <span class="glyphicon glyphicon-alert"></span>
+                    <strong>Late night alert!</strong> Your marathon extends past midnight.
+                </div>
+            }
+
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Movie</th>
+                        <th>Genre</th>
+                        <th>Rating</th>
+                        <th>Start</th>
+                        <th>End</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var entry in Model.Plan.Entries)
+                    {
+                        <tr>
+                            <td>@entry.Position</td>
+                            <td><strong>@entry.Movie.Name</strong></td>
+                            <td>@(entry.Movie.Genre?.ToString() ?? "—")</td>
+                            <td>
+                                @if (entry.Movie.Rating.HasValue)
+                                {
+                                    @entry.Movie.Rating.Value<text>/5</text>
+                                }
+                            </td>
+                            <td>@entry.StartTime.ToString("h:mm tt")</td>
+                            <td>@entry.EndTime.ToString("h:mm tt")</td>
+                            <td>
+                                @if (entry.HasBreakAfter)
+                                {
+                                    <span class="label label-default">
+                                        <span class="glyphicon glyphicon-pause"></span>
+                                        Break until @entry.BreakEndTime.Value.ToString("h:mm tt")
+                                    </span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            @if (Model.Plan.GenreBreakdown.Any())
+            {
+                <h4>Genre Breakdown</h4>
+                <div class="row">
+                    @foreach (var g in Model.Plan.GenreBreakdown.OrderByDescending(x => x.Value))
+                    {
+                        <div class="col-xs-4 col-sm-3 col-md-2">
+                            <div class="well well-sm text-center">
+                                <strong>@g.Key</strong><br />
+                                <span class="badge">@g.Value</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (Model.Plan.AverageRating.HasValue)
+            {
+                <p class="text-muted">Average rating: <strong>@Model.Plan.AverageRating.Value / 5</strong></p>
+            }
+        </div>
+    </div>
+}
