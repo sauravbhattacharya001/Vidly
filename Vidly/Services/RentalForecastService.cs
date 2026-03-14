@@ -27,6 +27,7 @@ namespace Vidly.Services
                 ?? throw new ArgumentNullException(nameof(rentalRepository));
             _movieRepository = movieRepository
                 ?? throw new ArgumentNullException(nameof(movieRepository));
+            _clock = clock ?? new SystemClock();
         }
 
         // ── Day-of-Week Analysis ─────────────────────────────────────
