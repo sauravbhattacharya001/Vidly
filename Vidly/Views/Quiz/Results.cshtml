@@ -1,0 +1,124 @@
+@model Vidly.ViewModels.QuizViewModel
+@{
+    ViewBag.Title = "Quiz Results";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var session = Model.CompletedSession;
+    var stats = Model.CustomerStats;
+    int pct = session.Questions.Count > 0
+        ? (int)((double)session.CorrectCount / session.Questions.Count * 100) : 0;
+    string grade = pct >= 90 ? "A+" : pct >= 80 ? "A" : pct >= 70 ? "B"
+                 : pct >= 60 ? "C" : pct >= 50 ? "D" : "F";
+    string gradeColor = pct >= 80 ? "success" : pct >= 60 ? "warning" : "danger";
+}
+
+<div class="row">
+    <div class="col-md-8 col-md-offset-2">
+        <!-- Result Header -->
+        <div class="panel panel-@gradeColor" style="margin-top: 20px;">
+            <div class="panel-body text-center">
+                <h1 style="font-size: 72px; margin: 0;">@grade</h1>
+                <h3>@session.CorrectCount / @session.Questions.Count correct (@pct%)</h3>
+                <div style="margin: 15px 0;">
+                    <span class="label label-primary" style="font-size: 18px; padding: 8px 16px;">
+                        @session.TotalPoints points earned
+                    </span>
+                </div>
+                @if (session.LoyaltyPointsAwarded > 0)
+                {
+                    <p class="text-success" style="font-size: 16px;">
+                        <span class="glyphicon glyphicon-gift"></span>
+                        +@session.LoyaltyPointsAwarded loyalty points awarded!
+                        @if (session.CorrectCount == session.Questions.Count)
+                        {
+                            <span class="label label-warning">PERFECT SCORE BONUS!</span>
+                        }
+                    </p>
+                }
+            </div>
+        </div>
+
+        <!-- Answer Review -->
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title">
+                    <span class="glyphicon glyphicon-list-alt"></span> Answer Review
+                </h3>
+            </div>
+            <div class="panel-body">
+                @for (int i = 0; i < session.Questions.Count; i++)
+                {
+                    var q = session.Questions[i];
+                    var answer = session.Answers.FirstOrDefault(a => a.QuestionId == q.Id);
+                    bool correct = answer != null && answer.IsCorrect;
+                    <div class="media" style="padding: 8px 0; border-bottom: 1px solid #eee;">
+                        <div class="media-left">
+                            <span class="glyphicon glyphicon-@(correct ? "ok text-success" : "remove text-danger")"
+                                  style="font-size: 24px;"></span>
+                        </div>
+                        <div class="media-body">
+                            <strong>Q@(i + 1):</strong> @q.Text<br />
+                            @if (answer != null)
+                            {
+                                <small class="text-muted">
+                                    Your answer: <strong>@q.Options[answer.SelectedOptionIndex]</strong>
+                                    @if (!correct)
+                                    {
+                                        <span class="text-success"> | Correct: @q.Options[q.CorrectOptionIndex]</span>
+                                    }
+                                    @if (answer.PointsEarned > 0)
+                                    {
+                                        <span class="label label-success">+@answer.PointsEarned pts</span>
+                                    }
+                                </small>
+                            }
+                            else
+                            {
+                                <small class="text-muted">Not answered</small>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Customer Stats -->
+        @if (stats != null && stats.TotalQuizzes > 0)
+        {
+            <div class="panel panel-info">
+                <div class="panel-heading">
+                    <h3 class="panel-title"><span class="glyphicon glyphicon-stats"></span> Your Stats</h3>
+                </div>
+                <div class="panel-body">
+                    <div class="row">
+                        <div class="col-sm-3 text-center">
+                            <h2>@stats.TotalQuizzes</h2>
+                            <p class="text-muted">Quizzes</p>
+                        </div>
+                        <div class="col-sm-3 text-center">
+                            <h2>@((stats.OverallAccuracy * 100).ToString("F0"))%</h2>
+                            <p class="text-muted">Accuracy</p>
+                        </div>
+                        <div class="col-sm-3 text-center">
+                            <h2>@stats.TotalPointsEarned.ToString("N0")</h2>
+                            <p class="text-muted">Total Points</p>
+                        </div>
+                        <div class="col-sm-3 text-center">
+                            <h2>@stats.CurrentStreak &#128293;</h2>
+                            <p class="text-muted">Streak (Best: @stats.BestStreak)</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Actions -->
+        <div class="text-center" style="margin: 20px 0;">
+            <a href="@Url.Action("Index", "Quiz")" class="btn btn-primary btn-lg">
+                <span class="glyphicon glyphicon-repeat"></span> Play Again
+            </a>
+            <a href="@Url.Action("Leaderboard", "Quiz")" class="btn btn-default btn-lg">
+                <span class="glyphicon glyphicon-tower"></span> Leaderboard
+            </a>
+        </div>
+    </div>
+</div>

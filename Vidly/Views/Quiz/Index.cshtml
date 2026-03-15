@@ -1,0 +1,167 @@
+@model Vidly.ViewModels.QuizViewModel
+@{
+    ViewBag.Title = "Movie Quiz";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>
+    <span class="glyphicon glyphicon-question-sign"></span>
+    Movie Quiz
+</h2>
+<p class="text-muted">Test your movie knowledge! Earn loyalty points and compete on the leaderboard.</p>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<div class="row">
+    <!-- Start Quiz Panel -->
+    <div class="col-md-7">
+        <div class="panel panel-primary">
+            <div class="panel-heading">
+                <h3 class="panel-title"><span class="glyphicon glyphicon-play"></span> Start a Quiz</h3>
+            </div>
+            <div class="panel-body">
+                @using (Html.BeginForm("Start", "Quiz", FormMethod.Post))
+                {
+                    @Html.AntiForgeryToken()
+                    <div class="form-group">
+                        <label for="customerId">Player</label>
+                        <select name="customerId" id="customerId" class="form-control" required>
+                            <option value="">-- Select a customer --</option>
+                            @foreach (var c in Model.Customers)
+                            {
+                                <option value="@c.Id">@c.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-4">
+                            <div class="form-group">
+                                <label for="difficulty">Difficulty</label>
+                                <select name="difficulty" id="difficulty" class="form-control">
+                                    <option value="Easy">Easy (10 pts)</option>
+                                    <option value="Medium" selected>Medium (25 pts)</option>
+                                    <option value="Hard">Hard (50 pts)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-sm-4">
+                            <div class="form-group">
+                                <label for="category">Category</label>
+                                <select name="category" id="category" class="form-control">
+                                    <option value="MixedBag">Mixed Bag</option>
+                                    <option value="Genre">Genre</option>
+                                    <option value="ReleaseYear">Release Year</option>
+                                    <option value="Rating">Stock Count</option>
+                                    <option value="PriceRange">Popularity</option>
+                                    <option value="Availability">Availability</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-sm-4">
+                            <div class="form-group">
+                                <label for="questionCount">Questions</label>
+                                <select name="questionCount" id="questionCount" class="form-control">
+                                    <option value="5">5</option>
+                                    <option value="10" selected>10</option>
+                                    <option value="20">20</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-lg btn-block">
+                        <span class="glyphicon glyphicon-play-circle"></span> Start Quiz
+                    </button>
+                }
+            </div>
+        </div>
+
+        <!-- Daily Challenge -->
+        @if (Model.DailyChallenge != null)
+        {
+            <div class="panel panel-warning">
+                <div class="panel-heading">
+                    <h3 class="panel-title"><span class="glyphicon glyphicon-star"></span> Daily Challenge (2x Points!)</h3>
+                </div>
+                <div class="panel-body">
+                    <p class="lead">@Model.DailyChallenge.Question.Text</p>
+                    <p><span class="label label-warning">Worth @Model.DailyChallenge.Question.PointValue points</span></p>
+                </div>
+            </div>
+        }
+
+        <!-- Scoring Guide -->
+        <div class="panel panel-info">
+            <div class="panel-heading">
+                <h3 class="panel-title"><span class="glyphicon glyphicon-info-sign"></span> Scoring Guide</h3>
+            </div>
+            <div class="panel-body">
+                <div class="row">
+                    <div class="col-sm-4">
+                        <h4><span class="label label-success">Easy</span></h4>
+                        <p>10 pts per question<br />3 answer options<br />Best for beginners</p>
+                    </div>
+                    <div class="col-sm-4">
+                        <h4><span class="label label-warning">Medium</span></h4>
+                        <p>25 pts per question<br />4 answer options<br />Balanced challenge</p>
+                    </div>
+                    <div class="col-sm-4">
+                        <h4><span class="label label-danger">Hard</span></h4>
+                        <p>50 pts per question<br />4 answer options<br />No hints available</p>
+                    </div>
+                </div>
+                <hr />
+                <p><strong>Bonus:</strong> Answer in under 5 seconds for 1.5x points! Perfect score = 1.5x loyalty points!</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaderboard -->
+    <div class="col-md-5">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title"><span class="glyphicon glyphicon-tower"></span> Leaderboard</h3>
+            </div>
+            @if (Model.Leaderboard.Any())
+            {
+                <table class="table table-striped table-condensed">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Player</th>
+                            <th>Points</th>
+                            <th>Accuracy</th>
+                            <th>Streak</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var entry in Model.Leaderboard)
+                        {
+                            <tr class="@(entry.Rank <= 3 ? "warning" : "")">
+                                <td>
+                                    @if (entry.Rank == 1) { <span class="text-warning"><strong>&#127942;</strong></span> }
+                                    else if (entry.Rank == 2) { <span class="text-muted"><strong>&#129352;</strong></span> }
+                                    else if (entry.Rank == 3) { <span style="color: #cd7f32;"><strong>&#129353;</strong></span> }
+                                    else { @entry.Rank }
+                                </td>
+                                <td>Customer #@entry.CustomerId</td>
+                                <td><strong>@entry.TotalPoints.ToString("N0")</strong></td>
+                                <td>@((entry.AverageAccuracy * 100).ToString("F0"))%</td>
+                                <td>@entry.CurrentStreak &#128293;</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <div class="panel-body text-center text-muted">
+                    <p><span class="glyphicon glyphicon-education" style="font-size: 48px;"></span></p>
+                    <p>No quiz results yet. Be the first!</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
