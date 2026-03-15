@@ -52,6 +52,7 @@ namespace Vidly.Services
                 ?? throw new ArgumentNullException(nameof(tagRepository));
             _movieRepository = movieRepository
                 ?? throw new ArgumentNullException(nameof(movieRepository));
+            _clock = clock ?? new SystemClock();
         }
 
         // ── Tag CRUD ──────────────────────────────────────────
