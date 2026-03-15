@@ -9,6 +9,18 @@
             @Html.ActionLink("Vidly", "Index", "Home", new { area = "" }, new { @class = "navbar-brand" })
         </div>
         <div class="navbar-collapse collapse">
+            @using (Html.BeginForm("Index", "Search", FormMethod.Get, new { @class = "navbar-form navbar-left", role = "search" }))
+            {
+                <div class="input-group" style="width: 220px;">
+                    <input type="text" name="q" class="form-control" placeholder="Search everything..."
+                           value="@(ViewContext.HttpContext.Request.QueryString["q"] ?? "")" />
+                    <span class="input-group-btn">
+                        <button class="btn btn-default" type="submit">
+                            <span class="glyphicon glyphicon-search"></span>
+                        </button>
+                    </span>
+                </div>
+            }
             <ul class="nav navbar-nav">
                 <li>@Html.ActionLink("Home", "Index", "Home")</li>
                 <li>@Html.ActionLink("Movies", "Index", "Movies")</li>
