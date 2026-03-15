@@ -40,6 +40,7 @@ namespace Vidly.Services
                 ?? throw new ArgumentNullException(nameof(reviewRepo));
             _movieRepo = movieRepo
                 ?? throw new ArgumentNullException(nameof(movieRepo));
+            _clock = clock ?? SystemClock.Instance;
         }
 
         /// <summary>
