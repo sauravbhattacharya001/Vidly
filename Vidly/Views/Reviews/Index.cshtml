@@ -1,0 +1,267 @@
+@model Vidly.ViewModels.ReviewIndexViewModel
+@{
+    ViewBag.Title = "Reviews";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>
+    <span class="glyphicon glyphicon-star"></span> Movie Reviews
+</h2>
+
+@* Status message *@
+@if (!string.IsNullOrEmpty(Model.StatusMessage))
+{
+    <div class="alert @(Model.IsError ? "alert-danger" : "alert-success") alert-dismissible" role="alert">
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+        @Model.StatusMessage
+    </div>
+}
+
+<div class="row">
+    @* Left column: Summary stats + Top rated *@
+    <div class="col-md-4">
+        @if (Model.Summary != null)
+        {
+            <div class="panel panel-info">
+                <div class="panel-heading">
+                    <h3 class="panel-title"><span class="glyphicon glyphicon-stats"></span> Review Summary</h3>
+                </div>
+                <div class="panel-body">
+                    <dl class="dl-horizontal" style="margin-bottom: 0;">
+                        <dt>Total Reviews</dt>
+                        <dd><strong>@Model.Summary.TotalReviews</strong></dd>
+                        <dt>Average Rating</dt>
+                        <dd>
+                            @for (int i = 1; i <= 5; i++)
+                            {
+                                <span class="glyphicon @(i <= Math.Round(Model.Summary.AverageStars) ? "glyphicon-star" : "glyphicon-star-empty")" style="color: #f0ad4e;"></span>
+                            }
+                            <strong>@Model.Summary.AverageStars.ToString("F1")</strong>
+                        </dd>
+                        <dt>Movies Reviewed</dt>
+                        <dd><strong>@Model.Summary.ReviewedMovieCount</strong></dd>
+                        <dt>Active Reviewers</dt>
+                        <dd><strong>@Model.Summary.ReviewingCustomerCount</strong></dd>
+                    </dl>
+                </div>
+            </div>
+        }
+
+        @* Top Rated Movies *@
+        @if (Model.TopRated != null && Model.TopRated.Count > 0)
+        {
+            <div class="panel panel-success">
+                <div class="panel-heading">
+                    <h3 class="panel-title"><span class="glyphicon glyphicon-thumbs-up"></span> Top Rated</h3>
+                </div>
+                <ul class="list-group">
+                    @foreach (var movie in Model.TopRated)
+                    {
+                        <li class="list-group-item">
+                            <a href="@Url.Action("Movie", "Reviews", new { id = movie.MovieId })">
+                                <strong>@movie.MovieName</strong>
+                            </a>
+                            <span class="badge" style="background-color: #5cb85c;">
+                                <span class="glyphicon glyphicon-star" style="font-size: 10px;"></span>
+                                @movie.AverageStars.ToString("F1")
+                            </span>
+                            <br />
+                            <small class="text-muted">@movie.ReviewCount review@(movie.ReviewCount != 1 ? "s" : "")</small>
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
+
+        @* Write a review *@
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title"><span class="glyphicon glyphicon-pencil"></span> Write a Review</h3>
+            </div>
+            <div class="panel-body">
+                @using (Html.BeginForm("Create", "Reviews", FormMethod.Post))
+                {
+                    @Html.AntiForgeryToken()
+
+                    <div class="form-group">
+                        <label for="customerId">Customer</label>
+                        <select name="customerId" id="customerId" class="form-control" required>
+                            <option value="">-- Select --</option>
+                            @foreach (var c in Model.Customers)
+                            {
+                                <option value="@c.Id">@c.Name</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="movieId">Movie</label>
+                        <select name="movieId" id="movieId" class="form-control" required>
+                            <option value="">-- Select --</option>
+                            @foreach (var m in Model.Movies)
+                            {
+                                <option value="@m.Id">@m.Name</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Rating</label>
+                        <div id="star-rating" style="font-size: 24px; cursor: pointer; color: #ccc;">
+                            @for (int i = 1; i <= 5; i++)
+                            {
+                                <span class="star-btn glyphicon glyphicon-star" data-value="@i"
+                                      title="@i star@(i != 1 ? "s" : "")"></span>
+                            }
+                        </div>
+                        <input type="hidden" name="stars" id="stars-input" value="" required />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reviewText">Review <small class="text-muted">(optional)</small></label>
+                        <textarea name="reviewText" id="reviewText" class="form-control" rows="3"
+                                  maxlength="2000" placeholder="Share your thoughts..."></textarea>
+                        <small class="text-muted"><span id="char-count">0</span>/2000</small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block">
+                        <span class="glyphicon glyphicon-ok"></span> Submit Review
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* Right column: Search + Review list *@
+    <div class="col-md-8">
+        @* Search/filter *@
+        <div class="panel panel-default">
+            <div class="panel-body">
+                @using (Html.BeginForm("Index", "Reviews", FormMethod.Get, new { @class = "form-inline" }))
+                {
+                    <div class="form-group" style="margin-right: 10px;">
+                        <input type="text" name="search" class="form-control" placeholder="Search reviews..."
+                               value="@Model.SearchQuery" style="min-width: 200px;" />
+                    </div>
+                    <div class="form-group" style="margin-right: 10px;">
+                        <label for="minStars" style="margin-right: 5px;">Min stars:</label>
+                        <select name="minStars" id="minStars" class="form-control">
+                            <option value="">Any</option>
+                            @for (int i = 5; i >= 1; i--)
+                            {
+                                <option value="@i" @(Model.MinStars == i ? "selected" : "")>@i+</option>
+                            }
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-info">
+                        <span class="glyphicon glyphicon-search"></span> Filter
+                    </button>
+                    @if (!string.IsNullOrEmpty(Model.SearchQuery) || Model.MinStars.HasValue)
+                    {
+                        <a href="@Url.Action("Index", "Reviews")" class="btn btn-default" style="margin-left: 5px;">
+                            <span class="glyphicon glyphicon-remove"></span> Clear
+                        </a>
+                    }
+                }
+            </div>
+        </div>
+
+        @* Review cards *@
+        @if (Model.Reviews != null && Model.Reviews.Count > 0)
+        {
+            foreach (var review in Model.Reviews)
+            {
+                <div class="panel panel-default">
+                    <div class="panel-body">
+                        <div class="row">
+                            <div class="col-sm-8">
+                                <h4 style="margin-top: 0;">
+                                    <a href="@Url.Action("Movie", "Reviews", new { id = review.MovieId })">@review.MovieName</a>
+                                </h4>
+                                <div style="margin-bottom: 6px;">
+                                    @for (int i = 1; i <= 5; i++)
+                                    {
+                                        <span class="glyphicon @(i <= review.Stars ? "glyphicon-star" : "glyphicon-star-empty")"
+                                              style="color: #f0ad4e; font-size: 16px;"></span>
+                                    }
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(review.ReviewText))
+                                {
+                                    <p style="margin-bottom: 6px;">@review.ReviewText</p>
+                                }
+                                <small class="text-muted">
+                                    By <strong>@review.CustomerName</strong>
+                                    &middot; @review.CreatedDate.ToString("MMM d, yyyy")
+                                </small>
+                            </div>
+                            <div class="col-sm-4 text-right">
+                                @using (Html.BeginForm("Delete", "Reviews", new { id = review.Id }, FormMethod.Post, new { style = "display:inline" }))
+                                {
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-xs btn-danger"
+                                            onclick="return confirm('Delete this review?')">
+                                        <span class="glyphicon glyphicon-trash"></span> Delete
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="alert alert-info">
+                <span class="glyphicon glyphicon-info-sign"></span>
+                No reviews found. Be the first to write one!
+            </div>
+        }
+    </div>
+</div>
+
+@section scripts {
+    <script>
+        (function () {
+            var rating = 0;
+            var stars = document.querySelectorAll('#star-rating .star-btn');
+            var input = document.getElementById('stars-input');
+
+            function updateStars(val) {
+                rating = val;
+                input.value = val;
+                for (var i = 0; i < stars.length; i++) {
+                    stars[i].style.color = (i < val) ? '#f0ad4e' : '#ccc';
+                }
+            }
+
+            for (var i = 0; i < stars.length; i++) {
+                (function (star) {
+                    star.addEventListener('click', function () {
+                        updateStars(parseInt(this.getAttribute('data-value')));
+                    });
+                    star.addEventListener('mouseenter', function () {
+                        var val = parseInt(this.getAttribute('data-value'));
+                        for (var j = 0; j < stars.length; j++) {
+                            stars[j].style.color = (j < val) ? '#f0ad4e' : '#ccc';
+                        }
+                    });
+                })(stars[i]);
+            }
+
+            document.getElementById('star-rating').addEventListener('mouseleave', function () {
+                for (var j = 0; j < stars.length; j++) {
+                    stars[j].style.color = (j < rating) ? '#f0ad4e' : '#ccc';
+                }
+            });
+
+            // Char counter
+            var textarea = document.getElementById('reviewText');
+            var counter = document.getElementById('char-count');
+            textarea.addEventListener('input', function () {
+                counter.textContent = this.value.length;
+            });
+        })();
+    </script>
+}
