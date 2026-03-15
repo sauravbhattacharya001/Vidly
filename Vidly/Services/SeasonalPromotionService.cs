@@ -275,9 +275,13 @@ namespace Vidly.Services
                 totalDiscount += bestNonStackable.DiscountAmount;
             }
 
+            // Apply stackable promotions sequentially: each computes its
+            // discount on the remaining price after prior discounts, so
+            // two 50% stackable promos give 75% off (not 100%).
+            var remainingPrice = basePrice - totalDiscount;
             foreach (var promo in stackable)
             {
-                var discount = CalculateDiscountAmount(promo, basePrice);
+                var discount = CalculateDiscountAmount(promo, remainingPrice);
                 appliedList.Add(new AppliedPromotion
                 {
                     PromotionId = promo.Id,
@@ -287,6 +291,7 @@ namespace Vidly.Services
                     DiscountAmount = discount
                 });
                 totalDiscount += discount;
+                remainingPrice -= discount;
             }
 
             // Cap discount at original price
