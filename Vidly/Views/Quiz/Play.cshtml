@@ -1,0 +1,83 @@
+@model Vidly.ViewModels.QuizViewModel
+@{
+    ViewBag.Title = "Quiz - Question " + Model.CurrentQuestionIndex;
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="row">
+    <div class="col-md-8 col-md-offset-2">
+        <!-- Progress -->
+        <div class="progress" style="margin-top: 20px;">
+            @{
+                int pct = (int)((double)(Model.CurrentQuestionIndex - 1) / Model.TotalQuestions * 100);
+            }
+            <div class="progress-bar progress-bar-info" role="progressbar"
+                 style="width: @(pct)%; min-width: 2em;">
+                @(Model.CurrentQuestionIndex - 1)/@Model.TotalQuestions
+            </div>
+        </div>
+
+        <!-- Session Info -->
+        <div class="row" style="margin-bottom: 15px;">
+            <div class="col-xs-4">
+                <span class="label label-info">
+                    @Model.ActiveSession.Difficulty
+                </span>
+            </div>
+            <div class="col-xs-4 text-center">
+                <strong>Score: @Model.ActiveSession.TotalPoints pts</strong>
+            </div>
+            <div class="col-xs-4 text-right">
+                <span class="text-success">
+                    @Model.ActiveSession.CorrectCount correct
+                </span>
+            </div>
+        </div>
+
+        <!-- Question Card -->
+        <div class="panel panel-primary">
+            <div class="panel-heading">
+                <h3 class="panel-title">
+                    Question @Model.CurrentQuestionIndex of @Model.TotalQuestions
+                    <span class="pull-right badge">@Model.CurrentQuestion.PointValue pts</span>
+                </h3>
+            </div>
+            <div class="panel-body">
+                <h3 style="margin-top: 0;">@Model.CurrentQuestion.Text</h3>
+
+                @using (Html.BeginForm("Answer", "Quiz", FormMethod.Post))
+                {
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="sessionId" value="@Model.ActiveSession.Id" />
+                    <input type="hidden" name="questionId" value="@Model.CurrentQuestion.Id" />
+                    <input type="hidden" name="customerId" value="@Model.SelectedCustomerId" />
+
+                    <div class="list-group" style="margin-top: 20px;">
+                        @for (int i = 0; i < Model.CurrentQuestion.Options.Count; i++)
+                        {
+                            <button type="submit" name="selectedOption" value="@i"
+                                    class="list-group-item list-group-item-action"
+                                    style="cursor: pointer; font-size: 16px; padding: 15px 20px;">
+                                <span class="badge">@((char)('A' + i))</span>
+                                @Model.CurrentQuestion.Options[i]
+                            </button>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Hint (if available) -->
+        @if (!string.IsNullOrEmpty(Model.CurrentQuestion.Hint))
+        {
+            <div class="text-center">
+                <button class="btn btn-sm btn-default" onclick="document.getElementById('hint-box').style.display='block'; this.style.display='none';">
+                    <span class="glyphicon glyphicon-eye-open"></span> Show Hint (halves points)
+                </button>
+                <div id="hint-box" class="alert alert-info" style="display:none; margin-top: 10px;">
+                    <strong>Hint:</strong> @Model.CurrentQuestion.Hint
+                </div>
+            </div>
+        }
+    </div>
+</div>

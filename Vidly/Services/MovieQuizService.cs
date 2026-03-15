@@ -21,7 +21,6 @@ namespace Vidly.Services
         private int _nextQuestionId = 1;
         private readonly Random _rng;
 
-        private readonly IClock _clock;
         // ── Point values by difficulty ──────────────────────────
         private static readonly Dictionary<QuizDifficulty, int> BasePoints =
             new Dictionary<QuizDifficulty, int>

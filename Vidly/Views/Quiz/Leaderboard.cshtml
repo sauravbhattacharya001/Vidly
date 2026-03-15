@@ -1,0 +1,72 @@
+@model Vidly.ViewModels.QuizViewModel
+@{
+    ViewBag.Title = "Quiz Leaderboard";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>
+    <span class="glyphicon glyphicon-tower"></span>
+    Quiz Leaderboard
+</h2>
+<p class="text-muted">Top quiz champions ranked by total points earned.</p>
+
+<div class="row">
+    <div class="col-md-8 col-md-offset-2">
+        @if (Model.Leaderboard.Any())
+        {
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Player</th>
+                        <th>Total Points</th>
+                        <th>Quizzes</th>
+                        <th>Accuracy</th>
+                        <th>Current Streak</th>
+                        <th>Best Streak</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var entry in Model.Leaderboard)
+                    {
+                        <tr class="@(entry.Rank <= 3 ? "warning" : "")">
+                            <td>
+                                @if (entry.Rank == 1) { <span style="font-size: 24px;">&#127942;</span> }
+                                else if (entry.Rank == 2) { <span style="font-size: 24px;">&#129352;</span> }
+                                else if (entry.Rank == 3) { <span style="font-size: 24px;">&#129353;</span> }
+                                else { <strong>@entry.Rank</strong> }
+                            </td>
+                            <td><strong>Customer #@entry.CustomerId</strong></td>
+                            <td><span class="label label-primary">@entry.TotalPoints.ToString("N0")</span></td>
+                            <td>@entry.QuizzesCompleted</td>
+                            <td>
+                                @{
+                                    int accPct = (int)(entry.AverageAccuracy * 100);
+                                    string accLabel = accPct >= 80 ? "success" : accPct >= 50 ? "warning" : "danger";
+                                }
+                                <span class="label label-@accLabel">@accPct%</span>
+                            </td>
+                            <td>@entry.CurrentStreak &#128293;</td>
+                            <td>@entry.BestStreak</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <div class="text-center" style="padding: 40px;">
+                <span class="glyphicon glyphicon-education" style="font-size: 64px; color: #ccc;"></span>
+                <h3 class="text-muted">No quiz results yet</h3>
+                <p>Take a quiz to appear on the leaderboard!</p>
+                <a href="@Url.Action("Index", "Quiz")" class="btn btn-primary">Start a Quiz</a>
+            </div>
+        }
+
+        <div class="text-center">
+            <a href="@Url.Action("Index", "Quiz")" class="btn btn-default">
+                <span class="glyphicon glyphicon-arrow-left"></span> Back to Quiz
+            </a>
+        </div>
+    </div>
+</div>
