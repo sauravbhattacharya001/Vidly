@@ -41,6 +41,7 @@ namespace Vidly.Services
                 ?? throw new ArgumentNullException(nameof(customerRepository));
             _rentalRepository = rentalRepository
                 ?? throw new ArgumentNullException(nameof(rentalRepository));
+            _clock = clock ?? new SystemClock();
         }
 
         // ── Tier multipliers ─────────────────────────────────────────
