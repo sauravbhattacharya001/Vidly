@@ -31,6 +31,7 @@ namespace Vidly.Services
         {
             _staff = staff?.ToList()
                 ?? throw new ArgumentNullException(nameof(staff));
+            _clock = clock ?? SystemClock.Instance;
         }
 
         // ── Shift CRUD ──────────────────────────────────────

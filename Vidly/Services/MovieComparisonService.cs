@@ -36,6 +36,7 @@ namespace Vidly.Services
                 ?? throw new ArgumentNullException(nameof(reviewRepository));
             _rentalRepository = rentalRepository
                 ?? throw new ArgumentNullException(nameof(rentalRepository));
+            _clock = clock ?? SystemClock.Instance;
         }
 
         /// <summary>

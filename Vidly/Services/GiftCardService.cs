@@ -26,6 +26,7 @@ namespace Vidly.Services
         {
             _giftCardRepository = giftCardRepository
                 ?? throw new ArgumentNullException(nameof(giftCardRepository));
+            _clock = clock ?? SystemClock.Instance;
         }
 
         /// <summary>
