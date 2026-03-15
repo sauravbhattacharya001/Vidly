@@ -1,0 +1,176 @@
+@model Vidly.Models.GlobalSearchResults
+@{
+    ViewBag.Title = "Search Results";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>
+    <span class="glyphicon glyphicon-search"></span>
+    Search Results
+</h2>
+
+@if (string.IsNullOrWhiteSpace(Model.Query))
+{
+    <div class="alert alert-info">
+        <span class="glyphicon glyphicon-info-sign"></span>
+        Enter a search term in the navbar to find movies, customers, and rentals.
+    </div>
+}
+else
+{
+    <p class="text-muted">
+        Found <strong>@Model.TotalResults</strong> result@(Model.TotalResults != 1 ? "s" : "")
+        for &ldquo;<em>@Model.Query</em>&rdquo;
+    </p>
+
+    if (Model.TotalResults == 0)
+    {
+        <div class="alert alert-warning">
+            <span class="glyphicon glyphicon-exclamation-sign"></span>
+            No results found. Try a different search term.
+        </div>
+    }
+
+    @* === Movies === *@
+    if (Model.Movies.Count > 0)
+    {
+        <div class="panel panel-primary">
+            <div class="panel-heading">
+                <h3 class="panel-title">
+                    <span class="glyphicon glyphicon-film"></span>
+                    Movies (@Model.Movies.Count)
+                </h3>
+            </div>
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Genre</th>
+                        <th>Rating</th>
+                        <th>Release Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var movie in Model.Movies)
+                    {
+                        <tr>
+                            <td>@Html.ActionLink(movie.Name, "Details", "Movies", new { id = movie.Id }, null)</td>
+                            <td>
+                                @if (movie.Genre.HasValue)
+                                {
+                                    <span class="label label-info">@movie.Genre</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">&mdash;</span>
+                                }
+                            </td>
+                            <td>
+                                @if (movie.Rating.HasValue)
+                                {
+                                    for (int i = 1; i <= 5; i++)
+                                    {
+                                        if (i <= movie.Rating.Value)
+                                        {
+                                            <span class="glyphicon glyphicon-star text-warning"></span>
+                                        }
+                                        else
+                                        {
+                                            <span class="glyphicon glyphicon-star-empty text-muted"></span>
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="text-muted">&mdash;</span>
+                                }
+                            </td>
+                            <td>@(movie.ReleaseDate.HasValue ? movie.ReleaseDate.Value.ToString("MMM dd, yyyy") : "—")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @* === Customers === *@
+    if (Model.Customers.Count > 0)
+    {
+        <div class="panel panel-success">
+            <div class="panel-heading">
+                <h3 class="panel-title">
+                    <span class="glyphicon glyphicon-user"></span>
+                    Customers (@Model.Customers.Count)
+                </h3>
+            </div>
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Membership</th>
+                        <th>Member Since</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var customer in Model.Customers)
+                    {
+                        <tr>
+                            <td>@Html.ActionLink(customer.Name, "Details", "Customers", new { id = customer.Id }, null)</td>
+                            <td>@(customer.Email ?? "—")</td>
+                            <td><span class="label label-default">@customer.MembershipType</span></td>
+                            <td>@(customer.MemberSince.HasValue ? customer.MemberSince.Value.ToString("MMM dd, yyyy") : "—")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @* === Rentals === *@
+    if (Model.Rentals.Count > 0)
+    {
+        <div class="panel panel-warning">
+            <div class="panel-heading">
+                <h3 class="panel-title">
+                    <span class="glyphicon glyphicon-transfer"></span>
+                    Rentals (@Model.Rentals.Count)
+                </h3>
+            </div>
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Customer</th>
+                        <th>Movie</th>
+                        <th>Rented On</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var rental in Model.Rentals)
+                    {
+                        <tr class="@(rental.IsOverdue ? "danger" : "")">
+                            <td>@rental.CustomerName</td>
+                            <td>@rental.MovieName</td>
+                            <td>@rental.RentalDate.ToString("MMM dd, yyyy")</td>
+                            <td>
+                                @switch (rental.Status)
+                                {
+                                    case Vidly.Models.RentalStatus.Active:
+                                        <span class="label label-success">Active</span>
+                                        break;
+                                    case Vidly.Models.RentalStatus.Overdue:
+                                        <span class="label label-danger">Overdue</span>
+                                        break;
+                                    case Vidly.Models.RentalStatus.Returned:
+                                        <span class="label label-default">Returned</span>
+                                        break;
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+}
