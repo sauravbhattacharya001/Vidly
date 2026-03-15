@@ -26,6 +26,15 @@ namespace Vidly.Services
         /// <summary>Max open disputes per customer at once.</summary>
         public const int MaxOpenDisputesPerCustomer = 3;
 
+        /// <summary>Maximum length for dispute reason text.</summary>
+        public const int MaxReasonLength = 2000;
+
+        /// <summary>Maximum length for reviewer name.</summary>
+        public const int MaxReviewerNameLength = 100;
+
+        /// <summary>Maximum length for resolution notes.</summary>
+        public const int MaxNotesLength = 5000;
+
         /// <summary>Disputes older than this many days are auto-expired.</summary>
         public const int AutoExpireDays = 60;
 
@@ -88,9 +97,14 @@ namespace Vidly.Services
             if (disputedAmount > rental.LateFee + 50m) // late fee + reasonable margin for damage
                 return DisputeResult.Fail("Disputed amount exceeds the charges on this rental.");
 
-            // Validate reason
+            // Validate reason — enforce both minimum detail and maximum length.
+            // Without a length cap an attacker could submit a multi-megabyte
+            // reason string, exhausting memory and bloating storage/logs.
             if (string.IsNullOrWhiteSpace(reason) || reason.Trim().Length < 10)
                 return DisputeResult.Fail("Please provide a detailed reason (at least 10 characters).");
+            if (reason.Trim().Length > MaxReasonLength)
+                return DisputeResult.Fail(
+                    $"Reason cannot exceed {MaxReasonLength} characters.");
 
             // Check max open disputes
             var openDisputes = _disputeRepo.GetByCustomer(customerId)
@@ -153,6 +167,9 @@ namespace Vidly.Services
                 return DisputeResult.Fail("Only open disputes can be moved to review.");
             if (string.IsNullOrWhiteSpace(reviewerName))
                 return DisputeResult.Fail("Reviewer name is required.");
+            if (reviewerName.Trim().Length > MaxReviewerNameLength)
+                return DisputeResult.Fail(
+                    $"Reviewer name cannot exceed {MaxReviewerNameLength} characters.");
 
             dispute.Status = DisputeStatus.UnderReview;
             dispute.ResolvedBy = reviewerName.Trim();
@@ -171,6 +188,9 @@ namespace Vidly.Services
                 return DisputeResult.Fail("Dispute not found.");
             if (!dispute.IsOpen)
                 return DisputeResult.Fail("Dispute is already resolved.");
+
+            var lengthError = ValidateResolutionInputLengths(resolvedBy, notes);
+            if (lengthError != null) return lengthError;
 
             dispute.Status = DisputeStatus.Approved;
             dispute.RefundAmount = dispute.DisputedAmount;
@@ -198,6 +218,9 @@ namespace Vidly.Services
                 return DisputeResult.Fail(
                     "Refund amount must be between $0.01 and the disputed amount.");
 
+            var lengthError = ValidateResolutionInputLengths(resolvedBy, notes);
+            if (lengthError != null) return lengthError;
+
             dispute.Status = DisputeStatus.PartiallyApproved;
             dispute.RefundAmount = refundAmount;
             dispute.ResolvedDate = DateTime.Today;
@@ -222,6 +245,9 @@ namespace Vidly.Services
                 return DisputeResult.Fail("Dispute is already resolved.");
             if (string.IsNullOrWhiteSpace(notes))
                 return DisputeResult.Fail("Denial requires an explanation in notes.");
+
+            var lengthError = ValidateResolutionInputLengths(resolvedBy, notes);
+            if (lengthError != null) return lengthError;
 
             dispute.Status = DisputeStatus.Denied;
             dispute.RefundAmount = 0;
@@ -391,6 +417,25 @@ namespace Vidly.Services
                 TotalDisputed = disputes.Sum(d => d.DisputedAmount),
                 HasOpenDispute = disputes.Any(d => d.IsOpen)
             };
+        }
+
+        // ── Input Validation ─────────────────────────────────────────
+
+        /// <summary>
+        /// Validates length constraints on resolvedBy and notes strings shared
+        /// by Approve, PartiallyApprove, and Deny. Without these checks an
+        /// attacker (or a misbehaving client) could submit multi-megabyte
+        /// strings, exhausting server memory and bloating the database.
+        /// </summary>
+        private DisputeResult ValidateResolutionInputLengths(string resolvedBy, string notes)
+        {
+            if (resolvedBy != null && resolvedBy.Trim().Length > MaxReviewerNameLength)
+                return DisputeResult.Fail(
+                    $"Reviewer name cannot exceed {MaxReviewerNameLength} characters.");
+            if (notes != null && notes.Trim().Length > MaxNotesLength)
+                return DisputeResult.Fail(
+                    $"Notes cannot exceed {MaxNotesLength} characters.");
+            return null;
         }
 
         // ── Priority Calculation ────────────────────────────────────
