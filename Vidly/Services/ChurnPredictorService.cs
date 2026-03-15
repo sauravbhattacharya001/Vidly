@@ -52,6 +52,34 @@ namespace Vidly.Services
                 .OrderBy(r => r.RentalDate)
                 .ToList();
 
+            if (rentals.Count == 0)
+            {
+                return new ChurnProfile
+                {
+                    CustomerId = customer.Id,
+                    CustomerName = customer.Name,
+                    MembershipType = customer.MembershipType,
+                    RiskScore = 100,
+                    RiskLevel = ChurnRisk.Critical,
+                    DaysSinceLastRental = int.MaxValue,
+                    TotalRentals = 0,
+                    TotalSpend = 0,
+                    AvgDaysBetweenRentals = 0,
+                    FrequencyTrend = 0,
+                    LateReturnRate = 0,
+                    GenreDiversity = 0,
+                    Factors = new ChurnFactors
+                    {
+                        RecencyScore = 100,
+                        FrequencyDeclineScore = 50,
+                        EngagementScore = 80,
+                        LateReturnScore = 0,
+                        DiversityScore = 50
+                    },
+                    RetentionActions = new List<string> { "New customer — no rental history to analyze" }
+                };
+            }
+
             return BuildProfile(customer, rentals, asOfDate);
         }
 
@@ -329,16 +357,20 @@ namespace Vidly.Services
             return ChurnRisk.Critical;
         }
 
-        private double CalculateAverageGap(List<Rental> rentals)
+        private static List<double> ComputeRentalGaps(List<Rental> rentals)
         {
-            if (rentals.Count < 2) return 0;
-
+            if (rentals.Count < 2) return new List<double>();
             var dates = rentals.Select(r => r.RentalDate).OrderBy(d => d).ToList();
-            var gaps = new List<double>();
+            var gaps = new List<double>(dates.Count - 1);
             for (int i = 1; i < dates.Count; i++)
                 gaps.Add((dates[i] - dates[i - 1]).TotalDays);
+            return gaps;
+        }
 
-            return gaps.Average();
+        private double CalculateAverageGap(List<Rental> rentals)
+        {
+            var gaps = ComputeRentalGaps(rentals);
+            return gaps.Count > 0 ? gaps.Average() : 0;
         }
 
         /// <summary>
@@ -349,11 +381,7 @@ namespace Vidly.Services
         {
             if (rentals.Count < _config.MinRentalsForTrend) return 0;
 
-            var dates = rentals.Select(r => r.RentalDate).OrderBy(d => d).ToList();
-            var gaps = new List<double>();
-            for (int i = 1; i < dates.Count; i++)
-                gaps.Add((dates[i] - dates[i - 1]).TotalDays);
-
+            var gaps = ComputeRentalGaps(rentals);
             if (gaps.Count < 2) return 0;
 
             var mid = gaps.Count / 2;
