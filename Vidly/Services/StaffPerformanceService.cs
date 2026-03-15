@@ -53,6 +53,7 @@ namespace Vidly.Services
             _satisfactionWeight = satisfactionWeight / total;
             _upsellWeight = upsellWeight / total;
             _speedWeight = speedWeight / total;
+            _clock = clock ?? new SystemClock();
         }
 
         // ══════════════════════════════════════════════════════
