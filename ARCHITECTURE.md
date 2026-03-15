@@ -521,3 +521,11 @@ All repository `Get*()` methods return cloned objects to prevent callers from mu
 2. Add `[Authorize]` to controllers/actions
 3. Create `AccountController` with login/register
 4. Add `_LoginPartial.cshtml` to the layout
+
+---
+
+## Further Reading
+
+- [Models Reference](docs/MODELS.md) — complete data model documentation
+- [Controllers Reference](docs/CONTROLLERS.md) — all controller routes and actions
+- [Services Reference](docs/SERVICES.md) — all service classes and their APIs
