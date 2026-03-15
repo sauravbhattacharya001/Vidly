@@ -248,6 +248,8 @@
             <div class="section-label">Services</div>
             <a href="#services" onclick="showSection('services', this)">Service Catalog</a>
             <a href="#services-ref" onclick="showSection('services-ref', this)">API Reference</a>
+            <div class="section-label">Testing</div>
+            <a href="TESTING.md">Testing Guide</a>
         </nav>
     </aside>
 
@@ -266,7 +268,7 @@
                 <li><strong>Thread-Safe Data Store</strong> — Concurrent access via lock-based synchronization</li>
                 <li><strong>Repository Pattern</strong> — Decoupled data access with interface-based design</li>
                 <li><strong>Dependency Injection Ready</strong> — Constructor injection in controllers</li>
-                <li><strong>33 Business Services</strong> — Rental, pricing, loyalty, analytics, recommendations, and more</li>
+                <li><strong>53 business services</strong> — Rental, pricing, loyalty, analytics, recommendations, and more</li>
                 <li><strong>Comprehensive Test Suite</strong> — Models, controllers, services, and edge cases</li>
             </ul>
 
@@ -331,13 +333,13 @@ cd Vidly</code></pre>
 │   │   ├── MoviesController.cs     Movie CRUD + filtering
 │   │   ├── RentalsController.cs    Checkout, return, delete
 │   │   ├── DashboardController.cs  Analytics dashboard
-│   │   └── ... (10+ controllers)
+│   │   └── ... (24 controllers)
 │   ├── Models/
 │   │   ├── Movie.cs                Movie entity + validation
 │   │   ├── Customer.cs             Customer entity + validation
 │   │   ├── Rental.cs               Rental entity + status tracking
 │   │   └── ... (enums, view models)
-│   ├── Services/                   <span class="highlight">← 33 business services</span>
+│   ├── Services/                   <span class="highlight">← 53 business services</span>
 │   │   ├── PricingService.cs       Rate calculation + tier benefits
 │   │   ├── RentalReturnService.cs  Return workflow + late fees
 │   │   ├── DashboardService.cs     Single-pass analytics
@@ -511,8 +513,8 @@ dotnet test Vidly.Tests/Vidly.Tests.csproj --collect:"XPlat Code Coverage"</code
             <table>
                 <tr><th>Category</th><th>Coverage</th></tr>
                 <tr><td>Model &amp; ViewModel Tests</td><td>Validation, required fields, string length, defaults, composition</td></tr>
-                <tr><td>Controller Tests</td><td>All 10+ controllers: routing, authorization, error handling, edge cases</td></tr>
-                <tr><td>Service Tests</td><td>All 33 services: business logic, boundary conditions, error paths</td></tr>
+                <tr><td>Controller Tests</td><td>All 24 controllers: routing, authorization, error handling, edge cases</td></tr>
+                <tr><td>Service Tests</td><td>All 53 services: business logic, boundary conditions, error paths</td></tr>
                 <tr><td>Repository Tests</td><td>In-memory repositories: CRUD, thread safety, search, pagination</td></tr>
                 <tr><td>Security Tests</td><td>Export safety, rate limiting, anti-forgery, input validation</td></tr>
             </table>
@@ -564,7 +566,7 @@ dotnet test Vidly.Tests/Vidly.Tests.csproj --collect:"XPlat Code Coverage"</code
         <!-- Service Catalog -->
         <div id="services" class="section">
             <h2>Service Catalog</h2>
-            <p>Vidly includes <strong>33 business services</strong> organized into five domains.
+            <p>Vidly includes <strong>53 business services</strong> organized into five domains.
             All services use constructor injection with repository interfaces and follow
             in-memory, list-based storage patterns.</p>
 
