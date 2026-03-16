@@ -1,0 +1,79 @@
+@model Vidly.Models.MoodMatchResult
+@{
+    ViewBag.Title = Model.SelectedMood.DisplayName + " Movies";
+}
+
+<div style="border-left: 5px solid @Model.SelectedMood.ColorHex; padding-left: 15px; margin-bottom: 25px;">
+    <h2>
+        <span style="font-size: 40px; vertical-align: middle;">@Model.SelectedMood.Emoji</span>
+        @Model.SelectedMood.DisplayName
+    </h2>
+    <p class="lead" style="margin-bottom: 5px;">@Model.SelectedMood.Description</p>
+    <small class="text-muted">
+        Found @Model.Recommendations.Count match@(Model.Recommendations.Count != 1 ? "es" : "")
+        from @Model.TotalMoviesScanned movies scanned
+    </small>
+</div>
+
+@if (Model.Recommendations.Count == 0)
+{
+    <div class="alert alert-info">
+        <span class="glyphicon glyphicon-info-sign"></span>
+        No movies match this mood right now. Try adding more movies to the catalog!
+    </div>
+}
+else
+{
+    <div class="row">
+        @foreach (var rec in Model.Recommendations)
+        {
+            <div class="col-md-4 col-sm-6" style="margin-bottom: 20px;">
+                <div class="panel panel-default" style="border-top: 3px solid @Model.SelectedMood.ColorHex;">
+                    <div class="panel-body">
+                        <h4 style="margin-top: 0;">
+                            @Html.ActionLink(rec.Movie.Name, "Details", "Movies", new { id = rec.Movie.Id }, null)
+                        </h4>
+                        @if (rec.Movie.Genre.HasValue)
+                        {
+                            <span class="label label-default">@rec.Movie.Genre</span>
+                        }
+                        @if (rec.Movie.Rating.HasValue)
+                        {
+                            <span style="color: #f5a623; margin-left: 5px;">
+                                @for (int i = 0; i < rec.Movie.Rating.Value; i++)
+                                {
+                                    <span class="glyphicon glyphicon-star"></span>
+                                }
+                                @for (int i = rec.Movie.Rating.Value; i < 5; i++)
+                                {
+                                    <span class="glyphicon glyphicon-star-empty"></span>
+                                }
+                            </span>
+                        }
+                        @if (rec.Movie.IsNewRelease)
+                        {
+                            <span class="label label-success" style="margin-left: 5px;">New</span>
+                        }
+                        @if (rec.Movie.ReleaseDate.HasValue)
+                        {
+                            <p class="text-muted" style="margin-top: 8px; margin-bottom: 4px; font-size: 13px;">
+                                Released @rec.Movie.ReleaseDate.Value.ToString("MMM d, yyyy")
+                            </p>
+                        }
+                        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee;">
+                            <span class="text-muted" style="font-size: 12px;">
+                                <span class="glyphicon glyphicon-ok-circle" style="color: @Model.SelectedMood.ColorHex;"></span>
+                                @rec.MatchReason
+                                &nbsp;•&nbsp; Score: @rec.RelevanceScore
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<div style="margin-top: 20px;">
+    @Html.ActionLink("← Try a different mood", "Index", "Mood", null, new { @class = "btn btn-default" })
+</div>
