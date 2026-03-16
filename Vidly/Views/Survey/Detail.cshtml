@@ -1,0 +1,107 @@
+@model Vidly.ViewModels.SurveyDetailViewModel
+@{
+    ViewBag.Title = "Survey Detail";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>
+    <span class="glyphicon glyphicon-file"></span>
+    Survey #@Model.Survey.Id
+</h2>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="panel panel-primary">
+            <div class="panel-heading"><h3 class="panel-title">Overview</h3></div>
+            <table class="table">
+                <tr><th>Customer</th><td>@Model.CustomerName</td></tr>
+                <tr><th>Movie</th><td>@Model.MovieName</td></tr>
+                <tr><th>Submitted</th><td>@Model.Survey.SubmittedAt.ToString("MMMM d, yyyy h:mm tt")</td></tr>
+                <tr>
+                    <th>NPS Score</th>
+                    <td>
+                        @{
+                            var npsClass = Model.Survey.NpsCategory == Vidly.Models.NpsCategory.Promoter ? "success"
+                                : Model.Survey.NpsCategory == Vidly.Models.NpsCategory.Passive ? "warning" : "danger";
+                        }
+                        <span class="label label-@npsClass" style="font-size:1.2em;">@Model.Survey.NpsScore / 10</span>
+                        <small>(@Model.Survey.NpsCategory)</small>
+                    </td>
+                </tr>
+                <tr>
+                    <th>Overall Satisfaction</th>
+                    <td>
+                        @for (int i = 1; i <= 5; i++)
+                        {
+                            if (i <= Model.Survey.OverallSatisfaction)
+                            {
+                                <span class="glyphicon glyphicon-star text-warning" style="font-size:1.3em;"></span>
+                            }
+                            else
+                            {
+                                <span class="glyphicon glyphicon-star-empty" style="font-size:1.3em;"></span>
+                            }
+                        }
+                    </td>
+                </tr>
+                <tr>
+                    <th>Would Rent Again?</th>
+                    <td>
+                        @switch (Model.Survey.WouldRentAgain)
+                        {
+                            case Vidly.Models.RentAgainResponse.Yes:
+                                <span class="label label-success">Yes</span>
+                                break;
+                            case Vidly.Models.RentAgainResponse.Maybe:
+                                <span class="label label-warning">Maybe</span>
+                                break;
+                            case Vidly.Models.RentAgainResponse.No:
+                                <span class="label label-danger">No</span>
+                                break;
+                        }
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        @if (Model.Survey.CategoryRatings.Count > 0)
+        {
+            <div class="panel panel-default">
+                <div class="panel-heading"><h3 class="panel-title">Category Ratings</h3></div>
+                <div class="panel-body">
+                    @foreach (var cat in Model.Survey.CategoryRatings.OrderByDescending(c => c.Value))
+                    {
+                        var pct = (int)(cat.Value / 5.0 * 100);
+                        var barClass = pct >= 80 ? "progress-bar-success" : pct >= 60 ? "progress-bar-info" : pct >= 40 ? "progress-bar-warning" : "progress-bar-danger";
+                        <div style="margin-bottom:8px;">
+                            <strong>@cat.Key</strong>
+                            <div class="progress" style="margin-bottom:0;">
+                                <div class="progress-bar @barClass" style="width:@(pct)%; min-width:2em;">
+                                    @cat.Value / 5
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(Model.Survey.Comments))
+        {
+            <div class="panel panel-info">
+                <div class="panel-heading"><h3 class="panel-title">Comments</h3></div>
+                <div class="panel-body">
+                    <blockquote>
+                        <p>@Model.Survey.Comments</p>
+                    </blockquote>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<a href="@Url.Action("Index")" class="btn btn-default">
+    <span class="glyphicon glyphicon-arrow-left"></span> Back to Surveys
+</a>
