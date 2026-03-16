@@ -175,6 +175,22 @@ namespace Vidly.Repositories
             }
         }
 
+        public IReadOnlyList<Rental> GetByCustomer(int customerId)
+        {
+            lock (_lock)
+            {
+                var result = new List<Rental>();
+                foreach (var r in _rentals.Values)
+                {
+                    RefreshStatus(r);
+                    if (r.CustomerId == customerId)
+                        result.Add(Clone(r));
+                }
+                result.Sort((a, b) => b.RentalDate.CompareTo(a.RentalDate));
+                return result.AsReadOnly();
+            }
+        }
+
         public IReadOnlyList<Rental> GetActiveByCustomer(int customerId)
         {
             lock (_lock)

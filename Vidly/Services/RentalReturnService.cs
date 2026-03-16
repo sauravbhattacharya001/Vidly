@@ -449,15 +449,10 @@ namespace Vidly.Services
                 throw new InvalidOperationException(
                     $"Customer {customerId} not found.");
 
-            var allRentals = _rentalRepository.GetActiveByCustomer(customerId);
-            // GetActiveByCustomer only returns active; we need all.
-            // Use Search to find all rentals for this customer.
-            var returned = _rentalRepository
-                .Search(customer.Name, RentalStatus.Returned);
-            var active = _rentalRepository
-                .Search(customer.Name, RentalStatus.Active);
-            var overdue = _rentalRepository
-                .Search(customer.Name, RentalStatus.Overdue);
+            var allRentals = _rentalRepository.GetByCustomer(customerId);
+            var returned = allRentals.Where(r => r.Status == RentalStatus.Returned).ToList();
+            var active = allRentals.Where(r => r.Status == RentalStatus.Active).ToList();
+            var overdue = allRentals.Where(r => r.Status == RentalStatus.Overdue).ToList();
 
             var totalReturned = returned.Count;
             var onTimeReturns = returned.Count(r =>
