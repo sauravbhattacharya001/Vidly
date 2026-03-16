@@ -1,0 +1,174 @@
+@model Vidly.Services.CalendarMonth
+
+@{
+    ViewBag.Title = "Rental Calendar";
+    var customers = ViewBag.Customers as System.Collections.Generic.List<Vidly.Models.Customer>;
+}
+
+<h2><span class="glyphicon glyphicon-calendar"></span> Rental Calendar</h2>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<!-- Filters -->
+<div class="row" style="margin-bottom: 15px;">
+    <div class="col-md-4">
+        <form method="get" class="form-inline">
+            <input type="hidden" name="year" value="@Model.Year" />
+            <input type="hidden" name="month" value="@Model.Month" />
+            <label for="customerId">Filter by customer:</label>
+            <select name="customerId" id="customerId" class="form-control" onchange="this.form.submit()">
+                <option value="">All Customers</option>
+                @if (customers != null)
+                {
+                    foreach (var c in customers)
+                    {
+                        var selected = Model.CustomerId.HasValue && Model.CustomerId.Value == c.Id ? "selected" : "";
+                        <option value="@c.Id" @selected>@c.Name</option>
+                    }
+                }
+            </select>
+        </form>
+    </div>
+    <div class="col-md-4 text-center">
+        <a href="@Url.Action("Upcoming")" class="btn btn-info">
+            <span class="glyphicon glyphicon-time"></span> Upcoming Due Dates
+        </a>
+    </div>
+</div>
+
+<!-- Summary Stats -->
+<div class="row" style="margin-bottom: 15px;">
+    <div class="col-md-3">
+        <div class="panel panel-info">
+            <div class="panel-body text-center">
+                <h3 style="margin:0; color:#31708f;">@Model.TotalCheckouts</h3>
+                <small>📀 Checkouts</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="panel panel-warning">
+            <div class="panel-body text-center">
+                <h3 style="margin:0; color:#8a6d3b;">@Model.TotalDueDates</h3>
+                <small>📅 Due Dates</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="panel panel-success">
+            <div class="panel-body text-center">
+                <h3 style="margin:0; color:#3c763d;">@Model.TotalReturns</h3>
+                <small>✅ Returns</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="panel panel-danger">
+            <div class="panel-body text-center">
+                <h3 style="margin:0; color:#a94442;">@Model.TotalOverdue</h3>
+                <small>⚠️ Overdue</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Month Navigation -->
+<div class="row" style="margin-bottom: 10px;">
+    <div class="col-md-4 text-left">
+        <a href="@Url.Action("Index", new { year = Model.PreviousMonth.Year, month = Model.PreviousMonth.Month, customerId = Model.CustomerId })"
+           class="btn btn-default">
+            <span class="glyphicon glyphicon-chevron-left"></span> Previous
+        </a>
+    </div>
+    <div class="col-md-4 text-center">
+        <h3 style="margin: 5px 0;">@Model.MonthName</h3>
+    </div>
+    <div class="col-md-4 text-right">
+        <a href="@Url.Action("Index", new { year = Model.NextMonth.Year, month = Model.NextMonth.Month, customerId = Model.CustomerId })"
+           class="btn btn-default">
+            Next <span class="glyphicon glyphicon-chevron-right"></span>
+        </a>
+    </div>
+</div>
+
+<!-- Calendar Grid -->
+<style>
+    .cal-table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+    .cal-table th { background: #333; color: #fff; text-align: center; padding: 8px; font-size: 13px; }
+    .cal-table td { border: 1px solid #ddd; vertical-align: top; height: 100px; padding: 4px; font-size: 12px; }
+    .cal-table td.empty { background: #f9f9f9; }
+    .cal-table td.today { background: #fffde7; border: 2px solid #ffc107; }
+    .cal-table td.weekend { background: #f5f5f5; }
+    .cal-day-num { font-weight: bold; font-size: 14px; margin-bottom: 4px; }
+    .cal-event { padding: 2px 4px; margin: 1px 0; border-radius: 3px; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: default; }
+    .cal-event.checkout { background: #d9edf7; color: #31708f; border-left: 3px solid #31708f; }
+    .cal-event.due { background: #fcf8e3; color: #8a6d3b; border-left: 3px solid #8a6d3b; }
+    .cal-event.returned { background: #dff0d8; color: #3c763d; border-left: 3px solid #3c763d; }
+    .cal-event.overdue { background: #f2dede; color: #a94442; border-left: 3px solid #a94442; font-weight: bold; }
+</style>
+
+<table class="cal-table">
+    <thead>
+        <tr>
+            <th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th>
+        </tr>
+    </thead>
+    <tbody>
+        @{
+            var dayIndex = 0;
+            var totalCells = Model.FirstDayOfWeek + Model.Days.Count;
+            var rows = (int)Math.Ceiling(totalCells / 7.0);
+        }
+        @for (int row = 0; row < rows; row++)
+        {
+            <tr>
+                @for (int col = 0; col < 7; col++)
+                {
+                    var cellIndex = row * 7 + col;
+                    if (cellIndex < Model.FirstDayOfWeek || dayIndex >= Model.Days.Count)
+                    {
+                        <td class="empty"></td>
+                    }
+                    else
+                    {
+                        var day = Model.Days[dayIndex];
+                        var tdClass = day.IsToday ? "today" : (day.IsWeekend ? "weekend" : "");
+                        <td class="@tdClass">
+                            <div class="cal-day-num">@day.DayNumber</div>
+                            @foreach (var evt in day.Events.Take(4))
+                            {
+                                var evtClass = evt.Type == Vidly.Services.CalendarEventType.Checkout ? "checkout"
+                                    : evt.Type == Vidly.Services.CalendarEventType.Return ? "returned"
+                                    : evt.Type == Vidly.Services.CalendarEventType.Overdue ? "overdue"
+                                    : "due";
+                                <div class="cal-event @evtClass" title="@evt.CustomerName — @evt.Label">
+                                    @evt.Label
+                                </div>
+                            }
+                            @if (day.Events.Count > 4)
+                            {
+                                <div class="cal-event" style="background:#eee; color:#666; text-align:center;">
+                                    +@(day.Events.Count - 4) more
+                                </div>
+                            }
+                        </td>
+                        dayIndex++;
+                    }
+                }
+            </tr>
+        }
+    </tbody>
+</table>
+
+<!-- Legend -->
+<div class="row" style="margin-top: 15px;">
+    <div class="col-md-12">
+        <span class="cal-event checkout" style="display:inline-block;">📀 Checkout</span>&nbsp;
+        <span class="cal-event due" style="display:inline-block;">📅 Due Date</span>&nbsp;
+        <span class="cal-event returned" style="display:inline-block;">✅ Returned</span>&nbsp;
+        <span class="cal-event overdue" style="display:inline-block;">⚠️ Overdue</span>
+    </div>
+</div>
