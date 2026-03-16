@@ -1,0 +1,78 @@
+@model Vidly.ViewModels.TournamentViewModel
+@{
+    ViewBag.Title = "Tournament Records";
+}
+
+<h2><span class="glyphicon glyphicon-stats"></span> Tournament Records</h2>
+
+@if (Model.MovieRecords.Count == 0)
+{
+    <div class="alert alert-info">No completed tournaments yet. Start one to see records!</div>
+}
+else
+{
+    <div class="panel panel-default">
+        <div class="panel-heading"><strong>All-Time Movie Records</strong></div>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Movie</th>
+                    <th>Titles</th>
+                    <th>Entered</th>
+                    <th>Match W</th>
+                    <th>Match L</th>
+                    <th>Win Rate</th>
+                </tr>
+            </thead>
+            <tbody>
+                @{ int rank = 1; }
+                @foreach (var r in Model.MovieRecords)
+                {
+                    <tr>
+                        <td>@(rank++)</td>
+                        <td><strong>@r.MovieName</strong></td>
+                        <td>
+                            @for (int i = 0; i < r.TournamentsWon; i++) { <span>🏆</span> }
+                            @if (r.TournamentsWon == 0) { <span class="text-muted">—</span> }
+                        </td>
+                        <td>@r.TournamentsEntered</td>
+                        <td class="text-success">@r.MatchesWon</td>
+                        <td class="text-danger">@r.MatchesLost</td>
+                        <td>
+                            <div class="progress" style="margin-bottom:0; min-width:80px;">
+                                <div class="progress-bar progress-bar-success" style="width:@r.WinRate%;">
+                                    @r.WinRate%
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@if (Model.HallOfFame.Count > 0)
+{
+    <h3><span class="glyphicon glyphicon-star"></span> Hall of Fame</h3>
+    <table class="table table-bordered">
+        <thead><tr><th>Tournament</th><th>Champion</th><th>Size</th><th>By</th><th>Date</th></tr></thead>
+        <tbody>
+            @foreach (var r in Model.HallOfFame)
+            {
+                <tr>
+                    <td>@r.TournamentName</td>
+                    <td><strong>🏆 @r.ChampionName</strong></td>
+                    <td>@r.Size</td>
+                    <td>@r.CreatedBy</td>
+                    <td>@r.CompletedAt.ToString("MMM d, yyyy")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<a href="@Url.Action("Index")" class="btn btn-default">
+    <span class="glyphicon glyphicon-arrow-left"></span> Back to Tournaments
+</a>
