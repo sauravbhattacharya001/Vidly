@@ -1,0 +1,173 @@
+@model Vidly.Models.SurveyReport
+@{
+    ViewBag.Title = "Survey Report";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>
+    <span class="glyphicon glyphicon-signal"></span>
+    Survey Report
+</h2>
+<p class="text-muted">Comprehensive analysis of customer satisfaction data.</p>
+
+@if (Model.TotalResponses == 0)
+{
+    <div class="alert alert-info">No survey data available yet.</div>
+}
+else
+{
+    <!-- Summary Cards -->
+    <div class="row">
+        <div class="col-md-2">
+            <div class="well text-center">
+                <h4>@Model.TotalResponses</h4>
+                <small class="text-muted">Responses</small>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="well text-center">
+                <h4>@Model.ResponseRate%</h4>
+                <small class="text-muted">Response Rate</small>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="well text-center">
+                <h4 class="@(Model.NpsScore >= 0 ? "text-success" : "text-danger")">@Model.NpsScore</h4>
+                <small class="text-muted">NPS Score</small>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="well text-center">
+                <h4>@Model.AverageSatisfaction</h4>
+                <small class="text-muted">Avg Satisfaction</small>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="well text-center">
+                <h4>@Model.WouldRentAgainPercent%</h4>
+                <small class="text-muted">Rent Again</small>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="well text-center">
+                <h4>@Model.OverallGrade</h4>
+                <small class="text-muted">Grade</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- NPS Breakdown -->
+    <div class="panel panel-default">
+        <div class="panel-heading"><h3 class="panel-title">NPS Breakdown</h3></div>
+        <div class="panel-body">
+            @{
+                var total = Model.Promoters + Model.Passives + Model.Detractors;
+                var promPct = total > 0 ? (int)((double)Model.Promoters / total * 100) : 0;
+                var passPct = total > 0 ? (int)((double)Model.Passives / total * 100) : 0;
+                var detPct = total > 0 ? 100 - promPct - passPct : 0;
+            }
+            <div class="progress" style="height:30px;">
+                <div class="progress-bar progress-bar-success" style="width:@(promPct)%; line-height:30px;">
+                    Promoters @Model.Promoters (@(promPct)%)
+                </div>
+                <div class="progress-bar progress-bar-warning" style="width:@(passPct)%; line-height:30px;">
+                    Passives @Model.Passives (@(passPct)%)
+                </div>
+                <div class="progress-bar progress-bar-danger" style="width:@(detPct)%; line-height:30px;">
+                    Detractors @Model.Detractors (@(detPct)%)
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Averages -->
+    @if (Model.CategoryAverages.Count > 0)
+    {
+        <div class="panel panel-default">
+            <div class="panel-heading"><h3 class="panel-title">Category Performance</h3></div>
+            <table class="table table-striped">
+                <thead>
+                    <tr><th>Category</th><th>Average</th><th>Rating</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var cat in Model.CategoryAverages.OrderByDescending(c => c.Value))
+                    {
+                        var pct = (int)(cat.Value / 5.0 * 100);
+                        var barClass = pct >= 80 ? "progress-bar-success" : pct >= 60 ? "progress-bar-info" : pct >= 40 ? "progress-bar-warning" : "progress-bar-danger";
+                        <tr>
+                            <td>
+                                <strong>@cat.Key</strong>
+                                @if (Model.StrongestCategory.HasValue && cat.Key == Model.StrongestCategory.Value)
+                                {
+                                    <span class="label label-success">Strongest</span>
+                                }
+                                @if (Model.WeakestCategory.HasValue && cat.Key == Model.WeakestCategory.Value)
+                                {
+                                    <span class="label label-danger">Weakest</span>
+                                }
+                            </td>
+                            <td>@cat.Value / 5</td>
+                            <td style="width:50%;">
+                                <div class="progress" style="margin:0;">
+                                    <div class="progress-bar @barClass" style="width:@(pct)%;">@cat.Value</div>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    <!-- Insights -->
+    @if (Model.KeyInsights.Count > 0)
+    {
+        <div class="panel panel-warning">
+            <div class="panel-heading"><h3 class="panel-title">Key Insights</h3></div>
+            <ul class="list-group">
+                @foreach (var insight in Model.KeyInsights)
+                {
+                    <li class="list-group-item">
+                        <span class="glyphicon glyphicon-info-sign text-info"></span>
+                        @insight
+                    </li>
+                }
+            </ul>
+        </div>
+    }
+
+    <!-- Trends -->
+    @if (Model.MonthlyTrends.Count > 0)
+    {
+        <div class="panel panel-default">
+            <div class="panel-heading"><h3 class="panel-title">Monthly Trends</h3></div>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Period</th>
+                        <th>Responses</th>
+                        <th>Avg NPS</th>
+                        <th>NPS Score</th>
+                        <th>Satisfaction</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var t in Model.MonthlyTrends)
+                    {
+                        <tr>
+                            <td>@t.Period</td>
+                            <td>@t.ResponseCount</td>
+                            <td>@t.AverageNps</td>
+                            <td class="@(t.NpsScore >= 0 ? "text-success" : "text-danger")">@t.NpsScore</td>
+                            <td>@t.AverageSatisfaction / 5</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+}
+
+<a href="@Url.Action("Index")" class="btn btn-default">
+    <span class="glyphicon glyphicon-arrow-left"></span> Back to Surveys
+</a>

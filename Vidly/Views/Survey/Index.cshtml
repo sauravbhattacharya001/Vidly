@@ -1,0 +1,503 @@
+@model Vidly.ViewModels.SurveyViewModel
+@{
+    ViewBag.Title = "Customer Surveys";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>
+    <span class="glyphicon glyphicon-stats"></span>
+    Customer Surveys
+</h2>
+<p class="text-muted">Post-rental satisfaction surveys — NPS scores, category ratings, and actionable insights.</p>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<!-- Report Summary -->
+@if (Model.Report != null && Model.Report.TotalResponses > 0)
+{
+    <div class="row">
+        <div class="col-md-3">
+            <div class="panel panel-primary">
+                <div class="panel-heading"><h3 class="panel-title">NPS Score</h3></div>
+                <div class="panel-body text-center">
+                    <h1 style="margin:0;">
+                        @if (Model.Report.NpsScore >= 50)
+                        {
+                            <span class="text-success">@Model.Report.NpsScore</span>
+                        }
+                        else if (Model.Report.NpsScore >= 0)
+                        {
+                            <span class="text-warning">@Model.Report.NpsScore</span>
+                        }
+                        else
+                        {
+                            <span class="text-danger">@Model.Report.NpsScore</span>
+                        }
+                    </h1>
+                    <p class="text-muted" style="margin:0;">Grade: <strong>@Model.Report.OverallGrade</strong></p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="panel panel-info">
+                <div class="panel-heading"><h3 class="panel-title">Responses</h3></div>
+                <div class="panel-body text-center">
+                    <h1 style="margin:0;">@Model.Report.TotalResponses</h1>
+                    <p class="text-muted" style="margin:0;">Response rate: @Model.Report.ResponseRate%</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="panel panel-success">
+                <div class="panel-heading"><h3 class="panel-title">Satisfaction</h3></div>
+                <div class="panel-body text-center">
+                    <h1 style="margin:0;">@Model.Report.AverageSatisfaction / 5</h1>
+                    <p class="text-muted" style="margin:0;">
+                        @for (int i = 1; i <= 5; i++)
+                        {
+                            if (i <= (int)Model.Report.AverageSatisfaction)
+                            {
+                                <span class="glyphicon glyphicon-star text-warning"></span>
+                            }
+                            else
+                            {
+                                <span class="glyphicon glyphicon-star-empty"></span>
+                            }
+                        }
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="panel panel-default">
+                <div class="panel-heading"><h3 class="panel-title">Would Rent Again</h3></div>
+                <div class="panel-body text-center">
+                    <h1 style="margin:0;">@Model.Report.WouldRentAgainPercent%</h1>
+                    <p class="text-muted" style="margin:0;">
+                        <span class="label label-success">@Model.Report.Promoters promoters</span>
+                        <span class="label label-warning">@Model.Report.Passives passive</span>
+                        <span class="label label-danger">@Model.Report.Detractors detractors</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Key Insights -->
+    @if (Model.Report.KeyInsights.Count > 0)
+    {
+        <div class="panel panel-warning">
+            <div class="panel-heading">
+                <h3 class="panel-title"><span class="glyphicon glyphicon-lightbulb"></span> Key Insights</h3>
+            </div>
+            <div class="panel-body">
+                <ul>
+                    @foreach (var insight in Model.Report.KeyInsights)
+                    {
+                        <li>@insight</li>
+                    }
+                </ul>
+            </div>
+        </div>
+    }
+
+    <!-- Category Ratings -->
+    @if (Model.Report.CategoryAverages.Count > 0)
+    {
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title"><span class="glyphicon glyphicon-th-list"></span> Category Ratings</h3>
+            </div>
+            <div class="panel-body">
+                @foreach (var cat in Model.Report.CategoryAverages.OrderByDescending(c => c.Value))
+                {
+                    var pct = (int)(cat.Value / 5.0 * 100);
+                    var barClass = pct >= 80 ? "progress-bar-success" : pct >= 60 ? "progress-bar-info" : pct >= 40 ? "progress-bar-warning" : "progress-bar-danger";
+                    <div class="row" style="margin-bottom:5px;">
+                        <div class="col-md-3 text-right">
+                            <strong>@cat.Key</strong>
+                            @if (Model.Report.StrongestCategory.HasValue && cat.Key == Model.Report.StrongestCategory.Value)
+                            {
+                                <span class="label label-success">Best</span>
+                            }
+                            @if (Model.Report.WeakestCategory.HasValue && cat.Key == Model.Report.WeakestCategory.Value)
+                            {
+                                <span class="label label-danger">Needs Work</span>
+                            }
+                        </div>
+                        <div class="col-md-7">
+                            <div class="progress" style="margin-bottom:0;">
+                                <div class="progress-bar @barClass" style="width:@(pct)%;">
+                                    @cat.Value / 5
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <!-- Monthly Trends -->
+    @if (Model.Report.MonthlyTrends.Count > 0)
+    {
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title"><span class="glyphicon glyphicon-signal"></span> Monthly Trends</h3>
+            </div>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Period</th>
+                        <th>Responses</th>
+                        <th>Avg NPS</th>
+                        <th>NPS Score</th>
+                        <th>Avg Satisfaction</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var trend in Model.Report.MonthlyTrends)
+                    {
+                        <tr>
+                            <td>@trend.Period</td>
+                            <td>@trend.ResponseCount</td>
+                            <td>@trend.AverageNps</td>
+                            <td>
+                                @if (trend.NpsScore >= 0)
+                                {
+                                    <span class="text-success">@trend.NpsScore</span>
+                                }
+                                else
+                                {
+                                    <span class="text-danger">@trend.NpsScore</span>
+                                }
+                            </td>
+                            <td>@trend.AverageSatisfaction / 5</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+}
+else
+{
+    <div class="alert alert-info">
+        <span class="glyphicon glyphicon-info-sign"></span>
+        No survey data yet. Submit a survey below to get started!
+    </div>
+}
+
+<div class="row">
+    <!-- Submit Survey -->
+    <div class="col-md-6">
+        <div class="panel panel-primary">
+            <div class="panel-heading">
+                <h3 class="panel-title"><span class="glyphicon glyphicon-pencil"></span> Submit a Survey</h3>
+            </div>
+            <div class="panel-body">
+                @using (Html.BeginForm("Submit", "Survey", FormMethod.Post))
+                {
+                    @Html.AntiForgeryToken()
+
+                    <div class="form-group">
+                        <label for="customerId">Customer</label>
+                        <select name="customerId" id="customerId" class="form-control" required>
+                            <option value="">-- Select --</option>
+                            @foreach (var c in Model.Customers)
+                            {
+                                <option value="@c.Id">@c.Name</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="rentalId">Rental</label>
+                        <select name="rentalId" id="rentalId" class="form-control" required>
+                            <option value="">-- Select a completed rental --</option>
+                            @foreach (var r in Model.CompletedRentals)
+                            {
+                                <option value="@r.Id">
+                                    #@r.Id — @(r.MovieName ?? "Movie") (returned @(r.ReturnDate?.ToString("MMM d")))
+                                </option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>How likely to recommend us? (NPS: 0-10)</label>
+                        <input type="range" name="npsScore" min="0" max="10" value="7"
+                               class="form-control" oninput="document.getElementById('npsVal').textContent=this.value" />
+                        <span id="npsVal" class="badge">7</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Overall Satisfaction (1-5)</label>
+                        <select name="overallSatisfaction" class="form-control" required>
+                            <option value="5">★★★★★ Excellent</option>
+                            <option value="4" selected>★★★★☆ Good</option>
+                            <option value="3">★★★☆☆ Average</option>
+                            <option value="2">★★☆☆☆ Poor</option>
+                            <option value="1">★☆☆☆☆ Terrible</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Would you rent again?</label>
+                        <select name="wouldRentAgain" class="form-control">
+                            <option value="1">Yes</option>
+                            <option value="2">Maybe</option>
+                            <option value="3">No</option>
+                        </select>
+                    </div>
+
+                    <hr />
+                    <p class="text-muted"><strong>Category Ratings</strong> (optional, 1-5)</p>
+                    <div class="row">
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label>Movie Selection</label>
+                                <select name="movieSelection" class="form-control">
+                                    <option value="">-- Skip --</option>
+                                    <option value="5">5 — Excellent</option>
+                                    <option value="4">4 — Good</option>
+                                    <option value="3">3 — Average</option>
+                                    <option value="2">2 — Poor</option>
+                                    <option value="1">1 — Terrible</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label>Pricing</label>
+                                <select name="pricing" class="form-control">
+                                    <option value="">-- Skip --</option>
+                                    <option value="5">5 — Excellent</option>
+                                    <option value="4">4 — Good</option>
+                                    <option value="3">3 — Average</option>
+                                    <option value="2">2 — Poor</option>
+                                    <option value="1">1 — Terrible</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label>Staff Friendliness</label>
+                                <select name="staffFriendliness" class="form-control">
+                                    <option value="">-- Skip --</option>
+                                    <option value="5">5 — Excellent</option>
+                                    <option value="4">4 — Good</option>
+                                    <option value="3">3 — Average</option>
+                                    <option value="2">2 — Poor</option>
+                                    <option value="1">1 — Terrible</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label>Checkout Speed</label>
+                                <select name="checkoutSpeed" class="form-control">
+                                    <option value="">-- Skip --</option>
+                                    <option value="5">5 — Excellent</option>
+                                    <option value="4">4 — Good</option>
+                                    <option value="3">3 — Average</option>
+                                    <option value="2">2 — Poor</option>
+                                    <option value="1">1 — Terrible</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label>Disc Quality</label>
+                                <select name="discQuality" class="form-control">
+                                    <option value="">-- Skip --</option>
+                                    <option value="5">5 — Excellent</option>
+                                    <option value="4">4 — Good</option>
+                                    <option value="3">3 — Average</option>
+                                    <option value="2">2 — Poor</option>
+                                    <option value="1">1 — Terrible</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label>Online Experience</label>
+                                <select name="onlineExperience" class="form-control">
+                                    <option value="">-- Skip --</option>
+                                    <option value="5">5 — Excellent</option>
+                                    <option value="4">4 — Good</option>
+                                    <option value="3">3 — Average</option>
+                                    <option value="2">2 — Poor</option>
+                                    <option value="1">1 — Terrible</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="comments">Comments (optional)</label>
+                        <textarea name="comments" id="comments" class="form-control" rows="3"
+                                  maxlength="2000" placeholder="Tell us about your experience..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <span class="glyphicon glyphicon-send"></span> Submit Survey
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- At-Risk Customers + Improvement Opportunities -->
+    <div class="col-md-6">
+        @if (Model.AtRiskCustomers.Count > 0)
+        {
+            <div class="panel panel-danger">
+                <div class="panel-heading">
+                    <h3 class="panel-title">
+                        <span class="glyphicon glyphicon-warning-sign"></span>
+                        At-Risk Customers (@Model.AtRiskCustomers.Count)
+                    </h3>
+                </div>
+                <table class="table table-condensed">
+                    <thead>
+                        <tr>
+                            <th>Customer</th>
+                            <th>NPS</th>
+                            <th>Risk</th>
+                            <th>Issues</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in Model.AtRiskCustomers.Take(10))
+                        {
+                            var riskLabel = c.RiskLevel >= 7 ? "label-danger" : c.RiskLevel >= 4 ? "label-warning" : "label-info";
+                            <tr>
+                                <td>@c.CustomerName</td>
+                                <td>@c.LatestNpsScore</td>
+                                <td><span class="label @riskLabel">@c.RiskLevel</span></td>
+                                <td>
+                                    @if (c.WeakestCategories.Count > 0)
+                                    {
+                                        @string.Join(", ", c.WeakestCategories)
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        @if (Model.Opportunities.Count > 0)
+        {
+            <div class="panel panel-info">
+                <div class="panel-heading">
+                    <h3 class="panel-title">
+                        <span class="glyphicon glyphicon-wrench"></span>
+                        Improvement Opportunities
+                    </h3>
+                </div>
+                <div class="list-group">
+                    @foreach (var opp in Model.Opportunities)
+                    {
+                        var prioClass = opp.Priority == "Critical" ? "list-group-item-danger"
+                            : opp.Priority == "High" ? "list-group-item-warning"
+                            : "list-group-item-info";
+                        <div class="list-group-item @prioClass">
+                            <h4 class="list-group-item-heading">
+                                @opp.Category
+                                <span class="badge">@opp.AverageRating / 5</span>
+                                <span class="label label-default pull-right">@opp.Priority</span>
+                            </h4>
+                            <p class="list-group-item-text">@opp.Suggestion</p>
+                            <small class="text-muted">
+                                Impact score: @opp.ImpactScore |
+                                @opp.LowRatingCount low ratings out of @opp.TotalRatings
+                            </small>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Recent Surveys -->
+@if (Model.RecentSurveys.Count > 0)
+{
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <h3 class="panel-title">
+                <span class="glyphicon glyphicon-list"></span>
+                Recent Surveys
+            </h3>
+        </div>
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Date</th>
+                    <th>NPS</th>
+                    <th>Satisfaction</th>
+                    <th>Rent Again?</th>
+                    <th>Comments</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var s in Model.RecentSurveys)
+                {
+                    var npsClass = s.NpsCategory == Vidly.Models.NpsCategory.Promoter ? "success"
+                        : s.NpsCategory == Vidly.Models.NpsCategory.Passive ? "warning" : "danger";
+                    <tr class="@npsClass">
+                        <td>@s.Id</td>
+                        <td>@s.SubmittedAt.ToString("MMM d, yyyy")</td>
+                        <td>
+                            <span class="label label-@npsClass">@s.NpsScore</span>
+                            <small>@s.NpsCategory</small>
+                        </td>
+                        <td>
+                            @for (int i = 1; i <= 5; i++)
+                            {
+                                if (i <= s.OverallSatisfaction)
+                                {
+                                    <span class="glyphicon glyphicon-star text-warning"></span>
+                                }
+                                else
+                                {
+                                    <span class="glyphicon glyphicon-star-empty"></span>
+                                }
+                            }
+                        </td>
+                        <td>@s.WouldRentAgain</td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(s.Comments))
+                            {
+                                <em>"@(s.Comments.Length > 50 ? s.Comments.Substring(0, 50) + "…" : s.Comments)"</em>
+                            }
+                        </td>
+                        <td>
+                            @Html.ActionLink("Detail", "Detail", new { id = s.Id }, new { @class = "btn btn-xs btn-default" })
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
