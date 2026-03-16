@@ -238,10 +238,9 @@ namespace Vidly.Services
         /// </summary>
         public IReadOnlyList<ExtensionRecord> GetCustomerExtensions(int customerId)
         {
-            // Use GetAll and filter since IRentalRepository doesn't have GetByCustomer
-            var allRentals = _rentalRepo.GetAll();
+            var customerRentals = _rentalRepo.GetByCustomer(customerId);
             var customerRentalIds = new HashSet<int>(
-                allRentals.Where(r => r.CustomerId == customerId).Select(r => r.Id));
+                customerRentals.Select(r => r.Id));
 
             var result = new List<ExtensionRecord>();
             foreach (var kvp in _extensionHistory)
