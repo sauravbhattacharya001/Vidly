@@ -631,6 +631,22 @@ namespace Vidly.Tests
         }
 
         [TestMethod]
+        public void CreateOscarSeason_LeapYear_EndDateIsFeb29()
+        {
+            var promo = _service.CreateOscarSeason(2028); // 2028 is a leap year
+
+            Assert.AreEqual(new DateTime(2028, 2, 29), promo.EndDate);
+        }
+
+        [TestMethod]
+        public void CreateOscarSeason_NonLeapYear_EndDateIsFeb28()
+        {
+            var promo = _service.CreateOscarSeason(2027); // 2027 is not a leap year
+
+            Assert.AreEqual(new DateTime(2027, 2, 28), promo.EndDate);
+        }
+
+        [TestMethod]
         public void CreateValentinesSpecial_CreatesCorrectly()
         {
             var promo = _service.CreateValentinesSpecial(2026);
