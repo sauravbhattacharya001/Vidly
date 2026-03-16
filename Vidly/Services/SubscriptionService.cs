@@ -220,8 +220,12 @@ namespace Vidly.Services
             if (sub.Status != SubscriptionStatus.Paused)
                 throw new InvalidOperationException("Subscription is not paused.");
 
-            // Calculate how many days were paused and extend the period
-            var pauseDays = (int)(_clock.Now - sub.PausedDate.Value).TotalDays;
+            // Calculate how many days were paused and extend the period.
+            // Use Ceiling to avoid truncating partial days — a customer paused
+            // for 23 hours should get 1 day of extension, not 0 (the old (int)
+            // cast truncated fractional days, silently shortening billing periods).
+            var pauseDays = (int)Math.Ceiling((_clock.Now - sub.PausedDate.Value).TotalDays);
+            if (pauseDays < 0) pauseDays = 0;
             if (pauseDays > MaxPauseDays)
                 pauseDays = MaxPauseDays;
 
@@ -345,6 +349,13 @@ namespace Vidly.Services
                 {
                     // Renew
                     var plan = GetPlan(sub.PlanType);
+
+                    // Reset yearly pause counter when crossing a year boundary.
+                    // Without this, long-term subscribers permanently exhaust their
+                    // pause allowance after the first year.
+                    if (sub.CurrentPeriodStart.Year < now.Year)
+                        sub.PausesUsedThisYear = 0;
+
                     sub.CurrentPeriodStart = now;
                     sub.CurrentPeriodEnd = now.AddMonths(1);
                     sub.RentalsUsedThisPeriod = 0;
