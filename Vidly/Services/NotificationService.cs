@@ -31,7 +31,7 @@ namespace Vidly.Services
             IRentalRepository rentalRepository,
             IMovieRepository movieRepository,
             ICustomerRepository customerRepository,
-            IWatchlistRepository watchlistRepository),
+            IWatchlistRepository watchlistRepository,
             IClock clock = null)
         {
             _rentalRepository = rentalRepository ?? throw new ArgumentNullException(nameof(rentalRepository));

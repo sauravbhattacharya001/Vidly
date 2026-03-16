@@ -37,6 +37,8 @@ namespace Vidly.Tests
             public void Add(Rental r) { r.Id = _nextId++; _rentals.Add(r); }
             public Rental GetById(int id) => _rentals.FirstOrDefault(r => r.Id == id);
             public IReadOnlyList<Rental> GetAll() => _rentals.AsReadOnly();
+            public IReadOnlyList<Rental> GetByCustomer(int customerId) =>
+                _rentals.Where(r => r.CustomerId == customerId).ToList().AsReadOnly();
             public void Update(Rental r) { }
             public void Remove(int id) => _rentals.RemoveAll(r => r.Id == id);
             public IReadOnlyList<Rental> GetActiveByCustomer(int cid) =>

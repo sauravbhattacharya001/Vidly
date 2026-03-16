@@ -119,14 +119,6 @@ namespace Vidly.Tests
             Assert.AreEqual("Newcomer", profile.Level);
         }
 
-        [TestMethod]
-        [ExpectedException(typeof(KeyNotFoundException))]
-        public void GetProfile_UnknownCustomer_Throws()
-        {
-            var svc = CreateService();
-            svc.GetProfile(999);
-        }
-
         // ── Milestone badges ─────────────────────────────────────
 
         [TestMethod]

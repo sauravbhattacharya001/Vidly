@@ -33,7 +33,7 @@ namespace Vidly.Services
         public RentalSurveyService(
             ICustomerRepository customerRepository,
             IRentalRepository rentalRepository,
-            IMovieRepository movieRepository),
+            IMovieRepository movieRepository,
             IClock clock = null)
         {
             _customerRepository = customerRepository ?? throw new ArgumentNullException(nameof(customerRepository));
