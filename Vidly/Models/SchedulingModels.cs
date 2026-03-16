@@ -48,6 +48,9 @@ namespace Vidly.Models
         }
     }
 
+    /// <summary>
+    /// Type of shift defining the time-of-day block a staff member works.
+    /// </summary>
     public enum ShiftType
     {
         [Display(Name = "Morning")]
@@ -64,6 +67,10 @@ namespace Vidly.Models
         OnCall = 6
     }
 
+    /// <summary>
+    /// A staff member's recurring weekly availability window.
+    /// Used by the scheduler to assign shifts within available hours.
+    /// </summary>
     public class StaffAvailability
     {
         public int Id { get; set; }
@@ -88,6 +95,10 @@ namespace Vidly.Models
             Math.Max(0, (AvailableTo - AvailableFrom).TotalHours);
     }
 
+    /// <summary>
+    /// A request from a staff member to swap, drop, or get coverage for a shift.
+    /// Requires approval before the change takes effect.
+    /// </summary>
     public class ShiftSwapRequest
     {
         public int Id { get; set; }
@@ -119,21 +130,38 @@ namespace Vidly.Models
         public DateTime? ResolvedAt { get; set; }
     }
 
+    /// <summary>
+    /// The type of shift change being requested.
+    /// </summary>
     public enum SwapRequestType
     {
+        /// <summary>Exchange shifts with another staff member.</summary>
         Swap = 1,
+        /// <summary>Drop a shift entirely (no replacement).</summary>
         Drop = 2,
+        /// <summary>Request another staff member to cover the shift.</summary>
         Cover = 3
     }
 
+    /// <summary>
+    /// Approval status of a shift swap/drop/cover request.
+    /// </summary>
     public enum SwapRequestStatus
     {
+        /// <summary>Request is awaiting manager review.</summary>
         Pending = 1,
+        /// <summary>Request was approved and the schedule updated.</summary>
         Approved = 2,
+        /// <summary>Request was denied by a manager.</summary>
         Denied = 3,
+        /// <summary>Request expired without being resolved.</summary>
         Expired = 4
     }
 
+    /// <summary>
+    /// Daily staffing coverage report showing shift counts, staff hours,
+    /// and whether minimum coverage requirements are met.
+    /// </summary>
     public class CoverageReport
     {
         public DateTime Date { get; set; }
@@ -149,6 +177,10 @@ namespace Vidly.Models
         public List<string> CoverageGaps { get; set; } = new List<string>();
     }
 
+    /// <summary>
+    /// Weekly summary of a staff member's scheduled shifts, hours worked,
+    /// and compliance with minimum/maximum hour policies.
+    /// </summary>
     public class StaffWeeklySummary
     {
         public int StaffId { get; set; }
