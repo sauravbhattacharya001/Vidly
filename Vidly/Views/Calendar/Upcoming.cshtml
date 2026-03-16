@@ -1,0 +1,75 @@
+@model System.Collections.Generic.List<Vidly.Services.CalendarEvent>
+
+@{
+    ViewBag.Title = "Upcoming Due Dates";
+    var days = (int)ViewBag.Days;
+    var customers = ViewBag.Customers as System.Collections.Generic.List<Vidly.Models.Customer>;
+}
+
+<h2><span class="glyphicon glyphicon-time"></span> Upcoming Due Dates (Next @days Days)</h2>
+
+<div class="row" style="margin-bottom: 15px;">
+    <div class="col-md-4">
+        <a href="@Url.Action("Index")" class="btn btn-default">
+            <span class="glyphicon glyphicon-calendar"></span> Back to Calendar
+        </a>
+    </div>
+    <div class="col-md-4">
+        <form method="get" class="form-inline">
+            <label>Days ahead:</label>
+            <select name="days" class="form-control" onchange="this.form.submit()">
+                @foreach (var d in new[] { 3, 7, 14, 30 })
+                {
+                    var sel = d == days ? "selected" : "";
+                    <option value="@d" @sel>@d days</option>
+                }
+            </select>
+        </form>
+    </div>
+</div>
+
+@if (Model.Count == 0)
+{
+    <div class="alert alert-success">
+        <span class="glyphicon glyphicon-ok"></span> No rentals due in the next @days days!
+    </div>
+}
+else
+{
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>Due Date</th>
+                <th>Movie</th>
+                <th>Customer</th>
+                <th>Days Until Due</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var evt in Model)
+            {
+                var daysUntil = (evt.Date - DateTime.Today).Days;
+                var rowClass = daysUntil <= 1 ? "danger" : (daysUntil <= 3 ? "warning" : "");
+                <tr class="@rowClass">
+                    <td>@evt.Date.ToString("ddd, MMM d")</td>
+                    <td>@evt.MovieName</td>
+                    <td>@evt.CustomerName</td>
+                    <td>
+                        @if (daysUntil == 0)
+                        {
+                            <span class="label label-danger">Today!</span>
+                        }
+                        else if (daysUntil == 1)
+                        {
+                            <span class="label label-warning">Tomorrow</span>
+                        }
+                        else
+                        {
+                            <span>@daysUntil days</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
