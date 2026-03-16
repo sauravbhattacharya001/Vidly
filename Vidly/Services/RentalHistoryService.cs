@@ -95,9 +95,7 @@ namespace Vidly.Services
             IClock clock = null)
         {
             _rentalRepository = rentalRepository ?? throw new ArgumentNullException(nameof(rentalRepository));
-            _clock = clock ?? new SystemClock();
             _customerRepository = customerRepository ?? throw new ArgumentNullException(nameof(customerRepository));
-            _clock = clock ?? new SystemClock();
             _movieRepository = movieRepository ?? throw new ArgumentNullException(nameof(movieRepository));
             _clock = clock ?? new SystemClock();
         }
@@ -156,7 +154,9 @@ namespace Vidly.Services
         /// <inheritdoc />
         public IReadOnlyList<TimelineEvent> GetCustomerTimeline(int customerId)
         {
-            var rentals = _rentalRepository.GetAll().Where(r => r.CustomerId == customerId).ToList();
+            // Use GetByCustomer instead of GetAll() + Where() to avoid
+            // loading every rental in the system.
+            var rentals = _rentalRepository.GetByCustomer(customerId);
             var events = new List<TimelineEvent>();
 
             foreach (var r in rentals)
@@ -355,7 +355,9 @@ namespace Vidly.Services
         public LoyaltyResult GetLoyaltyScore(int customerId)
         {
             var customer = _customerRepository.GetById(customerId);
-            var rentals = _rentalRepository.GetAll().Where(r => r.CustomerId == customerId).ToList();
+            // Use GetByCustomer for O(n) filtered query instead of loading
+            // all rentals and filtering client-side.
+            var rentals = _rentalRepository.GetByCustomer(customerId);
 
             var name = customer?.Name ?? "Unknown";
 
