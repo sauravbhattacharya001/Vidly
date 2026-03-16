@@ -77,7 +77,7 @@ namespace Vidly.Services
                     {
                         Tier = MembershipType.Basic,
                         DiscountPercent = 0,
-                        GracePeriodDays = 0,
+                        GracePeriodDays = RentalReturnService.GetGracePeriod(MembershipType.Basic),
                         MaxConcurrentRentals = 2,
                         FreeRentalsPerMonth = 0,
                         LateFeeDiscount = 0,
@@ -89,36 +89,36 @@ namespace Vidly.Services
                     {
                         Tier = MembershipType.Silver,
                         DiscountPercent = 10,
-                        GracePeriodDays = 1,
+                        GracePeriodDays = RentalReturnService.GetGracePeriod(MembershipType.Silver),
                         MaxConcurrentRentals = 3,
                         FreeRentalsPerMonth = 0,
-                        LateFeeDiscount = 0,
+                        LateFeeDiscount = 10,
                         ExtendedRentalDays = 1,
-                        Description = "10% off daily rate, 1-day grace period, 8-day rentals."
+                        Description = "10% off daily rate, 2-day grace period, 8-day rentals."
                     };
                 case MembershipType.Gold:
                     return new MembershipBenefits
                     {
                         Tier = MembershipType.Gold,
                         DiscountPercent = 20,
-                        GracePeriodDays = 2,
+                        GracePeriodDays = RentalReturnService.GetGracePeriod(MembershipType.Gold),
                         MaxConcurrentRentals = 5,
                         FreeRentalsPerMonth = 1,
                         LateFeeDiscount = 25,
                         ExtendedRentalDays = 2,
-                        Description = "20% off, 2-day grace, 1 free rental/month, 25% late fee reduction."
+                        Description = "20% off, 3-day grace, 1 free rental/month, 25% late fee reduction."
                     };
                 case MembershipType.Platinum:
                     return new MembershipBenefits
                     {
                         Tier = MembershipType.Platinum,
                         DiscountPercent = 30,
-                        GracePeriodDays = 3,
+                        GracePeriodDays = RentalReturnService.GetGracePeriod(MembershipType.Platinum),
                         MaxConcurrentRentals = 10,
                         FreeRentalsPerMonth = 3,
                         LateFeeDiscount = 50,
                         ExtendedRentalDays = 3,
-                        Description = "30% off, 3-day grace, 3 free rentals/month, 50% late fee reduction."
+                        Description = "30% off, 5-day grace, 3 free rentals/month, 50% late fee reduction."
                     };
                 default:
                     return GetBenefits(MembershipType.Basic);
