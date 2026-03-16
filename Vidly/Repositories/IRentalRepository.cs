@@ -9,6 +9,11 @@ namespace Vidly.Repositories
     public interface IRentalRepository : IRepository<Rental>
     {
         /// <summary>
+        /// Returns all rentals for a customer (any status).
+        /// </summary>
+        IReadOnlyList<Rental> GetByCustomer(int customerId);
+
+        /// <summary>
         /// Returns all active (non-returned) rentals for a customer.
         /// </summary>
         IReadOnlyList<Rental> GetActiveByCustomer(int customerId);
