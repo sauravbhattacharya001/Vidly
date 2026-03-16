@@ -1,0 +1,239 @@
+@model Vidly.Models.StaffPicksPageViewModel
+@{
+    ViewBag.Title = "Staff Picks";
+}
+
+<div class="container" style="margin-top: 20px;">
+    <div class="page-header">
+        <h1><span class="glyphicon glyphicon-star"></span> Staff Picks</h1>
+        <p class="lead text-muted">Hand-picked recommendations from our team — @Model.TotalPicks picks across @Model.AllThemes.Count themes</p>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible">
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+            @TempData["Success"]
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible">
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+            @TempData["Error"]
+        </div>
+    }
+
+    @* Featured Pick *@
+    @if (Model.FeaturedPick != null)
+    {
+        <div class="panel panel-warning">
+            <div class="panel-heading">
+                <h3 class="panel-title"><span class="glyphicon glyphicon-certificate"></span> Featured Pick</h3>
+            </div>
+            <div class="panel-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <h3 style="margin-top: 0;">@Model.FeaturedPick.Movie.Name</h3>
+                        <blockquote>
+                            <p>@Model.FeaturedPick.Pick.Note</p>
+                            <footer>
+                                <strong>@Model.FeaturedPick.Pick.StaffName</strong> —
+                                <em>@Model.FeaturedPick.Pick.Theme</em>
+                            </footer>
+                        </blockquote>
+                    </div>
+                    <div class="col-md-4 text-right">
+                        @if (Model.FeaturedPick.Movie.Rating.HasValue)
+                        {
+                            <p>
+                                @for (int i = 0; i < Model.FeaturedPick.Movie.Rating.Value; i++)
+                                {
+                                    <span class="glyphicon glyphicon-star" style="color: #f0ad4e; font-size: 18px;"></span>
+                                }
+                            </p>
+                        }
+                        @if (Model.FeaturedPick.Movie.Genre.HasValue)
+                        {
+                            <span class="label label-info">@Model.FeaturedPick.Movie.Genre</span>
+                        }
+                        @if (Model.FeaturedPick.Movie.ReleaseDate.HasValue)
+                        {
+                            <p class="text-muted" style="margin-top: 8px;">
+                                Released @Model.FeaturedPick.Movie.ReleaseDate.Value.ToString("MMM d, yyyy")
+                            </p>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @* Filters *@
+    <div class="row" style="margin-bottom: 20px;">
+        <div class="col-md-12">
+            <div class="btn-toolbar">
+                <div class="btn-group">
+                    <a href="@Url.Action("Index")" class="btn btn-default @(ViewBag.FilterStaff == null && ViewBag.FilterTheme == null ? "active" : "")">
+                        All Picks
+                    </a>
+                </div>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+                        <span class="glyphicon glyphicon-user"></span> By Staff <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        @foreach (var staff in Model.AllStaff)
+                        {
+                            <li><a href="@Url.Action("Index", new { staff })">@staff</a></li>
+                        }
+                    </ul>
+                </div>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+                        <span class="glyphicon glyphicon-th-list"></span> By Theme <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        @foreach (var theme in Model.AllThemes)
+                        {
+                            <li><a href="@Url.Action("Index", new { theme })">@theme</a></li>
+                        }
+                    </ul>
+                </div>
+            </div>
+            @if (ViewBag.FilterStaff != null || ViewBag.FilterTheme != null)
+            {
+                <p style="margin-top: 10px;">
+                    Filtering by:
+                    @if (ViewBag.FilterStaff != null) { <span class="label label-primary">Staff: @ViewBag.FilterStaff</span> }
+                    @if (ViewBag.FilterTheme != null) { <span class="label label-success">Theme: @ViewBag.FilterTheme</span> }
+                    <a href="@Url.Action("Index")" class="text-danger" style="margin-left: 8px;">Clear</a>
+                </p>
+            }
+        </div>
+    </div>
+
+    @* Themed Lists *@
+    @foreach (var list in Model.ThemedLists)
+    {
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title">
+                    <span class="glyphicon glyphicon-bookmark"></span>
+                    @list.Theme
+                    <span class="badge pull-right">@list.Picks.Count</span>
+                </h3>
+            </div>
+            @if (!string.IsNullOrEmpty(list.Description))
+            {
+                <div class="panel-body">
+                    <p class="text-muted">@list.Description</p>
+                </div>
+            }
+            <div class="list-group">
+                @foreach (var pick in list.Picks)
+                {
+                    <div class="list-group-item">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <h4 class="list-group-item-heading">
+                                    @pick.Movie.Name
+                                    @if (pick.Pick.IsFeatured)
+                                    {
+                                        <span class="glyphicon glyphicon-certificate" style="color: #f0ad4e;" title="Featured"></span>
+                                    }
+                                </h4>
+                                <p class="text-muted">
+                                    @if (pick.Movie.Genre.HasValue) { <span class="label label-info">@pick.Movie.Genre</span> }
+                                    @if (pick.Movie.Rating.HasValue)
+                                    {
+                                        for (int i = 0; i < pick.Movie.Rating.Value; i++)
+                                        {
+                                            <span class="glyphicon glyphicon-star" style="color: #f0ad4e; font-size: 12px;"></span>
+                                        }
+                                    }
+                                </p>
+                            </div>
+                            <div class="col-md-7">
+                                <p class="list-group-item-text">
+                                    <em>"@pick.Pick.Note"</em>
+                                </p>
+                            </div>
+                            <div class="col-md-2 text-right">
+                                <p>
+                                    <span class="glyphicon glyphicon-user"></span>
+                                    <a href="@Url.Action("Staff", new { id = pick.Pick.StaffName })">@pick.Pick.StaffName</a>
+                                </p>
+                                <small class="text-muted">@pick.Pick.PickedDate.ToString("MMM d, yyyy")</small>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    @if (Model.ThemedLists.Count == 0)
+    {
+        <div class="alert alert-info">No picks match the current filters.</div>
+    }
+
+    @* Add Pick Form *@
+    <div class="panel panel-info">
+        <div class="panel-heading">
+            <h3 class="panel-title"><span class="glyphicon glyphicon-plus"></span> Add a Staff Pick</h3>
+        </div>
+        <div class="panel-body">
+            @using (Html.BeginForm("Add", "StaffPicks", FormMethod.Post))
+            {
+                @Html.AntiForgeryToken()
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>Movie</label>
+                            <select name="movieId" class="form-control" required>
+                                <option value="">Select a movie...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label>Your Name</label>
+                            <input type="text" name="staffName" class="form-control" placeholder="e.g. Maria" required />
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label>Theme</label>
+                            <input type="text" name="theme" class="form-control" placeholder="e.g. Hidden Gems" required
+                                   list="themeList" />
+                            <datalist id="themeList">
+                                @foreach (var t in Model.AllThemes)
+                                {
+                                    <option value="@t" />
+                                }
+                            </datalist>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>Why this movie?</label>
+                            <input type="text" name="note" class="form-control" placeholder="Your personal note..." />
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label>&nbsp;</label>
+                            <div class="checkbox" style="margin-top: 0;">
+                                <label><input type="checkbox" name="isFeatured" value="true" /> Featured</label>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-block">
+                                <span class="glyphicon glyphicon-plus"></span> Add Pick
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
