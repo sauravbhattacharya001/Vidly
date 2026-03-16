@@ -1,5 +1,6 @@
 using System;
 using System.Web.Mvc;
+using Vidly.Filters;
 using Vidly.Models;
 using Vidly.Repositories;
 
@@ -9,6 +10,8 @@ namespace Vidly.Controllers
     /// Global search across movies, customers, and rentals.
     /// Accessible via the navbar search bar or /Search?q=term.
     /// </summary>
+    [RateLimit(MaxRequests = 20, WindowSeconds = 60,
+        Message = "Too many search requests. Please wait before searching again.")]
     public class SearchController : Controller
     {
         private readonly IMovieRepository _movieRepository;
