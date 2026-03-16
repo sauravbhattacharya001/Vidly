@@ -1,0 +1,52 @@
+@model Vidly.ViewModels.TournamentViewModel
+@{
+    ViewBag.Title = Model.Tournament.Name + " - Champion!";
+    var tournament = Model.Tournament;
+}
+
+<div class="text-center" style="padding: 40px 0;">
+    <h1 style="font-size: 72px;">🏆</h1>
+    <h2>@tournament.ChampionMovieName</h2>
+    <h4 class="text-muted">is the champion of <strong>@tournament.Name</strong>!</h4>
+    <p>
+        A @tournament.Size-movie single-elimination bracket, created by @tournament.CreatedByCustomerName.
+    </p>
+</div>
+
+<!-- Final bracket recap -->
+<h3>Bracket Recap</h3>
+<div class="row">
+    @foreach (var round in Enumerable.Range(1, tournament.TotalRounds))
+    {
+        var matches = tournament.Matches.Where(m => m.Round == round).OrderBy(m => m.MatchNumber).ToList();
+        <div class="col-md-@(12 / tournament.TotalRounds)">
+            <h5 class="text-center">@matches.First().RoundLabel</h5>
+            @foreach (var m in matches)
+            {
+                <div class="panel panel-default" style="font-size: 13px;">
+                    <div class="panel-body" style="padding: 6px 10px;">
+                        <div style="@(m.WinnerMovieId == m.Movie1Id ? "font-weight:bold;color:green;" : "color:#999;text-decoration:line-through;")">
+                            #@m.Movie1Seed @m.Movie1Name
+                        </div>
+                        <div style="@(m.WinnerMovieId == m.Movie2Id ? "font-weight:bold;color:green;" : "color:#999;text-decoration:line-through;")">
+                            #@m.Movie2Seed @m.Movie2Name
+                        </div>
+                        @if (!string.IsNullOrEmpty(m.VoteReason))
+                        {
+                            <small class="text-muted">"@m.VoteReason"</small>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<div class="text-center" style="margin-top: 20px;">
+    <a href="@Url.Action("Bracket", new { id = tournament.Id })" class="btn btn-default">
+        View Full Bracket
+    </a>
+    <a href="@Url.Action("Index")" class="btn btn-primary">
+        <span class="glyphicon glyphicon-tower"></span> New Tournament
+    </a>
+</div>

@@ -1,0 +1,188 @@
+@model Vidly.ViewModels.TournamentViewModel
+@{
+    ViewBag.Title = Model.Tournament.Name + " - Bracket";
+    var tournament = Model.Tournament;
+}
+
+<h2>
+    <span class="glyphicon glyphicon-tower"></span> @tournament.Name
+    <small>@tournament.Size-Movie Bracket</small>
+</h2>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="well well-sm">
+            <strong>Round @tournament.CurrentRound / @tournament.TotalRounds</strong>
+            @if (tournament.GenreFilter.HasValue)
+            {
+                <span class="label label-info" style="margin-left: 8px;">@tournament.GenreFilter.Value</span>
+            }
+            <span class="pull-right text-muted">Created by @tournament.CreatedByCustomerName</span>
+        </div>
+    </div>
+</div>
+
+<!-- Current Match Voting -->
+@if (Model.CurrentMatch != null && tournament.Status == Vidly.Models.TournamentStatus.InProgress)
+{
+    var match = Model.CurrentMatch;
+    <div class="panel panel-primary">
+        <div class="panel-heading text-center">
+            <strong>@match.RoundLabel — Match @match.MatchNumber</strong>
+        </div>
+        <div class="panel-body">
+            <div class="row">
+                <div class="col-md-5 text-center">
+                    @using (Html.BeginForm("Vote", "Tournament"))
+                    {
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="tournamentId" value="@tournament.Id" />
+                        <input type="hidden" name="matchId" value="@match.Id" />
+                        <input type="hidden" name="winnerId" value="@match.Movie1Id" />
+                        <h3>
+                            <span class="label label-default">#@match.Movie1Seed</span>
+                            @match.Movie1Name
+                        </h3>
+                        <div class="form-group">
+                            <input type="text" name="reason" class="form-control"
+                                   placeholder="Why this one? (optional)" />
+                        </div>
+                        <button type="submit" class="btn btn-lg btn-success">
+                            <span class="glyphicon glyphicon-thumbs-up"></span> Vote @match.Movie1Name
+                        </button>
+                    }
+                </div>
+                <div class="col-md-2 text-center">
+                    <h1 style="margin-top: 40px; color: #999;">VS</h1>
+                </div>
+                <div class="col-md-5 text-center">
+                    @using (Html.BeginForm("Vote", "Tournament"))
+                    {
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="tournamentId" value="@tournament.Id" />
+                        <input type="hidden" name="matchId" value="@match.Id" />
+                        <input type="hidden" name="winnerId" value="@match.Movie2Id" />
+                        <h3>
+                            <span class="label label-default">#@match.Movie2Seed</span>
+                            @match.Movie2Name
+                        </h3>
+                        <div class="form-group">
+                            <input type="text" name="reason" class="form-control"
+                                   placeholder="Why this one? (optional)" />
+                        </div>
+                        <button type="submit" class="btn btn-lg btn-success">
+                            <span class="glyphicon glyphicon-thumbs-up"></span> Vote @match.Movie2Name
+                        </button>
+                    }
+                </div>
+            </div>
+            @if (Model.PendingMatches.Count > 1)
+            {
+                <hr />
+                <p class="text-center text-muted">
+                    @(Model.PendingMatches.Count - 1) more match(es) remaining in this round
+                </p>
+            }
+        </div>
+    </div>
+}
+
+<!-- Full Bracket Display -->
+<h3>Bracket</h3>
+<div class="table-responsive">
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                @for (int r = 1; r <= tournament.TotalRounds; r++)
+                {
+                    var label = r == tournament.TotalRounds ? "Finals"
+                        : r == tournament.TotalRounds - 1 ? "Semifinals"
+                        : r == tournament.TotalRounds - 2 ? "Quarterfinals"
+                        : "Round " + r;
+                    <th class="text-center">@label</th>
+                }
+                <th class="text-center">Champion</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                @for (int r = 1; r <= tournament.TotalRounds; r++)
+                {
+                    var roundMatches = tournament.Matches
+                        .Where(m => m.Round == r)
+                        .OrderBy(m => m.MatchNumber)
+                        .ToList();
+                    <td style="vertical-align: top;">
+                        @foreach (var m in roundMatches)
+                        {
+                            <div class="panel panel-sm @(m.IsComplete ? "panel-default" : "panel-info")"
+                                 style="margin-bottom: 8px; font-size: 13px;">
+                                <div class="panel-body" style="padding: 6px 10px;">
+                                    <div style="@(m.WinnerMovieId == m.Movie1Id ? "font-weight:bold;color:green;" : m.IsComplete ? "text-decoration:line-through;color:#999;" : "")">
+                                        <small class="text-muted">#@m.Movie1Seed</small> @m.Movie1Name
+                                    </div>
+                                    <div style="@(m.WinnerMovieId == m.Movie2Id ? "font-weight:bold;color:green;" : m.IsComplete ? "text-decoration:line-through;color:#999;" : "")">
+                                        <small class="text-muted">#@m.Movie2Seed</small> @m.Movie2Name
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </td>
+                }
+                <td class="text-center" style="vertical-align: middle;">
+                    @if (tournament.Status == Vidly.Models.TournamentStatus.Completed)
+                    {
+                        <h3>🏆</h3>
+                        <h4>@tournament.ChampionMovieName</h4>
+                    }
+                    else
+                    {
+                        <span class="text-muted">TBD</span>
+                    }
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Seeds -->
+<div class="panel panel-default">
+    <div class="panel-heading"><strong>Seeds</strong></div>
+    <table class="table table-condensed">
+        <thead><tr><th>#</th><th>Movie</th><th>Genre</th><th>Rating</th><th>Status</th></tr></thead>
+        <tbody>
+            @foreach (var s in tournament.Seeds.OrderBy(s => s.SeedNumber))
+            {
+                <tr class="@(s.Eliminated ? "text-muted" : "")">
+                    <td>@s.SeedNumber</td>
+                    <td>@(s.Eliminated ? "" : "")@s.MovieName</td>
+                    <td>@(s.Genre?.ToString() ?? "—")</td>
+                    <td>@(s.Rating.HasValue ? new string('★', s.Rating.Value) : "—")</td>
+                    <td>
+                        @if (s.Eliminated)
+                        {
+                            <span class="label label-danger">Eliminated</span>
+                        }
+                        else if (tournament.ChampionMovieId == s.MovieId)
+                        {
+                            <span class="label label-warning">🏆 Champion</span>
+                        }
+                        else
+                        {
+                            <span class="label label-success">Active (@s.Wins W)</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<a href="@Url.Action("Index")" class="btn btn-default">
+    <span class="glyphicon glyphicon-arrow-left"></span> Back to Tournaments
+</a>
