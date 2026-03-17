@@ -17,12 +17,15 @@ namespace Vidly.Services
         private readonly ICustomerRepository _customerRepo;
         private readonly IReviewRepository _reviewRepo;
 
+        private readonly IClock _clock;
         public AwardsService(
             IRentalRepository rentalRepo,
             IMovieRepository movieRepo,
             ICustomerRepository customerRepo,
-            IReviewRepository reviewRepo)
+            IReviewRepository reviewRepo,
+            IClock clock = null)
         {
+            _clock = clock ?? new SystemClock();
             _rentalRepo = rentalRepo ?? throw new ArgumentNullException(nameof(rentalRepo));
             _movieRepo = movieRepo ?? throw new ArgumentNullException(nameof(movieRepo));
             _customerRepo = customerRepo ?? throw new ArgumentNullException(nameof(customerRepo));
@@ -466,7 +469,7 @@ namespace Vidly.Services
                     MovieId = g.Key,
                     Movie = movieMap[g.Key],
                     Rentals = g.Count(),
-                    Age = (int)((DateTime.Today - movieMap[g.Key].ReleaseDate.Value).TotalDays / 365.25)
+                    Age = (int)((_clock.Today - movieMap[g.Key].ReleaseDate.Value).TotalDays / 365.25)
                 })
                 .Where(x => x.Age >= 5)
                 .OrderByDescending(x => x.Age)

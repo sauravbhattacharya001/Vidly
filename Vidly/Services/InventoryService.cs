@@ -25,10 +25,14 @@ namespace Vidly.Services
         /// <summary>
         /// Creates a new InventoryService.
         /// </summary>
+        private readonly IClock _clock;
+
         public InventoryService(
             IRentalRepository rentalRepository,
-            IMovieRepository movieRepository)
+            IMovieRepository movieRepository,
+            IClock clock = null)
         {
+            _clock = clock ?? new SystemClock();
             _rentalRepository = rentalRepository
                 ?? throw new ArgumentNullException(nameof(rentalRepository));
             _movieRepository = movieRepository
@@ -103,7 +107,7 @@ namespace Vidly.Services
                 activeCounts.TryGetValue(r.MovieId, out var _c1);
                 activeCounts[r.MovieId] = _c1 + 1;
 
-                if (r.DueDate < DateTime.Today)
+                if (r.DueDate < _clock.Today)
                 {
                     overdueCounts.TryGetValue(r.MovieId, out var _c2);
                     overdueCounts[r.MovieId] = _c2 + 1;
@@ -182,10 +186,10 @@ namespace Vidly.Services
 
             foreach (var r in rentals)
             {
-                if (r.Status != RentalStatus.Returned && r.DueDate < DateTime.Today)
+                if (r.Status != RentalStatus.Returned && r.DueDate < _clock.Today)
                 {
                     var daysOverdue = (int)Math.Ceiling(
-                        (DateTime.Today - r.DueDate).TotalDays);
+                        (_clock.Today - r.DueDate).TotalDays);
                     summary.OverdueRevenue += daysOverdue * 1.50m;
                 }
             }
@@ -230,7 +234,7 @@ namespace Vidly.Services
 
             var totalCopies = GetStockCount(movieId);
             var rentals = _rentalRepository.GetAll();
-            var today = DateTime.Today;
+            var today = _clock.Today;
 
             // Collect expected return dates for active rentals.
             // For overdue rentals the due date is already past, so we push
@@ -292,7 +296,7 @@ namespace Vidly.Services
             int count = 0;
             foreach (var r in rentals)
                 if (r.MovieId == movieId && r.Status != RentalStatus.Returned
-                    && r.DueDate < DateTime.Today)
+                    && r.DueDate < _clock.Today)
                     count++;
             return count;
         }

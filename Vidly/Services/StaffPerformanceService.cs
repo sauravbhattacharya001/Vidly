@@ -72,7 +72,7 @@ namespace Vidly.Services
                 Id = _nextStaffId++,
                 Name = name.Trim(),
                 Role = role,
-                HireDate = hireDate ?? DateTime.Today,
+                HireDate = hireDate ?? _clock.Today,
                 Email = email,
                 IsActive = true
             };

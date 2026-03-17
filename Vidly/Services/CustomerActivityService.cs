@@ -17,11 +17,14 @@ namespace Vidly.Services
         private readonly IMovieRepository _movieRepository;
         private readonly IRentalRepository _rentalRepository;
 
+        private readonly IClock _clock;
         public CustomerActivityService(
             ICustomerRepository customerRepository,
             IMovieRepository movieRepository,
-            IRentalRepository rentalRepository)
+            IRentalRepository rentalRepository,
+            IClock clock = null)
         {
+            _clock = clock ?? new SystemClock();
             _customerRepository = customerRepository
                 ?? throw new ArgumentNullException(nameof(customerRepository));
             _movieRepository = movieRepository
@@ -179,7 +182,7 @@ namespace Vidly.Services
         /// </summary>
         internal static List<MonthlyActivityEntry> BuildMonthlyActivity(IList<Rental> rentals)
         {
-            var today = DateTime.Today;
+            var today = _clock.Today;
             var result = new List<MonthlyActivityEntry>();
             var lookup = new Dictionary<(int Year, int Month), MonthlyActivityEntry>();
 
@@ -248,8 +251,8 @@ namespace Vidly.Services
             if (customer.MemberSince.HasValue)
             {
                 var monthsActive = Math.Max(0,
-                    (DateTime.Today.Year - customer.MemberSince.Value.Year) * 12
-                    + (DateTime.Today.Month - customer.MemberSince.Value.Month));
+                    (_clock.Today.Year - customer.MemberSince.Value.Year) * 12
+                    + (_clock.Today.Month - customer.MemberSince.Value.Month));
                 score += Math.Min(monthsActive, 15);
             }
 
@@ -367,7 +370,7 @@ namespace Vidly.Services
             }
 
             // Inactive customer
-            var daysSinceLast = (DateTime.Today - rentals.Max(r => r.RentalDate)).TotalDays;
+            var daysSinceLast = (_clock.Today - rentals.Max(r => r.RentalDate)).TotalDays;
             if (daysSinceLast > 30)
             {
                 insights.Add(new ActivityInsight

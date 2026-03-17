@@ -44,11 +44,15 @@ namespace Vidly.Services
         /// <summary>How much of the disputed amount is refunded on partial approval.</summary>
         public const decimal PartialRefundPercentage = 0.50m;
 
+        private readonly IClock _clock;
+
         public DisputeResolutionService(
             IDisputeRepository disputeRepo,
             IRentalRepository rentalRepo,
-            ICustomerRepository customerRepo)
+            ICustomerRepository customerRepo,
+            IClock clock = null)
         {
+            _clock = clock ?? new SystemClock();
             _disputeRepo = disputeRepo
                 ?? throw new ArgumentNullException(nameof(disputeRepo));
             _rentalRepo = rentalRepo
@@ -85,7 +89,7 @@ namespace Vidly.Services
             // Validate dispute window
             if (rental.ReturnDate.HasValue)
             {
-                var daysSinceReturn = (DateTime.Today - rental.ReturnDate.Value).Days;
+                var daysSinceReturn = (_clock.Today - rental.ReturnDate.Value).Days;
                 if (daysSinceReturn > DisputeWindowDays)
                     return DisputeResult.Fail(
                         $"Dispute window expired. Disputes must be filed within {DisputeWindowDays} days of return.");
@@ -134,7 +138,7 @@ namespace Vidly.Services
                 Reason = reason.Trim(),
                 DisputedAmount = disputedAmount,
                 Status = DisputeStatus.Open,
-                SubmittedDate = DateTime.Today,
+                SubmittedDate = _clock.Today,
                 Priority = priority
             };
 
@@ -194,7 +198,7 @@ namespace Vidly.Services
 
             dispute.Status = DisputeStatus.Approved;
             dispute.RefundAmount = dispute.DisputedAmount;
-            dispute.ResolvedDate = DateTime.Today;
+            dispute.ResolvedDate = _clock.Today;
             dispute.ResolvedBy = resolvedBy?.Trim() ?? "Staff";
             dispute.ResolutionNotes = notes?.Trim();
             _disputeRepo.Update(dispute);
@@ -223,7 +227,7 @@ namespace Vidly.Services
 
             dispute.Status = DisputeStatus.PartiallyApproved;
             dispute.RefundAmount = refundAmount;
-            dispute.ResolvedDate = DateTime.Today;
+            dispute.ResolvedDate = _clock.Today;
             dispute.ResolvedBy = resolvedBy?.Trim() ?? "Staff";
             dispute.ResolutionNotes = notes?.Trim();
             _disputeRepo.Update(dispute);
@@ -251,7 +255,7 @@ namespace Vidly.Services
 
             dispute.Status = DisputeStatus.Denied;
             dispute.RefundAmount = 0;
-            dispute.ResolvedDate = DateTime.Today;
+            dispute.ResolvedDate = _clock.Today;
             dispute.ResolvedBy = resolvedBy?.Trim() ?? "Staff";
             dispute.ResolutionNotes = notes.Trim();
             _disputeRepo.Update(dispute);
@@ -295,7 +299,7 @@ namespace Vidly.Services
             // Auto-approve
             dispute.Status = DisputeStatus.Approved;
             dispute.RefundAmount = dispute.DisputedAmount;
-            dispute.ResolvedDate = DateTime.Today;
+            dispute.ResolvedDate = _clock.Today;
             dispute.ResolvedBy = "Auto";
             dispute.ResolutionNotes = "First-time courtesy: small late fee auto-waived " +
                                      $"for {customer.MembershipType} member.";
@@ -321,7 +325,7 @@ namespace Vidly.Services
             foreach (var dispute in open)
             {
                 dispute.Status = DisputeStatus.Expired;
-                dispute.ResolvedDate = DateTime.Today;
+                dispute.ResolvedDate = _clock.Today;
                 dispute.ResolvedBy = "System";
                 dispute.ResolutionNotes =
                     $"Auto-expired after {AutoExpireDays} days without resolution.";

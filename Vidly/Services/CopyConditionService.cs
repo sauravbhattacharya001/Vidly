@@ -50,7 +50,6 @@ namespace Vidly.Services
             IClock clock = null)
         {
             _movieRepo = movieRepo ?? throw new ArgumentNullException(nameof(movieRepo));
-            _clock = clock ?? new SystemClock();
             _rentalRepo = rentalRepo ?? throw new ArgumentNullException(nameof(rentalRepo));
             _clock = clock ?? new SystemClock();
         }

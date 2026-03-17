@@ -17,6 +17,7 @@ namespace Vidly.Services
         private readonly IMovieRepository _movieRepository;
         private readonly ICustomerRepository _customerRepository;
         private readonly IRentalRepository _rentalRepository;
+        private readonly IClock _clock;
 
         /// <summary>
         /// Base daily rental rate when no movie-specific rate is set.
@@ -53,7 +54,8 @@ namespace Vidly.Services
         public PricingService(
             IMovieRepository movieRepository,
             ICustomerRepository customerRepository,
-            IRentalRepository rentalRepository)
+            IRentalRepository rentalRepository,
+            IClock clock)
         {
             _movieRepository = movieRepository
                 ?? throw new ArgumentNullException(nameof(movieRepository));
@@ -61,6 +63,8 @@ namespace Vidly.Services
                 ?? throw new ArgumentNullException(nameof(customerRepository));
             _rentalRepository = rentalRepository
                 ?? throw new ArgumentNullException(nameof(rentalRepository));
+            _clock = clock
+                ?? throw new ArgumentNullException(nameof(clock));
         }
 
         // ── Membership benefits ──────────────────────────────────────
@@ -173,7 +177,7 @@ namespace Vidly.Services
                 DiscountPercent = benefits.DiscountPercent,
                 DiscountedDailyRate = discountedRate,
                 RentalDays = days,
-                DueDate = DateTime.Today.AddDays(days),
+                DueDate = _clock.Today.AddDays(days),
                 SubTotal = totalBeforeFree,
                 FreeRentalApplied = freeRentalApplied,
                 FinalTotal = finalTotal,
@@ -197,7 +201,7 @@ namespace Vidly.Services
                 ? GetBenefits(customer.MembershipType)
                 : GetBenefits(MembershipType.Basic);
 
-            var endDate = rental.ReturnDate ?? DateTime.Today;
+            var endDate = rental.ReturnDate ?? _clock.Today;
             var rawDaysLate = (int)Math.Ceiling((endDate - rental.DueDate).TotalDays);
 
             // Apply grace period
@@ -366,7 +370,7 @@ namespace Vidly.Services
 
         private int CountRentalsThisMonth(int customerId)
         {
-            var firstOfMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+            var firstOfMonth = new DateTime(_clock.Today.Year, _clock.Today.Month, 1);
             return _rentalRepository.GetAll()
                 .Count(r => r.CustomerId == customerId
                     && r.RentalDate >= firstOfMonth);
@@ -388,7 +392,7 @@ namespace Vidly.Services
 
             // 3. Catalog titles (older than 1 year) get a discount
             if (movie.ReleaseDate.HasValue &&
-                (DateTime.Today - movie.ReleaseDate.Value).TotalDays > 365)
+                (_clock.Today - movie.ReleaseDate.Value).TotalDays > 365)
                 return CatalogDailyRate;
 
             // 4. Everything else uses the default rate

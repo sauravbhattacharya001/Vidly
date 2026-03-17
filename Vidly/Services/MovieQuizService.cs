@@ -401,7 +401,7 @@ namespace Vidly.Services
         /// <summary>Get today's daily challenge question (bonus points).</summary>
         public DailyChallenge GetDailyChallenge(DateTime? date = null)
         {
-            var today = (date ?? DateTime.Today).Date;
+            var today = (date ?? _clock.Today).Date;
             var existing = _dailyChallenges.FirstOrDefault(d => d.Date == today);
             if (existing != null) return existing;
 

@@ -25,11 +25,15 @@ namespace Vidly.Services
         /// <summary>
         /// Creates a RecommendationService with tag-based recommendation support.
         /// </summary>
+        private readonly IClock _clock;
+
         public RecommendationService(
             IMovieRepository movieRepository,
             IRentalRepository rentalRepository,
-            ITagRepository tagRepository = null)
+            ITagRepository tagRepository = null,
+            IClock clock = null)
         {
+            _clock = clock ?? new SystemClock();
             _movieRepository = movieRepository
                 ?? throw new ArgumentNullException(nameof(movieRepository));
             _rentalRepository = rentalRepository
@@ -202,7 +206,7 @@ namespace Vidly.Services
                 double score = 1.0;
 
                 // Recency bonus: up to +0.5 for recent rentals (within 30 days)
-                var daysSinceRental = (DateTime.Today - rental.RentalDate).TotalDays;
+                var daysSinceRental = (_clock.Today - rental.RentalDate).TotalDays;
                 if (daysSinceRental <= 30)
                 {
                     score += 0.5 * (1.0 - (daysSinceRental / 30.0));
@@ -252,7 +256,7 @@ namespace Vidly.Services
                     }
 
                     double score = 1.0;
-                    var daysSinceRental = (DateTime.Today - rental.RentalDate).TotalDays;
+                    var daysSinceRental = (_clock.Today - rental.RentalDate).TotalDays;
                     if (daysSinceRental <= 30)
                         score += 0.5 * (1.0 - (daysSinceRental / 30.0));
 
