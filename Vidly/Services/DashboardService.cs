@@ -17,12 +17,15 @@ namespace Vidly.Services
         private readonly IRentalRepository _rentalRepository;
         private readonly IMovieRepository _movieRepository;
         private readonly ICustomerRepository _customerRepository;
+        private readonly IClock _clock;
 
         public DashboardService(
             IRentalRepository rentalRepository,
             IMovieRepository movieRepository,
-            ICustomerRepository customerRepository)
+            ICustomerRepository customerRepository,
+            IClock clock)
         {
+            _clock = clock ?? throw new ArgumentNullException(nameof(clock));
             _rentalRepository = rentalRepository
                 ?? throw new ArgumentNullException(nameof(rentalRepository));
             _movieRepository = movieRepository
@@ -95,7 +98,7 @@ namespace Vidly.Services
             var tierStats = new Dictionary<MembershipType, MembershipRevenueEntry>();
 
             // Monthly revenue setup
-            var today = DateTime.Today;
+            var today = _clock.Today;
             var monthlyLookup = new Dictionary<(int Year, int Month), MonthlyRevenueEntry>();
             var monthlyResult = new List<MonthlyRevenueEntry>();
             for (int i = monthCount - 1; i >= 0; i--)

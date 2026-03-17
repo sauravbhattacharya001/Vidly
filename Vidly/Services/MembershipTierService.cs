@@ -18,6 +18,7 @@ namespace Vidly.Services
         private readonly Dictionary<MembershipType, TierConfig> _tierConfigs;
         private readonly List<TierChangeRecord> _changeHistory = new List<TierChangeRecord>();
         private readonly int _evaluationPeriodDays;
+        private readonly IClock _clock;
 
         /// <summary>
         /// Creates a new MembershipTierService with default tier configurations.
@@ -67,8 +68,10 @@ namespace Vidly.Services
             ICustomerRepository customerRepo,
             IRentalRepository rentalRepo,
             Dictionary<MembershipType, TierConfig> customConfigs,
-            int evaluationPeriodDays = 90)
+            int evaluationPeriodDays = 90,
+            IClock clock)
         {
+            _clock = clock ?? throw new ArgumentNullException(nameof(clock));
             _customerRepo = customerRepo ?? throw new ArgumentNullException(nameof(customerRepo));
             _rentalRepo = rentalRepo ?? throw new ArgumentNullException(nameof(rentalRepo));
             _evaluationPeriodDays = evaluationPeriodDays > 0 ? evaluationPeriodDays : 90;
@@ -118,7 +121,7 @@ namespace Vidly.Services
         /// </summary>
         public TierEvaluation EvaluateCustomer(int customerId)
         {
-            return EvaluateCustomer(customerId, DateTime.Today);
+            return EvaluateCustomer(customerId, _clock.Today);
         }
 
         /// <summary>
@@ -218,7 +221,7 @@ namespace Vidly.Services
         /// </summary>
         public List<TierEvaluation> EvaluateAllCustomers()
         {
-            return EvaluateAllCustomers(DateTime.Today);
+            return EvaluateAllCustomers(_clock.Today);
         }
 
         /// <summary>
@@ -237,7 +240,7 @@ namespace Vidly.Services
         /// </summary>
         public List<TierChangeRecord> ApplyTierChanges()
         {
-            return ApplyTierChanges(DateTime.Today);
+            return ApplyTierChanges(_clock.Today);
         }
 
         /// <summary>
@@ -366,7 +369,7 @@ namespace Vidly.Services
                 LifetimeLatePercentage = returned.Count > 0 ? (double)lateCount / returned.Count : 0,
                 MemberSince = customer.MemberSince,
                 MembershipDays = customer.MemberSince.HasValue
-                    ? (int)(DateTime.Today - customer.MemberSince.Value).TotalDays
+                    ? (int)(_clock.Today - customer.MemberSince.Value).TotalDays
                     : 0
             };
         }

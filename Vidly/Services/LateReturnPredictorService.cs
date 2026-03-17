@@ -15,11 +15,14 @@ namespace Vidly.Services
     {
         private readonly IRentalRepository _rentalRepository;
         private readonly ICustomerRepository _customerRepository;
+        private readonly IClock _clock;
 
         public LateReturnPredictorService(
             IRentalRepository rentalRepository,
-            ICustomerRepository customerRepository)
+            ICustomerRepository customerRepository,
+            IClock clock)
         {
+            _clock = clock ?? throw new ArgumentNullException(nameof(clock));
             _rentalRepository = rentalRepository
                 ?? throw new ArgumentNullException(nameof(rentalRepository));
             _customerRepository = customerRepository
@@ -96,7 +99,7 @@ namespace Vidly.Services
                 MovieName = rental.MovieName,
                 RentalDate = rental.RentalDate,
                 DueDate = rental.DueDate,
-                DaysRemaining = (int)(rental.DueDate - DateTime.Today).TotalDays
+                DaysRemaining = (int)(rental.DueDate - _clock.Today).TotalDays
             };
 
             int totalPoints = 0;
@@ -152,7 +155,7 @@ namespace Vidly.Services
 
             // Factor 4: Currently overdue other rentals (0-15 points)
             var otherOverdue = customerHistory.Count(r =>
-                r.Status == RentalStatus.Overdue || r.Status == RentalStatus.Active && DateTime.Today > r.DueDate);
+                r.Status == RentalStatus.Overdue || r.Status == RentalStatus.Active && _clock.Today > r.DueDate);
             if (otherOverdue > 0)
             {
                 int points = Math.Min(15, otherOverdue * 8);
@@ -166,7 +169,7 @@ namespace Vidly.Services
             }
 
             // Factor 5: Long rental duration (0-10 points)
-            int rentalDays = (int)(DateTime.Today - rental.RentalDate).TotalDays;
+            int rentalDays = (int)(_clock.Today - rental.RentalDate).TotalDays;
             if (rentalDays > 10)
             {
                 int points = Math.Min(10, (rentalDays - 10) * 2);

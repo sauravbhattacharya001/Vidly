@@ -12,13 +12,16 @@ namespace Vidly.Services
     public class StaffPicksService
     {
         private readonly IMovieRepository _movieRepo;
+        private readonly IClock _clock;
         private static readonly List<StaffPick> _picks = new List<StaffPick>();
         private static readonly object _lock = new object();
         private static int _nextId = 1;
         private static bool _seeded;
 
-        public StaffPicksService(IMovieRepository movieRepository)
+        public StaffPicksService(IMovieRepository movieRepository,
+            IClock clock)
         {
+            _clock = clock ?? throw new ArgumentNullException(nameof(clock));
             _movieRepo = movieRepository ?? throw new ArgumentNullException(nameof(movieRepository));
             EnsureSeeded();
         }
@@ -60,7 +63,7 @@ namespace Vidly.Services
                             StaffName = s.Staff,
                             Theme = s.Theme,
                             Note = s.Note,
-                            PickedDate = DateTime.Today.AddDays(-_nextId * 3),
+                            PickedDate = _clock.Today.AddDays(-_nextId * 3),
                             IsFeatured = _nextId == 2 // first real pick is featured
                         });
                     }
@@ -165,7 +168,7 @@ namespace Vidly.Services
                     StaffName = staffName.Trim(),
                     Theme = theme.Trim(),
                     Note = (note ?? "").Trim(),
-                    PickedDate = DateTime.Now,
+                    PickedDate = _clock.Now,
                     IsFeatured = isFeatured
                 };
                 _picks.Add(pick);

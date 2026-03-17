@@ -16,6 +16,7 @@ namespace Vidly.Services
         private readonly IMovieRepository _movieRepository;
         private readonly IRentalRepository _rentalRepository;
         private readonly Random _random;
+        private readonly IClock _clock;
 
         private static readonly string[] SlotNotes = new[]
         {
@@ -70,8 +71,10 @@ namespace Vidly.Services
 
         public MovieNightPlannerService(
             IMovieRepository movieRepository,
-            IRentalRepository rentalRepository)
+            IRentalRepository rentalRepository,
+            IClock clock)
         {
+            _clock = clock ?? throw new ArgumentNullException(nameof(clock));
             _movieRepository = movieRepository ?? throw new ArgumentNullException(nameof(movieRepository));
             _rentalRepository = rentalRepository ?? throw new ArgumentNullException(nameof(rentalRepository));
             _random = new Random();
@@ -392,7 +395,7 @@ namespace Vidly.Services
 
         private static DateTime DefaultStartTime()
         {
-            var today = DateTime.Today;
+            var today = _clock.Today;
             return new DateTime(today.Year, today.Month, today.Day, 19, 0, 0);
         }
 
