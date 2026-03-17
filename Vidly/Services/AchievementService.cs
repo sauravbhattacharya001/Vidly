@@ -17,13 +17,16 @@ namespace Vidly.Services
         private readonly IRentalRepository _rentalRepository;
         private readonly IMovieRepository _movieRepository;
         private readonly IReviewRepository _reviewRepository;
+        private readonly IClock _clock;
 
         public AchievementService(
             ICustomerRepository customerRepository,
             IRentalRepository rentalRepository,
             IMovieRepository movieRepository,
-            IReviewRepository reviewRepository = null)
+            IReviewRepository reviewRepository = null,
+            IClock clock)
         {
+            _clock = clock ?? throw new ArgumentNullException(nameof(clock));
             _customerRepository = customerRepository
                 ?? throw new ArgumentNullException(nameof(customerRepository));
             _rentalRepository = rentalRepository
@@ -643,7 +646,7 @@ namespace Vidly.Services
                     Hint = "Membership start date not set"
                 };
 
-            var days = (DateTime.Today - customer.MemberSince.Value).TotalDays;
+            var days = (_clock.Today - customer.MemberSince.Value).TotalDays;
             bool earned = days >= badge.RequiredCount;
 
             return new BadgeEvalResult

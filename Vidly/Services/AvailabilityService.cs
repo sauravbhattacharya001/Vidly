@@ -16,12 +16,15 @@ namespace Vidly.Services
         private readonly IMovieRepository _movieRepository;
         private readonly IRentalRepository _rentalRepository;
         private readonly IReservationRepository _reservationRepository;
+        private readonly IClock _clock;
 
         public AvailabilityService(
             IMovieRepository movieRepository,
             IRentalRepository rentalRepository,
-            IReservationRepository reservationRepository = null)
+            IReservationRepository reservationRepository = null,
+            IClock clock = null)
         {
+            _clock = clock ?? new SystemClock();
             _movieRepository = movieRepository
                 ?? throw new ArgumentNullException(nameof(movieRepository));
             _rentalRepository = rentalRepository
@@ -84,7 +87,7 @@ namespace Vidly.Services
                 if (activeRental != null)
                 {
                     daysUntil = (int)Math.Ceiling(
-                        (activeRental.DueDate - DateTime.Today).TotalDays);
+                        (activeRental.DueDate - _clock.Today).TotalDays);
                 }
 
                 int queueLen;
@@ -132,7 +135,7 @@ namespace Vidly.Services
             if (days < 1) days = 1;
             if (days > 90) days = 90;
 
-            var startDate = DateTime.Today;
+            var startDate = _clock.Today;
             var endDate = startDate.AddDays(days);
 
             // Get all active rentals with due dates in range
@@ -235,7 +238,7 @@ namespace Vidly.Services
             var rental = _rentalRepository.GetAll()
                 .FirstOrDefault(r => r.MovieId == movieId && r.Status != RentalStatus.Returned);
 
-            return rental == null ? DateTime.Today : rental.DueDate;
+            return rental == null ? _clock.Today : rental.DueDate;
         }
 
         /// <summary>

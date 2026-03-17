@@ -18,6 +18,7 @@ namespace Vidly.Services
         private readonly IRentalRepository _rentalRepository;
         private readonly IMovieRepository _movieRepository;
         private readonly ICustomerRepository _customerRepository;
+        private readonly IClock _clock;
 
         /// <summary>Store name displayed on receipts.</summary>
         public const string StoreName = "Vidly Video Rentals";
@@ -40,8 +41,10 @@ namespace Vidly.Services
         public RentalReceiptService(
             IRentalRepository rentalRepository,
             IMovieRepository movieRepository,
-            ICustomerRepository customerRepository)
+            ICustomerRepository customerRepository,
+            IClock clock)
         {
+            _clock = clock ?? throw new ArgumentNullException(nameof(clock));
             _rentalRepository = rentalRepository ?? throw new ArgumentNullException(nameof(rentalRepository));
             _movieRepository = movieRepository ?? throw new ArgumentNullException(nameof(movieRepository));
             _customerRepository = customerRepository ?? throw new ArgumentNullException(nameof(customerRepository));
@@ -91,7 +94,7 @@ namespace Vidly.Services
             return new BatchReceipt
             {
                 Receipts = receipts,
-                GeneratedAt = DateTime.Now,
+                GeneratedAt = _clock.Now,
                 CustomerName = receipts.First().CustomerName,
                 CustomerId = receipts.First().CustomerId,
                 TotalItems = receipts.Count,
@@ -121,7 +124,7 @@ namespace Vidly.Services
                 DueDate = rental.DueDate,
                 ReturnDate = rental.ReturnDate,
                 Status = rental.Status,
-                GeneratedAt = DateTime.Now,
+                GeneratedAt = _clock.Now,
                 LineItems = new List<ReceiptLineItem>(),
             };
 
@@ -360,7 +363,7 @@ namespace Vidly.Services
 
         internal static int CalculateRentalDays(Rental rental)
         {
-            var endDate = rental.ReturnDate ?? DateTime.Today;
+            var endDate = rental.ReturnDate ?? _clock.Today;
             return Math.Max(1, (int)Math.Ceiling((endDate - rental.RentalDate).TotalDays));
         }
 
@@ -383,7 +386,7 @@ namespace Vidly.Services
 
         internal static string GenerateReceiptNumber(int rentalId)
         {
-            return $"VDL-{DateTime.Now:yyyyMMdd}-{rentalId:D6}";
+            return $"VDL-{_clock.Now:yyyyMMdd}-{rentalId:D6}";
         }
 
         private static string CenterText(string text, int width)

@@ -121,10 +121,10 @@ namespace Vidly.Services
             return rentals.Select(r =>
             {
                 var movie = movies.TryGetValue(r.MovieId, out var _v1) ? _v1 : null;
-                var endDate = r.ReturnDate ?? DateTime.Today;
+                var endDate = r.ReturnDate ?? _clock.Today;
                 var days = Math.Max(1, (int)Math.Ceiling((endDate - r.RentalDate).TotalDays));
                 var wasLate = r.ReturnDate.HasValue && r.ReturnDate.Value > r.DueDate;
-                if (!r.ReturnDate.HasValue && DateTime.Today > r.DueDate)
+                if (!r.ReturnDate.HasValue && _clock.Today > r.DueDate)
                     wasLate = true;
 
                 return new RentalHistoryEntry
@@ -203,7 +203,7 @@ namespace Vidly.Services
                 }
 
                 // Overdue warning
-                if (r.Status == RentalStatus.Overdue || (r.Status != RentalStatus.Returned && DateTime.Today > r.DueDate))
+                if (r.Status == RentalStatus.Overdue || (r.Status != RentalStatus.Returned && _clock.Today > r.DueDate))
                 {
                     events.Add(new TimelineEvent
                     {
@@ -283,7 +283,7 @@ namespace Vidly.Services
             foreach (var group in byCustomer)
             {
                 var lastRental = group.Max(r => r.RentalDate);
-                var daysSince = (DateTime.Today - lastRental).TotalDays;
+                var daysSince = (_clock.Today - lastRental).TotalDays;
                 var name = customerLookup.ContainsKey(group.Key) ? customerLookup[group.Key].Name : "Unknown";
 
                 string risk;
@@ -334,8 +334,8 @@ namespace Vidly.Services
                 if (!currentlyAvailable && activeRental != null)
                 {
                     estimatedAvailable = activeRental.RentalDate.AddDays(avgDuration);
-                    if (estimatedAvailable < DateTime.Today)
-                        estimatedAvailable = DateTime.Today;
+                    if (estimatedAvailable < _clock.Today)
+                        estimatedAvailable = _clock.Today;
                 }
 
                 forecast.Predictions.Add(new MovieAvailabilityPrediction
@@ -369,7 +369,7 @@ namespace Vidly.Services
             if (rentals.Any())
             {
                 var lastRental = rentals.Max(r => r.RentalDate);
-                var daysSince = (DateTime.Today - lastRental).TotalDays;
+                var daysSince = (_clock.Today - lastRental).TotalDays;
                 if (daysSince <= 7) recencyPoints = 25;
                 else if (daysSince <= 30) recencyPoints = 20;
                 else if (daysSince <= 60) recencyPoints = 15;

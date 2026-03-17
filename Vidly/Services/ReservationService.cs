@@ -20,6 +20,7 @@ namespace Vidly.Services
         private readonly IRentalRepository _rentalRepo;
         private readonly IMovieRepository _movieRepo;
         private readonly ICustomerRepository _customerRepo;
+        private readonly IClock _clock;
 
         /// <summary>Days a customer has to pick up once notified.</summary>
         public const int PickupWindowDays = 2;
@@ -34,7 +35,8 @@ namespace Vidly.Services
             IReservationRepository reservationRepo,
             IRentalRepository rentalRepo,
             IMovieRepository movieRepo,
-            ICustomerRepository customerRepo)
+            ICustomerRepository customerRepo,
+            IClock clock)
         {
             _reservationRepo = reservationRepo
                 ?? throw new ArgumentNullException(nameof(reservationRepo));
@@ -42,6 +44,7 @@ namespace Vidly.Services
                 ?? throw new ArgumentNullException(nameof(rentalRepo));
             _movieRepo = movieRepo
                 ?? throw new ArgumentNullException(nameof(movieRepo));
+            _clock = clock ?? throw new ArgumentNullException(nameof(clock));
             _customerRepo = customerRepo
                 ?? throw new ArgumentNullException(nameof(customerRepo));
         }
@@ -104,7 +107,7 @@ namespace Vidly.Services
                 CustomerName = customer.Name,
                 MovieId = movieId,
                 MovieName = movie.Name,
-                ReservedDate = DateTime.Today,
+                ReservedDate = _clock.Today,
                 QueuePosition = position,
                 Status = ReservationStatus.Waiting
             };
@@ -168,7 +171,7 @@ namespace Vidly.Services
                 return null;
 
             next.Status = ReservationStatus.Ready;
-            next.ExpiresDate = DateTime.Today.AddDays(PickupWindowDays);
+            next.ExpiresDate = _clock.Today.AddDays(PickupWindowDays);
             _reservationRepo.Update(next);
 
             return next;
@@ -205,7 +208,7 @@ namespace Vidly.Services
             }
 
             reservation.Status = ReservationStatus.Fulfilled;
-            reservation.FulfilledDate = DateTime.Today;
+            reservation.FulfilledDate = _clock.Today;
             _reservationRepo.Update(reservation);
 
             // Compact remaining queue
