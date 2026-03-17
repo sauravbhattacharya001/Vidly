@@ -32,6 +32,11 @@ namespace Vidly.Repositories
         /// </summary>
         private static readonly HashSet<int> _rentedMovieIds;
 
+        /// <summary>
+        /// Tracks rental IDs that have been extended (each rental can only be extended once).
+        /// </summary>
+        private static readonly HashSet<int> _extendedRentalIds;
+
         private static readonly object _lock = new object();
         private static int _nextId;
 
@@ -81,6 +86,7 @@ namespace Vidly.Repositories
 
             _rentals = new Dictionary<int, Rental>();
             _rentedMovieIds = new HashSet<int>();
+            _extendedRentalIds = new HashSet<int>();
 
             foreach (var r in seedData)
             {
@@ -388,6 +394,63 @@ namespace Vidly.Repositories
         }
 
         /// <summary>
+        /// Extends an active rental's due date. Each rental can only be extended once.
+        /// Extension fee: half the daily rate per extension day.
+        /// </summary>
+        public Rental ExtendRental(int rentalId, int days)
+        {
+            if (days < 1 || days > 7)
+                throw new ArgumentOutOfRangeException(nameof(days),
+                    "Extension must be between 1 and 7 days.");
+
+            lock (_lock)
+            {
+                if (!_rentals.TryGetValue(rentalId, out var rental))
+                    throw new KeyNotFoundException(
+                        $"Rental with Id {rentalId} not found.");
+
+                RefreshStatus(rental);
+
+                if (rental.Status == RentalStatus.Returned)
+                    throw new InvalidOperationException(
+                        "Cannot extend a rental that has already been returned.");
+
+                if (_extendedRentalIds.Contains(rentalId))
+                    throw new InvalidOperationException(
+                        "This rental has already been extended. Each rental can only be extended once.");
+
+                // Extension fee: half the daily rate per extension day
+                var extensionFee = Math.Round(rental.DailyRate * 0.5m * days, 2);
+
+                rental.DueDate = rental.DueDate.AddDays(days);
+                // Add extension fee as a bump to the effective daily rate over the rental period
+                var totalDays = Math.Max(1, (int)Math.Ceiling((rental.DueDate - rental.RentalDate).TotalDays));
+                rental.DailyRate = Math.Round((rental.DailyRate * (totalDays - days) + rental.DailyRate * days + extensionFee) / totalDays, 2);
+
+                // Refresh status after extending (may no longer be overdue)
+                if (rental.Status == RentalStatus.Overdue && DateTime.Today <= rental.DueDate)
+                {
+                    rental.Status = RentalStatus.Active;
+                    rental.LateFee = 0;
+                }
+
+                _extendedRentalIds.Add(rentalId);
+                return Clone(rental);
+            }
+        }
+
+        /// <summary>
+        /// Checks whether a rental has already been extended.
+        /// </summary>
+        public bool IsExtended(int rentalId)
+        {
+            lock (_lock)
+            {
+                return _extendedRentalIds.Contains(rentalId);
+            }
+        }
+
+        /// <summary>
         /// Computes rental statistics in a single pass over the collection,
         /// avoiding multiple separate Count()/Sum() enumerations.
         /// </summary>
@@ -467,6 +530,7 @@ namespace Vidly.Repositories
             {
                 _rentals.Clear();
                 _rentedMovieIds.Clear();
+                _extendedRentalIds.Clear();
 
                 var seedData = new[]
                 {

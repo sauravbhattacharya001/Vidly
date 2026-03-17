@@ -289,5 +289,76 @@ namespace Vidly.Controllers
             var overdueRentals = _rentalRepository.GetOverdue();
             return View(overdueRentals);
         }
+
+        // GET: Rentals/Extend/5
+        public ActionResult Extend(int id)
+        {
+            var rental = _rentalRepository.GetById(id);
+
+            if (rental == null)
+                return HttpNotFound();
+
+            if (rental.Status == RentalStatus.Returned)
+            {
+                TempData["Error"] = "Cannot extend a returned rental.";
+                return RedirectToAction("Index");
+            }
+
+            if (_rentalRepository.IsExtended(id))
+            {
+                TempData["Error"] = "This rental has already been extended.";
+                return RedirectToAction("Index");
+            }
+
+            var viewModel = new RentalExtendViewModel
+            {
+                Rental = rental,
+                ExtensionDays = 3,
+                ExtensionFeePerDay = Math.Round(rental.DailyRate * 0.5m, 2),
+                IsAlreadyExtended = false
+            };
+
+            return View(viewModel);
+        }
+
+        // POST: Rentals/Extend/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult Extend(int id, RentalExtendViewModel viewModel)
+        {
+            if (viewModel == null || viewModel.ExtensionDays < 1 || viewModel.ExtensionDays > 7)
+            {
+                ModelState.AddModelError("ExtensionDays", "Extension must be between 1 and 7 days.");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                var rental = _rentalRepository.GetById(id);
+                if (rental == null)
+                    return HttpNotFound();
+
+                viewModel.Rental = rental;
+                viewModel.ExtensionFeePerDay = Math.Round(rental.DailyRate * 0.5m, 2);
+                viewModel.IsAlreadyExtended = _rentalRepository.IsExtended(id);
+                return View(viewModel);
+            }
+
+            try
+            {
+                var updated = _rentalRepository.ExtendRental(id, viewModel.ExtensionDays);
+                var fee = Math.Round(updated.DailyRate * 0.5m * viewModel.ExtensionDays, 2);
+                TempData["Message"] = $"'{updated.MovieName}' extended by {viewModel.ExtensionDays} day(s). New due date: {updated.DueDate:MMM dd, yyyy}. Extension fee: ${fee:F2}.";
+            }
+            catch (KeyNotFoundException)
+            {
+                return HttpNotFound();
+            }
+            catch (InvalidOperationException ex)
+            {
+                TempData["Error"] = ex.Message;
+            }
+
+            return RedirectToAction("Index");
+        }
     }
 }
