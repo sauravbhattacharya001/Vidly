@@ -71,6 +71,23 @@ namespace Vidly.Repositories
         Rental Checkout(Rental rental, int maxConcurrentRentals);
 
         /// <summary>
+        /// Extends an active rental's due date by the specified number of days.
+        /// A rental can only be extended once and cannot be extended if already returned.
+        /// An extension fee (half the daily rate per extension day) is added.
+        /// </summary>
+        /// <param name="rentalId">The rental to extend.</param>
+        /// <param name="days">Number of days to extend (1-7).</param>
+        /// <returns>The updated rental.</returns>
+        /// <exception cref="KeyNotFoundException">Rental not found.</exception>
+        /// <exception cref="InvalidOperationException">Rental already returned or already extended.</exception>
+        Rental ExtendRental(int rentalId, int days);
+
+        /// <summary>
+        /// Checks whether a rental has already been extended.
+        /// </summary>
+        bool IsExtended(int rentalId);
+
+        /// <summary>
         /// Returns dashboard statistics about rentals.
         /// </summary>
         RentalStats GetStats();

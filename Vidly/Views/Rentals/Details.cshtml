@@ -76,6 +76,7 @@
                             <span class="glyphicon glyphicon-ok"></span> Return Movie
                         </button>
                     }
+                    @Html.ActionLink("Extend Rental", "Extend", new { id = Model.Id }, new { @class = "btn btn-warning" })
                 }
                 @Html.ActionLink("Print Receipt", "Receipt", new { id = Model.Id }, new { @class = "btn btn-info" })
                 @Html.ActionLink("Back to List", "Index", null, new { @class = "btn btn-default" })
