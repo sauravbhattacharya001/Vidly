@@ -30,12 +30,16 @@ namespace Vidly.Services
         /// <summary>Maximum queue depth per movie.</summary>
         public const int MaxQueueDepth = 10;
 
+        private readonly IClock _clock;
+
         public ReservationService(
             IReservationRepository reservationRepo,
             IRentalRepository rentalRepo,
             IMovieRepository movieRepo,
-            ICustomerRepository customerRepo)
+            ICustomerRepository customerRepo,
+            IClock clock = null)
         {
+            _clock = clock ?? new SystemClock();
             _reservationRepo = reservationRepo
                 ?? throw new ArgumentNullException(nameof(reservationRepo));
             _rentalRepo = rentalRepo
@@ -104,7 +108,7 @@ namespace Vidly.Services
                 CustomerName = customer.Name,
                 MovieId = movieId,
                 MovieName = movie.Name,
-                ReservedDate = DateTime.Today,
+                ReservedDate = _clock.Today,
                 QueuePosition = position,
                 Status = ReservationStatus.Waiting
             };
@@ -168,7 +172,7 @@ namespace Vidly.Services
                 return null;
 
             next.Status = ReservationStatus.Ready;
-            next.ExpiresDate = DateTime.Today.AddDays(PickupWindowDays);
+            next.ExpiresDate = _clock.Today.AddDays(PickupWindowDays);
             _reservationRepo.Update(next);
 
             return next;
@@ -205,7 +209,7 @@ namespace Vidly.Services
             }
 
             reservation.Status = ReservationStatus.Fulfilled;
-            reservation.FulfilledDate = DateTime.Today;
+            reservation.FulfilledDate = _clock.Today;
             _reservationRepo.Update(reservation);
 
             // Compact remaining queue

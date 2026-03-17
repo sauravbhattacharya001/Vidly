@@ -316,7 +316,7 @@ namespace Vidly.Services
                 .FirstOrDefault();
 
             // Recent 7-day trends
-            var last7Days = Enumerable.Range(0, 7).Select(i => DateTime.Today.AddDays(-i)).ToList();
+            var last7Days = Enumerable.Range(0, 7).Select(i => _clock.Today.AddDays(-i)).ToList();
             analytics.RecentTrends = last7Days.Select(date => new AnnouncementTrend
             {
                 Date = date,

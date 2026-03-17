@@ -66,11 +66,15 @@ namespace Vidly.Services
         /// <summary>Days overdue before the penalty kicks in.</summary>
         public const int VeryLateDaysThreshold = 14;
 
+        private readonly IClock _clock;
+
         public RentalReturnService(
             IRentalRepository rentalRepository,
             IMovieRepository movieRepository,
-            ICustomerRepository customerRepository)
+            ICustomerRepository customerRepository,
+            IClock clock = null)
         {
+            _clock = clock ?? new SystemClock();
             _rentalRepository = rentalRepository
                 ?? throw new ArgumentNullException(nameof(rentalRepository));
             _movieRepository = movieRepository
@@ -109,7 +113,7 @@ namespace Vidly.Services
                 throw new InvalidOperationException(
                     $"Rental {rentalId} is already returned.");
 
-            var actualReturnDate = returnDate ?? DateTime.Today;
+            var actualReturnDate = returnDate ?? _clock.Today;
             if (actualReturnDate < rental.RentalDate)
                 throw new InvalidOperationException(
                     "Return date cannot precede the rental date.");
@@ -373,7 +377,7 @@ namespace Vidly.Services
                 var customer = _customerRepository.GetById(rental.CustomerId);
                 var tier = customer?.MembershipType ?? MembershipType.Basic;
                 var projected = CalculateLateFee(
-                    rental.DueDate, DateTime.Today, rental.DailyRate, tier);
+                    rental.DueDate, _clock.Today, rental.DailyRate, tier);
 
                 var daysOverdue = projected.DaysOverdue;
                 OverdueAction action;
@@ -500,14 +504,14 @@ namespace Vidly.Services
             var tier = customer?.MembershipType ?? MembershipType.Basic;
 
             var result = CalculateLateFee(
-                rental.DueDate, DateTime.Today, rental.DailyRate, tier);
+                rental.DueDate, _clock.Today, rental.DailyRate, tier);
 
             return new LateFeeEstimate
             {
                 RentalId = rentalId,
                 MovieName = rental.MovieName ?? "Unknown",
                 DueDate = rental.DueDate,
-                AsOfDate = DateTime.Today,
+                AsOfDate = _clock.Today,
                 DaysOverdue = result.DaysOverdue,
                 GracePeriodDays = result.GracePeriodDays,
                 EstimatedFee = result.LateFee,

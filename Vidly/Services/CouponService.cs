@@ -11,10 +11,13 @@ namespace Vidly.Services
     {
         private readonly ICouponRepository _couponRepository;
 
+        private readonly IClock _clock;
         public CouponService() : this(new InMemoryCouponRepository()) { }
 
-        public CouponService(ICouponRepository couponRepository)
+        public CouponService(ICouponRepository couponRepository,
+            IClock clock = null)
         {
+            _clock = clock ?? new SystemClock();
             _couponRepository = couponRepository
                 ?? throw new ArgumentNullException(nameof(couponRepository));
         }
@@ -36,11 +39,11 @@ namespace Vidly.Services
             if (!coupon.IsActive)
                 return CouponValidationResult.Fail("This coupon has been disabled.");
 
-            if (DateTime.Today < coupon.ValidFrom)
+            if (_clock.Today < coupon.ValidFrom)
                 return CouponValidationResult.Fail(
                     $"This coupon is not valid until {coupon.ValidFrom:MMM d, yyyy}.");
 
-            if (DateTime.Today > coupon.ValidUntil)
+            if (_clock.Today > coupon.ValidUntil)
                 return CouponValidationResult.Fail("This coupon has expired.");
 
             if (coupon.MaxRedemptions.HasValue && coupon.TimesUsed >= coupon.MaxRedemptions.Value)

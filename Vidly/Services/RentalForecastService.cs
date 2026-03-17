@@ -123,7 +123,7 @@ namespace Vidly.Services
             if (rentals.Count == 0)
                 return new List<GenrePopularity>();
 
-            var cutoff = DateTime.Today.AddDays(-recentDays);
+            var cutoff = _clock.Today.AddDays(-recentDays);
             var totalRentals = rentals.Count;
 
             var rentalsByGenre = rentals
@@ -226,7 +226,7 @@ namespace Vidly.Services
                             ? Math.Round(movieRentals.Count / (spanDays / 30.0), 2)
                             : movieRentals.Count,
                         AverageDaysBetweenRentals = Math.Round(avgGap, 1),
-                        DaysSinceLastRental = (int)(DateTime.Today - last).TotalDays
+                        DaysSinceLastRental = (int)(_clock.Today - last).TotalDays
                     };
                 })
                 .OrderByDescending(v => v.RentalsPerMonth)
@@ -248,7 +248,7 @@ namespace Vidly.Services
                 throw new ArgumentOutOfRangeException(nameof(days),
                     "Days must be between 1 and 365.");
 
-            var start = startDate ?? DateTime.Today.AddDays(1);
+            var start = startDate ?? _clock.Today.AddDays(1);
             var rentals = _rentalRepository.GetAll();
 
             if (rentals.Count == 0)
@@ -269,7 +269,7 @@ namespace Vidly.Services
                 .GroupBy(r => r.RentalDate.DayOfWeek)
                 .ToDictionary(g => g.Key, g => g.Count() / totalWeeks);
 
-            var last30 = rentals.Count(r => r.RentalDate >= DateTime.Today.AddDays(-30));
+            var last30 = rentals.Count(r => r.RentalDate >= _clock.Today.AddDays(-30));
             var overallDailyAvg = rentals.Count / Math.Max(1, dateRange.TotalDays);
             var recentDailyAvg = last30 / 30.0;
             var trendMultiplier = overallDailyAvg > 0

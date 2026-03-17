@@ -31,7 +31,7 @@ namespace Vidly.Services
             IRentalRepository rentalRepository,
             IMovieRepository movieRepository,
             ICustomerRepository customerRepository,
-            IWatchlistRepository watchlistRepository),
+            IWatchlistRepository watchlistRepository,
             IClock clock = null)
         {
             _rentalRepository = rentalRepository ?? throw new ArgumentNullException(nameof(rentalRepository));
@@ -145,9 +145,9 @@ namespace Vidly.Services
             {
                 // Use the actual DueDate from the rental — it already accounts for
                 // membership-tier extended rental periods (Silver +1, Gold +2, Platinum +3).
-                if (DateTime.Today > rental.DueDate)
+                if (_clock.Today > rental.DueDate)
                 {
-                    var daysOverdue = (int)(DateTime.Today - rental.DueDate).TotalDays;
+                    var daysOverdue = (int)(_clock.Today - rental.DueDate).TotalDays;
                     movieLookup.TryGetValue(rental.MovieId, out var movie);
                     yield return new Notification
                     {
@@ -172,7 +172,7 @@ namespace Vidly.Services
             {
                 // Use the actual DueDate — it already accounts for membership-tier
                 // extended rental periods. Alert when due within 2 days.
-                var daysUntilDue = (int)(rental.DueDate - DateTime.Today).TotalDays;
+                var daysUntilDue = (int)(rental.DueDate - _clock.Today).TotalDays;
                 if (daysUntilDue >= 0 && daysUntilDue <= 2)
                 {
                     movieLookup.TryGetValue(rental.MovieId, out var movie);
@@ -257,14 +257,14 @@ namespace Vidly.Services
             if (!customer.MemberSince.HasValue)
                 yield break;
 
-            var memberDays = (DateTime.Today - customer.MemberSince.Value).TotalDays;
+            var memberDays = (_clock.Today - customer.MemberSince.Value).TotalDays;
             var years = (int)(memberDays / 365);
 
             // Anniversary: compute by building the actual anniversary date this year,
             // avoiding DayOfYear which is unreliable across leap/non-leap year boundaries
             // (e.g., Mar 1 is day 60 in non-leap years but day 61 in leap years, and
             // Feb 29 anniversaries have no direct equivalent in non-leap years).
-            var today = DateTime.Today;
+            var today = _clock.Today;
             var memberMonth = customer.MemberSince.Value.Month;
             var memberDay = customer.MemberSince.Value.Day;
 

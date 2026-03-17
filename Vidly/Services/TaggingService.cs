@@ -571,7 +571,7 @@ namespace Vidly.Services
 
             // Classic suggestion (released >20 years ago)
             if (movie.ReleaseDate.HasValue &&
-                (DateTime.Today - movie.ReleaseDate.Value).TotalDays > 365 * 20)
+                (_clock.Today - movie.ReleaseDate.Value).TotalDays > 365 * 20)
                 suggestions.Add("Classic");
 
             // Remove tags already applied

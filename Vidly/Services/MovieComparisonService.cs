@@ -82,7 +82,7 @@ namespace Vidly.Services
                     IsAvailable = !activeRentals.Any(),
                     IsNewRelease = movie.IsNewRelease,
                     AgeDays = movie.ReleaseDate.HasValue
-                        ? (int)(DateTime.Today - movie.ReleaseDate.Value).TotalDays
+                        ? (int)(_clock.Today - movie.ReleaseDate.Value).TotalDays
                         : (int?)null
                 });
             }
