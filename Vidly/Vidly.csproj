@@ -156,6 +156,8 @@
     <Compile Include="Repositories\InMemoryWatchlistRepository.cs" />
     <Compile Include="Controllers\WatchlistController.cs" />
     <Compile Include="ViewModels\WatchlistViewModel.cs" />
+    <Compile Include="Controllers\LoyaltyController.cs" />
+    <Compile Include="ViewModels\LoyaltyViewModel.cs" />
     <Compile Include="Models\AvailabilityModels.cs" />
     <Compile Include="Services\AvailabilityService.cs" />
     <Compile Include="Controllers\AvailabilityController.cs" />
