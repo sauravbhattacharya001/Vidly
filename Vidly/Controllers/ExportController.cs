@@ -57,38 +57,37 @@ namespace Vidly.Controllers
         // GET: Export/Movies?format=csv
         public ActionResult Movies(string format)
         {
-            var movies = _movieRepository.GetAll();
-
-            if (IsJson(format))
-            {
-                var data = movies.Select(m => new
+            return ExportAs(
+                _movieRepository.GetAll(),
+                format,
+                "movies",
+                m => new
                 {
                     m.Id,
                     m.Name,
                     ReleaseDate = m.ReleaseDate?.ToString("yyyy-MM-dd"),
                     Genre = m.Genre?.ToString(),
                     m.Rating
+                },
+                new[] { "Id", "Name", "ReleaseDate", "Genre", "Rating" },
+                m => new[]
+                {
+                    m.Id.ToString(),
+                    CsvEscape(m.Name),
+                    m.ReleaseDate?.ToString("yyyy-MM-dd"),
+                    m.Genre?.ToString(),
+                    m.Rating?.ToString()
                 });
-                return JsonFile(data, "movies.json");
-            }
-
-            var csv = new StringBuilder();
-            csv.AppendLine("Id,Name,ReleaseDate,Genre,Rating");
-            foreach (var m in movies)
-            {
-                csv.AppendLine($"{m.Id},{CsvEscape(m.Name)},{m.ReleaseDate?.ToString("yyyy-MM-dd")},{m.Genre},{m.Rating}");
-            }
-            return CsvFile(csv, "movies.csv");
         }
 
         // GET: Export/Customers?format=csv
         public ActionResult Customers(string format)
         {
-            var customers = _customerRepository.GetAll();
-
-            if (IsJson(format))
-            {
-                var data = customers.Select(c => new
+            return ExportAs(
+                _customerRepository.GetAll(),
+                format,
+                "customers",
+                c => new
                 {
                     c.Id,
                     c.Name,
@@ -96,27 +95,27 @@ namespace Vidly.Controllers
                     c.Phone,
                     MemberSince = c.MemberSince?.ToString("yyyy-MM-dd"),
                     MembershipType = c.MembershipType.ToString()
+                },
+                new[] { "Id", "Name", "Email", "Phone", "MemberSince", "MembershipType" },
+                c => new[]
+                {
+                    c.Id.ToString(),
+                    CsvEscape(c.Name),
+                    CsvEscape(c.Email),
+                    CsvEscape(c.Phone),
+                    c.MemberSince?.ToString("yyyy-MM-dd"),
+                    c.MembershipType.ToString()
                 });
-                return JsonFile(data, "customers.json");
-            }
-
-            var csv = new StringBuilder();
-            csv.AppendLine("Id,Name,Email,Phone,MemberSince,MembershipType");
-            foreach (var c in customers)
-            {
-                csv.AppendLine($"{c.Id},{CsvEscape(c.Name)},{CsvEscape(c.Email)},{CsvEscape(c.Phone)},{c.MemberSince?.ToString("yyyy-MM-dd")},{c.MembershipType}");
-            }
-            return CsvFile(csv, "customers.csv");
         }
 
         // GET: Export/Rentals?format=csv
         public ActionResult Rentals(string format)
         {
-            var rentals = _rentalRepository.GetAll();
-
-            if (IsJson(format))
-            {
-                var data = rentals.Select(r => new
+            return ExportAs(
+                _rentalRepository.GetAll(),
+                format,
+                "rentals",
+                r => new
                 {
                     r.Id,
                     r.CustomerId,
@@ -130,20 +129,61 @@ namespace Vidly.Controllers
                     r.DailyRate,
                     r.TotalCost,
                     r.LateFee
+                },
+                new[] { "Id", "CustomerId", "CustomerName", "MovieId", "MovieName",
+                        "RentalDate", "DueDate", "ReturnDate", "Status",
+                        "DailyRate", "TotalCost", "LateFee" },
+                r => new[]
+                {
+                    r.Id.ToString(),
+                    r.CustomerId.ToString(),
+                    CsvEscape(r.CustomerName),
+                    r.MovieId.ToString(),
+                    CsvEscape(r.MovieName),
+                    r.RentalDate.ToString("yyyy-MM-dd"),
+                    r.DueDate.ToString("yyyy-MM-dd"),
+                    r.ReturnDate?.ToString("yyyy-MM-dd"),
+                    r.Status.ToString(),
+                    r.DailyRate.ToString("F2"),
+                    r.TotalCost.ToString("F2"),
+                    r.LateFee.ToString("F2")
                 });
-                return JsonFile(data, "rentals.json");
-            }
-
-            var csv = new StringBuilder();
-            csv.AppendLine("Id,CustomerId,CustomerName,MovieId,MovieName,RentalDate,DueDate,ReturnDate,Status,DailyRate,TotalCost,LateFee");
-            foreach (var r in rentals)
-            {
-                csv.AppendLine($"{r.Id},{r.CustomerId},{CsvEscape(r.CustomerName)},{r.MovieId},{CsvEscape(r.MovieName)},{r.RentalDate:yyyy-MM-dd},{r.DueDate:yyyy-MM-dd},{r.ReturnDate?.ToString("yyyy-MM-dd")},{r.Status},{r.DailyRate:F2},{r.TotalCost:F2},{r.LateFee:F2}");
-            }
-            return CsvFile(csv, "rentals.csv");
         }
 
         #region Helpers
+
+        /// <summary>
+        /// Generic export helper that eliminates the repeated JSON-or-CSV
+        /// branching in each action method. Each caller supplies:
+        ///   - the data collection
+        ///   - a JSON projection (anonymous object selector)
+        ///   - CSV column headers
+        ///   - a CSV row-value selector
+        /// The format routing, file encoding, and content-type negotiation
+        /// happen exactly once here.
+        /// </summary>
+        private ActionResult ExportAs<TEntity>(
+            IReadOnlyList<TEntity> items,
+            string format,
+            string filenameBase,
+            Func<TEntity, object> jsonProjection,
+            string[] csvHeaders,
+            Func<TEntity, string[]> csvRowValues)
+        {
+            if (IsJson(format))
+            {
+                var data = items.Select(jsonProjection);
+                return JsonFile(data, $"{filenameBase}.json");
+            }
+
+            var csv = new StringBuilder();
+            csv.AppendLine(string.Join(",", csvHeaders));
+            foreach (var item in items)
+            {
+                csv.AppendLine(string.Join(",", csvRowValues(item)));
+            }
+            return CsvFile(csv, $"{filenameBase}.csv");
+        }
 
         private static bool IsJson(string format)
         {
@@ -163,16 +203,18 @@ namespace Vidly.Controllers
             return File(bytes, "text/csv", filename);
         }
 
-        private static string CsvEscape(string value)
+        /// <summary>
+        /// Escapes a string value for safe CSV output, guarding against
+        /// CSV injection (formula injection). Values starting with
+        /// =, +, -, @, tab, or carriage-return are prefixed with a
+        /// single-quote and quoted to neutralize formula execution
+        /// in spreadsheet applications (CWE-1236).
+        /// </summary>
+        internal static string CsvEscape(string value)
         {
             if (string.IsNullOrEmpty(value))
                 return "";
 
-            // Guard against CSV injection (formula injection). Values starting
-            // with =, +, -, @, tab, or carriage-return can trigger formula
-            // execution in spreadsheet applications such as Excel, Google
-            // Sheets, and LibreOffice Calc. Prefix with a single-quote to
-            // neutralize them and always quote the field.
             bool needsQuote = value.Contains(",") || value.Contains("\"") || value.Contains("\n");
             string escaped = value.Replace("\"", "\"\"");
 
