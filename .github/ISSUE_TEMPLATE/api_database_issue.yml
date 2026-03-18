@@ -1,0 +1,82 @@
+name: "📊 API/Database Issue"
+description: Report issues with API endpoints, database queries, or data integrity
+title: "[api]: "
+labels: ["api", "database"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for issues related to API endpoints, database operations, or data integrity.
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Issue Category
+      options:
+        - API endpoint returns wrong data
+        - API endpoint returns error
+        - Missing or undocumented endpoint
+        - Database migration issue
+        - Data integrity / constraint violation
+        - Query returns incorrect results
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Describe the issue in detail.
+    validations:
+      required: true
+
+  - type: textarea
+    id: request
+    attributes:
+      label: API Request Details
+      description: Include the HTTP method, URL, headers, and body.
+      placeholder: |
+        ```
+        POST /api/movies
+        Content-Type: application/json
+        Authorization: Bearer <token>
+
+        {
+          "title": "Test Movie",
+          "genreId": 1,
+          "numberInStock": 5,
+          "dailyRentalRate": 2.5
+        }
+        ```
+      render: shell
+
+  - type: textarea
+    id: response
+    attributes:
+      label: Actual Response
+      description: Include the HTTP status code and response body.
+      placeholder: |
+        ```
+        HTTP 500
+        {
+          "error": "Internal Server Error",
+          "details": "..."
+        }
+        ```
+      render: shell
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What should the API return or what should happen in the database?
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs
+      description: Paste any error logs, stack traces, or SQL output.
+      render: shell
