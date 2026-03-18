@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
   test:
@@ -52,6 +53,34 @@ jobs:
         with:
           name: coverage-report
           path: ./TestResults/**/coverage.cobertura.xml
+
+      - name: Upload to Codecov
+        if: always()
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./TestResults/**/coverage.cobertura.xml
+          flags: unittests
+          fail_ci_if_error: false
+        continue-on-error: true
+
+      - name: Add coverage PR comment
+        if: always() && github.event_name == 'pull_request'
+        uses: irongut/CodeCoverageSummary@v1.3.0
+        with:
+          filename: ./TestResults/**/coverage.cobertura.xml
+          badge: true
+          format: markdown
+          output: both
+          thresholds: '50 80'
+        continue-on-error: true
+
+      - name: Write PR comment
+        if: always() && github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          recreate: true
+          path: code-coverage-results.md
+        continue-on-error: true
 
       - name: Generate coverage summary & enforce threshold
         if: always()
