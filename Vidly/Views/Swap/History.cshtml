@@ -1,0 +1,87 @@
+@model Vidly.ViewModels.SwapViewModel
+@{
+    ViewBag.Title = "Swap History";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2><span class="glyphicon glyphicon-transfer"></span> Swap History</h2>
+
+@if (Model.Stats != null)
+{
+    <div class="row">
+        <div class="col-md-3">
+            <div class="panel panel-primary">
+                <div class="panel-heading">Total Swaps</div>
+                <div class="panel-body text-center"><h3>@Model.Stats.TotalSwaps</h3></div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="panel panel-success">
+                <div class="panel-heading">Swap Fees</div>
+                <div class="panel-body text-center"><h3>$@Model.Stats.TotalSwapFees.ToString("F2")</h3></div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="panel panel-info">
+                <div class="panel-heading">Upgrade Revenue</div>
+                <div class="panel-body text-center"><h3>$@Model.Stats.TotalUpgradeRevenue.ToString("F2")</h3></div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="panel panel-warning">
+                <div class="panel-heading">Swaps Today</div>
+                <div class="panel-body text-center"><h3>@Model.Stats.SwapsToday</h3></div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (Model.SwapHistory.Count == 0)
+{
+    <div class="alert alert-info">No swaps have been made yet.</div>
+}
+else
+{
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Date</th>
+                <th>Customer</th>
+                <th>Swapped From</th>
+                <th>Swapped To</th>
+                <th>Swap Fee</th>
+                <th>Rate Difference</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var swap in Model.SwapHistory)
+            {
+                <tr>
+                    <td>@swap.Id</td>
+                    <td>@swap.SwapDate.ToString("MMM dd, yyyy h:mm tt")</td>
+                    <td>@swap.CustomerName</td>
+                    <td>@swap.OldMovieName</td>
+                    <td>@swap.NewMovieName</td>
+                    <td>$@swap.SwapFee.ToString("F2")</td>
+                    <td>
+                        @if (swap.RateDifference > 0)
+                        {
+                            <span class="text-warning">+$@swap.RateDifference.ToString("F2")</span>
+                        }
+                        else
+                        {
+                            <text>$0.00</text>
+                        }
+                    </td>
+                    <td><strong>$@((swap.SwapFee + swap.RateDifference).ToString("F2"))</strong></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<div class="text-right">
+    @Html.ActionLink("← Back to Rentals", "Index", "Rentals", null, new { @class = "btn btn-default" })
+</div>

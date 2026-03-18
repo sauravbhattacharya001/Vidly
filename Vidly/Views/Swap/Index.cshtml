@@ -1,0 +1,262 @@
+@model Vidly.ViewModels.SwapViewModel
+@{
+    ViewBag.Title = "Swap Rental";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2><span class="glyphicon glyphicon-transfer"></span> Swap Rental</h2>
+
+@if (!string.IsNullOrEmpty(Model.Message))
+{
+    <div class="alert @(Model.IsError ? "alert-danger" : "alert-success") alert-dismissible">
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+        @Model.Message
+    </div>
+}
+
+<div class="row">
+    <!-- Current Rental Info -->
+    <div class="col-md-5">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title">
+                    <span class="glyphicon glyphicon-film"></span> Current Rental #@Model.CurrentRental.Id
+                </h3>
+            </div>
+            <div class="panel-body">
+                <dl class="dl-horizontal">
+                    <dt>Customer</dt>
+                    <dd>@(Model.CurrentRental.CustomerName ?? "—")</dd>
+
+                    <dt>Movie</dt>
+                    <dd><strong>@(Model.CurrentRental.MovieName ?? "—")</strong></dd>
+
+                    <dt>Rented On</dt>
+                    <dd>@Model.CurrentRental.RentalDate.ToString("MMM dd, yyyy")</dd>
+
+                    <dt>Due Date</dt>
+                    <dd>
+                        @Model.CurrentRental.DueDate.ToString("MMM dd, yyyy")
+                        @if (Model.CurrentRental.IsOverdue)
+                        {
+                            <span class="label label-danger">Overdue</span>
+                        }
+                    </dd>
+
+                    <dt>Daily Rate</dt>
+                    <dd>$@Model.CurrentRental.DailyRate.ToString("F2")</dd>
+
+                    <dt>Status</dt>
+                    <dd>
+                        @if (Model.CurrentRental.Status == Vidly.Models.RentalStatus.Active)
+                        {
+                            <span class="label label-info">Active</span>
+                        }
+                        else if (Model.CurrentRental.Status == Vidly.Models.RentalStatus.Overdue)
+                        {
+                            <span class="label label-danger">Overdue</span>
+                        }
+                        else
+                        {
+                            <span class="label label-default">Returned</span>
+                        }
+                    </dd>
+                </dl>
+
+                @if (Model.AlreadySwapped)
+                {
+                    <div class="alert alert-warning">
+                        <span class="glyphicon glyphicon-info-sign"></span>
+                        This rental has already been swapped and cannot be swapped again.
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Swap Quote -->
+        @if (Model.Quote != null)
+        {
+            <div class="panel panel-info">
+                <div class="panel-heading">
+                    <h3 class="panel-title"><span class="glyphicon glyphicon-usd"></span> Swap Quote</h3>
+                </div>
+                <div class="panel-body">
+                    <dl class="dl-horizontal">
+                        <dt>New Movie</dt>
+                        <dd><strong>@Model.Quote.NewMovie.Name</strong></dd>
+
+                        <dt>Remaining Days</dt>
+                        <dd>@Model.Quote.RemainingDays day(s)</dd>
+
+                        <dt>Current Rate</dt>
+                        <dd>$@Model.Quote.CurrentDailyRate.ToString("F2")/day</dd>
+
+                        <dt>New Rate</dt>
+                        <dd>
+                            $@Model.Quote.NewDailyRate.ToString("F2")/day
+                            @if (Model.Quote.IsUpgrade)
+                            {
+                                <span class="label label-warning">Upgrade</span>
+                            }
+                        </dd>
+
+                        <dt>Swap Fee</dt>
+                        <dd>$@Model.Quote.SwapFee.ToString("F2")</dd>
+
+                        @if (Model.Quote.RateDifference > 0)
+                        {
+                            <dt>Rate Difference</dt>
+                            <dd>$@Model.Quote.RateDifference.ToString("F2")</dd>
+                        }
+
+                        <dt><strong>Total Extra Cost</strong></dt>
+                        <dd><strong>$@Model.Quote.TotalExtraCost.ToString("F2")</strong></dd>
+                    </dl>
+
+                    <p class="text-muted small">@Model.Quote.Summary</p>
+
+                    @using (Html.BeginForm("Execute", "Swap", FormMethod.Post))
+                    {
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="rentalId" value="@Model.CurrentRental.Id" />
+                        <input type="hidden" name="newMovieId" value="@Model.Quote.NewMovie.Id" />
+
+                        <button type="submit" class="btn btn-primary btn-block"
+                                onclick="return confirm('Confirm swap? You will be charged $@Model.Quote.TotalExtraCost.ToString("F2").');">
+                            <span class="glyphicon glyphicon-transfer"></span> Confirm Swap
+                        </button>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Available Movies -->
+    <div class="col-md-7">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title">
+                    <span class="glyphicon glyphicon-th-list"></span>
+                    Available Movies (@Model.AvailableMovies.Count)
+                </h3>
+            </div>
+            @if (Model.AvailableMovies.Count == 0)
+            {
+                <div class="panel-body">
+                    <p class="text-muted">No movies available for swap right now.</p>
+                </div>
+            }
+            else
+            {
+                <table class="table table-hover table-striped">
+                    <thead>
+                        <tr>
+                            <th>Movie</th>
+                            <th>Genre</th>
+                            <th>Rating</th>
+                            <th>Rate</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var movie in Model.AvailableMovies)
+                        {
+                            var rate = movie.DailyRate ?? (movie.IsNewRelease ? 5.99m : 3.99m);
+                            var isSelected = Model.NewMovieId.HasValue && Model.NewMovieId.Value == movie.Id;
+                            <tr class="@(isSelected ? "info" : "")">
+                                <td>
+                                    @movie.Name
+                                    @if (movie.IsNewRelease)
+                                    {
+                                        <span class="label label-success">New</span>
+                                    }
+                                </td>
+                                <td>@(movie.Genre?.ToString() ?? "—")</td>
+                                <td>
+                                    @if (movie.Rating.HasValue)
+                                    {
+                                        for (int i = 0; i < movie.Rating.Value; i++)
+                                        {
+                                            <span class="glyphicon glyphicon-star text-warning"></span>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                                <td>
+                                    $@rate.ToString("F2")
+                                    @if (rate > Model.CurrentRental.DailyRate)
+                                    {
+                                        <span class="text-warning glyphicon glyphicon-arrow-up" title="Higher rate"></span>
+                                    }
+                                    else if (rate < Model.CurrentRental.DailyRate)
+                                    {
+                                        <span class="text-success glyphicon glyphicon-arrow-down" title="Lower rate"></span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (!Model.AlreadySwapped)
+                                    {
+                                        @Html.ActionLink("Select", "Index", new
+                                   {
+                                       rentalId = Model.CurrentRental.Id,
+                                       newMovieId = movie.Id
+                                   }, new { @class = "btn btn-sm btn-default" })
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Swap History -->
+@if (Model.SwapHistory.Count > 0)
+{
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <h3 class="panel-title"><span class="glyphicon glyphicon-time"></span> Your Swap History</h3>
+        </div>
+        <table class="table table-condensed">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Swapped From</th>
+                    <th>Swapped To</th>
+                    <th>Fee</th>
+                    <th>Rate Diff</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var swap in Model.SwapHistory)
+                {
+                    <tr>
+                        <td>@swap.SwapDate.ToString("MMM dd, yyyy h:mm tt")</td>
+                        <td>@swap.OldMovieName</td>
+                        <td>@swap.NewMovieName</td>
+                        <td>$@swap.SwapFee.ToString("F2")</td>
+                        <td>
+                            @if (swap.RateDifference > 0)
+                            {
+                                <text>+$@swap.RateDifference.ToString("F2")</text>
+                            }
+                            else
+                            {
+                                <text>$0.00</text>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<div class="text-right">
+    @Html.ActionLink("← Back to Rentals", "Index", "Rentals", null, new { @class = "btn btn-default" })
+</div>
