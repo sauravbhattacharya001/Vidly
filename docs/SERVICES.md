@@ -901,6 +901,318 @@ _Manages in-store events (screenings, trivia nights, release parties), including
 
 ---
 
-**Total:** 42 services, 379 public methods across 5 domains.
+## Inventory & Physical Media
 
-*Auto-generated from source. Last updated: 2026-03-09.*
+### AvailabilityService
+
+_Tracks real-time movie availability across the store's inventory, including copy counts, due dates, and calendar views for upcoming returns._
+
+**Source:** `Vidly/Services/AvailabilityService.cs` (10 KB) · **Methods:** 6
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `GetAllAvailability` | `List<MovieAvailability>` | `—` |
+| `GetMovieAvailability` | `MovieAvailability` | `int movieId` |
+| `GetAvailabilityCalendar` | `List<CalendarDay>` | `int days = 14` |
+| `GetSummary` | `AvailabilitySummary` | `—` |
+| `GetNextAvailableDate` | `DateTime` | `int movieId` |
+| `GetComingSoon` | `List<MovieAvailability>` | `int withinDays = 3` |
+
+---
+
+### CopyConditionService
+
+_Manages physical condition tracking of movie copies through checkout/return inspections, damage rates, renter risk profiling, and replacement recommendations._
+
+**Source:** `Vidly/Services/CopyConditionService.cs` (18 KB) · **Methods:** 13
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `RecordCheckout` | `ConditionInspection` | `int movieId, int rentalId, ...` |
+| `RecordReturn` | `ConditionInspection` | `int movieId, int rentalId, ...` |
+| `RecordAudit` | `ConditionInspection` | `int movieId, ...` |
+| `GetRentalDelta` | `RentalConditionDelta` | `int rentalId` |
+| `GetDeteriorationHistory` | `IReadOnlyList<RentalConditionDelta>` | `int movieId` |
+| `GetCopyStatus` | `CopyConditionStatus` | `int movieId` |
+| `GetCopiesNeedingReplacement` | `IReadOnlyList<CopyConditionStatus>` | `—` |
+| `GetRenterProfile` | `RenterRiskProfile` | `int customerId` |
+| `GetHighRiskRenters` | `IReadOnlyList<RenterRiskProfile>` | `—` |
+| `GenerateReport` | `ConditionReport` | `—` |
+| `GetInspectionHistory` | `IReadOnlyList<ConditionInspection>` | `int movieId` |
+| `GetRentalInspections` | `IReadOnlyList<ConditionInspection>` | `int rentalId` |
+| `GetInspectionCount` | `int` | `—` |
+
+---
+
+### LostAndFoundService
+
+_Full lost-and-found workflow: item registration, claim submissions with approval/rejection, matching by category/color, disposal/donation of unclaimed items, and reporting._
+
+**Source:** `Vidly/Services/LostAndFoundService.cs` (15 KB) · **Methods:** 17
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `RegisterItem` | `LostItem` | `LostItem item` |
+| `GetById` | `LostItem` | `int id` |
+| `ListItems` | `List<LostItem>` | `...` |
+| `UpdateItem` | `LostItem` | `int id, Action<LostItem> modifier` |
+| `SubmitClaim` | `LostItemClaim` | `int itemId, int customerId, string description` |
+| `ApproveClaim` | `LostItemClaim` | `int claimId, string staffId` |
+| `RejectClaim` | `LostItemClaim` | `int claimId, string reason` |
+| `GetClaimsForItem` | `List<LostItemClaim>` | `int itemId` |
+| `GetClaimsByCustomer` | `List<LostItemClaim>` | `int customerId` |
+| `Search` | `List<LostItem>` | `string keyword` |
+| `FindMatches` | `List<LostItem>` | `LostItemCategory category, string color = null, string keyword = null` |
+| `GetOverdueForDisposal` | `List<LostItem>` | `DateTime? asOf = null` |
+| `DisposeItem` | `LostItem` | `int id, string staffId` |
+| `DonateItem` | `LostItem` | `int id, string staffId, string donationNotes = null` |
+| `BatchDispose` | `List<LostItem>` | `string staffId, DateTime? asOf = null` |
+| `GenerateReport` | `LostAndFoundReport` | `DateTime? asOf = null` |
+
+---
+
+## Rental Operations (Extended)
+
+### RentalCalendarService
+
+_Generates calendar views of rental activity — monthly breakdowns with checkout/due/return/overdue counts per day, plus upcoming event lists._
+
+**Source:** `Vidly/Services/RentalCalendarService.cs` (9 KB) · **Methods:** 2
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `GetCalendarMonth` | `CalendarMonth` | `int year, int month, int? customerId = null` |
+| `GetUpcomingEvents` | `List<CalendarEvent>` | `int days = 7, int? customerId = null` |
+
+---
+
+### RentalExtensionService
+
+_Handles rental due-date extensions with eligibility checks, fee calculation, max-extension limits, and extension history tracking._
+
+**Source:** `Vidly/Services/RentalExtensionService.cs` (18 KB) · **Methods:** 6
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `RequestExtension` | `ExtensionResult` | `int rentalId, int additionalDays = 0` |
+| `CheckEligibility` | `ExtensionEligibility` | `int rentalId` |
+| `GetExtensionHistory` | `IReadOnlyList<ExtensionRecord>` | `int rentalId` |
+| `GetCustomerExtensions` | `IReadOnlyList<ExtensionRecord>` | `int customerId` |
+| `GetStats` | `ExtensionStats` | `—` |
+| `GetExtensionSummary` | `string` | `int rentalId` |
+
+**Constants:** `MaxExtensionsPerRental = 3`, `DefaultExtensionDays = 3`, `MaxExtensionDays = 7`, `ExtensionRateMultiplier = 0.75`
+
+---
+
+### RentalReceiptService
+
+_Generates formatted receipts for rentals (individual and batch), with tax calculation, text/CSV export, and customer spending summaries._
+
+**Source:** `Vidly/Services/RentalReceiptService.cs` (22 KB) · **Methods:** 6
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `GenerateReceipt` | `Receipt` | `int rentalId, ReceiptOptions options = null` |
+| `GenerateBatchReceipt` | `BatchReceipt` | `IEnumerable<int> rentalIds, ReceiptOptions options = null` |
+| `FormatAsText` | `string` | `Receipt receipt` |
+| `FormatAsCsv` | `string` | `Receipt receipt` |
+| `FormatBatchAsText` | `string` | `BatchReceipt batch` |
+| `GetSpendingSummary` | `SpendingSummary` | `int customerId, DateTime? from = null, DateTime? to = null` |
+
+**Constants:** `TaxRate = 8.5%`, `ReceiptWidth = 48`
+
+---
+
+### RentalTrendService
+
+_Analyzes rental patterns over time — day-of-week breakdowns, genre trends, monthly volume tracking, retention cohorts, and exportable text/JSON reports._
+
+**Source:** `Vidly/Services/RentalTrendService.cs` (21 KB) · **Methods:** 7
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `Analyze` | `RentalTrendReport` | `DateTime from, DateTime to` |
+| `GetDayOfWeekBreakdown` | `List<DayOfWeekBreakdown>` | `DateTime from, DateTime to` |
+| `GetGenreTrends` | `List<GenreTrend>` | `DateTime from, DateTime to` |
+| `GetMonthlyVolumes` | `List<MonthlyVolume>` | `DateTime from, DateTime to` |
+| `GetRetentionCohorts` | `List<RetentionCohort>` | `DateTime from, DateTime to` |
+| `GenerateTextReport` | `string` | `DateTime from, DateTime to` |
+| `ExportJson` | `string` | `DateTime from, DateTime to` |
+
+**Constants:** `PeakThreshold = 1.5`, `QuietThreshold = 0.5`
+
+---
+
+## Content & Social
+
+### AwardsService
+
+_Manages movie awards ceremonies — yearly ceremony creation, category/nominee tracking, voting, and winner announcements._
+
+**Source:** `Vidly/Services/AwardsService.cs` (22 KB) · **Methods:** 2+
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `GetAvailableYears` | `List<int>` | `—` |
+| `GetCeremony` | `AwardsCeremony` | `int year` |
+
+---
+
+### MarathonPlannerService
+
+_Plans movie marathon sessions — builds viewing schedules from genre/duration criteria with break planning and movie suggestions._
+
+**Source:** `Vidly/Services/MarathonPlannerService.cs` (5 KB) · **Methods:** 2
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `BuildPlan` | `MarathonPlan` | `MarathonRequest request` |
+| `SuggestMovies` | `List<Movie>` | `int count, Genre? genreFilter = null` |
+
+---
+
+### MoodMatcherService
+
+_Maps customer moods to movie recommendations using genre/mood profiles with configurable mood-to-genre mappings._
+
+**Source:** `Vidly/Services/MoodMatcherService.cs` (8 KB) · **Methods:** 3
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `GetAllMoods` | `IReadOnlyList<MoodProfile>` | `—` |
+| `GetMoodProfile` | `MoodProfile` | `Mood mood` |
+| `GetRecommendations` | `MoodMatchResult` | `Mood mood, int maxResults = 10` |
+
+---
+
+### MovieClubService
+
+_Full social club system — create/manage clubs, handle memberships with moderator roles, club watchlists, and democratic movie polls with voting._
+
+**Source:** `Vidly/Services/MovieClubService.cs` (21 KB) · **Methods:** 18
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `CreateClub` | `MovieClub` | `string name, string description, int founderId, ...` |
+| `GetClub` | `MovieClub` | `int clubId` |
+| `ListClubs` | `IReadOnlyList<MovieClub>` | `string genre = null` |
+| `PauseClub` | `void` | `int clubId, int requesterId` |
+| `ResumeClub` | `void` | `int clubId, int requesterId` |
+| `DisbandClub` | `void` | `int clubId, int requesterId` |
+| `JoinClub` | `ClubMembership` | `int clubId, int customerId` |
+| `LeaveClub` | `void` | `int clubId, int customerId` |
+| `PromoteToModerator` | `void` | `int clubId, int customerId, int requesterId` |
+| `GetMembers` | `IReadOnlyList<ClubMembership>` | `int clubId` |
+| `GetCustomerClubs` | `IReadOnlyList<MovieClub>` | `int customerId` |
+| `AddToWatchlist` | `ClubWatchlistItem` | `int clubId, int movieId, int customerId, ...` |
+| `MarkAsWatched` | `void` | `int clubId, int watchlistItemId, double? rating = null` |
+| `GetWatchlist` | `IReadOnlyList<ClubWatchlistItem>` | `int clubId, bool includeWatched = false` |
+| `CreatePoll` | `ClubPoll` | `int clubId, string title, List<(int, string)> options, ...` |
+| `CastVote` | `void` | `int pollId, int optionId, int customerId` |
+| `ClosePoll` | `ClubPollOption` | `int pollId, int requesterId` |
+| `GetPolls` | `IReadOnlyList<ClubPoll>` | `int clubId, PollStatus? status = null` |
+
+---
+
+### MovieSeriesService
+
+_Manages franchise/series grouping — series CRUD, movie ordering within series, per-customer watch progress tracking, and "next up" recommendations._
+
+**Source:** `Vidly/Services/MovieSeriesService.cs` (12 KB) · **Methods:** 15
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `CreateSeries` | `MovieSeries` | `string name, string description = null, Genre? genre = null, bool isOngoing = false` |
+| `GetSeries` | `MovieSeries` | `int seriesId` |
+| `ListSeries` | `List<MovieSeries>` | `Genre? genre = null` |
+| `SearchSeries` | `List<MovieSeries>` | `string query` |
+| `DeleteSeries` | `bool` | `int seriesId` |
+| `AddMovie` | `SeriesEntry` | `int seriesId, int movieId, int orderIndex, string label = null` |
+| `RemoveMovie` | `bool` | `int seriesId, int movieId` |
+| `GetSeriesEntries` | `List<SeriesEntry>` | `int seriesId` |
+| `ReorderEntry` | `bool` | `int entryId, int newOrderIndex` |
+| `MarkWatched` | `SeriesProgress` | `int customerId, int seriesEntryId` |
+| `UnmarkWatched` | `bool` | `int customerId, int seriesEntryId` |
+| `GetProgress` | `SeriesProgressSummary` | `int customerId, int seriesId, List<Movie> movieLookup` |
+| `GetAllProgress` | `List<SeriesProgressSummary>` | `int customerId, List<Movie> movieLookup` |
+| `GetNextUpRecommendations` | `List<SeriesEntryDetail>` | `int customerId, List<Movie> movieLookup` |
+| `GetSeriesForMovie` | `List<MovieSeries>` | `int movieId` |
+
+---
+
+### MovieTournamentService
+
+_Bracket-style movie tournaments — create single-elimination brackets (4/8/16 movies), vote on matches, advance rounds, and track hall-of-fame results._
+
+**Source:** `Vidly/Services/MovieTournamentService.cs` (17 KB) · **Methods:** 9
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `CreateTournament` | `Tournament` | `...` |
+| `Vote` | `TournamentMatch` | `int tournamentId, int matchId, int winnerMovieId, string reason = null` |
+| `GetTournament` | `Tournament` | `int id` |
+| `ListTournaments` | `IReadOnlyList<Tournament>` | `TournamentStatus? status = null` |
+| `GetRoundMatches` | `IReadOnlyList<TournamentMatch>` | `int tournamentId, int round` |
+| `GetPendingMatches` | `IReadOnlyList<TournamentMatch>` | `int tournamentId` |
+| `GetHallOfFame` | `IReadOnlyList<TournamentResult>` | `—` |
+| `GetMovieRecords` | `IReadOnlyList<MovieTournamentRecord>` | `—` |
+| `CancelTournament` | `bool` | `int tournamentId` |
+
+**Valid bracket sizes:** 4, 8, 16
+
+---
+
+## Staff & Store Operations (Extended)
+
+### StaffPicksService
+
+_Staff-curated movie recommendations — manage picks by staff member and theme, with filtering and featured pick support._
+
+**Source:** `Vidly/Services/StaffPicksService.cs` (9 KB) · **Methods:** 8
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `GetAllPicks` | `List<StaffPickViewModel>` | `—` |
+| `GetPageViewModel` | `StaffPicksPageViewModel` | `string filterStaff = null, string filterTheme = null` |
+| `GetPicksByStaff` | `List<StaffPickViewModel>` | `string staffName` |
+| `GetPicksByTheme` | `List<StaffPickViewModel>` | `string theme` |
+| `AddPick` | `StaffPick` | `int movieId, string staffName, string theme, string note, bool isFeatured = false` |
+| `RemovePick` | `bool` | `int id` |
+| `GetStaffNames` | `List<string>` | `—` |
+| `GetThemes` | `List<string>` | `—` |
+
+---
+
+### StoreAnnouncementService
+
+_In-store announcement system with scheduling, publishing, pinning, customer acknowledgment tracking, view analytics, and expiration management._
+
+**Source:** `Vidly/Services/StoreAnnouncementService.cs` (17 KB) · **Methods:** 17
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `Create` | `Announcement` | `Announcement a` |
+| `Update` | `Announcement` | `int id, Action<Announcement> modifier` |
+| `GetById` | `Announcement` | `int id` |
+| `Publish` | `Announcement` | `int id` |
+| `ActivateScheduled` | `List<Announcement>` | `—` |
+| `ExpireStale` | `List<Announcement>` | `—` |
+| `Archive` | `Announcement` | `int id` |
+| `Pin` | `void` | `int announcementId, string staffId` |
+| `Unpin` | `void` | `int announcementId` |
+| `IsPinned` | `bool` | `int announcementId` |
+| `Acknowledge` | `AnnouncementAcknowledgment` | `int announcementId, int customerId` |
+| `HasAcknowledged` | `bool` | `int announcementId, int customerId` |
+| `GetAcknowledgments` | `List<AnnouncementAcknowledgment>` | `int announcementId` |
+| `GetPendingAcknowledgments` | `List<Announcement>` | `int customerId` |
+| `RecordView` | `void` | `int announcementId` |
+| `GetBoard` | `List<Announcement>` | `string customerTier = null, AnnouncementFilter filter = null` |
+| `GetAll` | `List<Announcement>` | `AnnouncementStatus? status = null` |
+| `GetAnalytics` | `AnnouncementAnalytics` | `—` |
+
+---
+
+**Total:** 57 services, 500+ public methods across 7 domains.
+
+*Auto-generated from source. Last updated: 2026-03-18.*
