@@ -1,0 +1,229 @@
+@model Vidly.ViewModels.WaitlistViewModel
+@{
+    ViewBag.Title = "Waitlist";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>
+    <span class="glyphicon glyphicon-time"></span> Movie Waitlist
+</h2>
+
+@if (!string.IsNullOrEmpty(Model.StatusMessage))
+{
+    <div class="alert @(Model.IsError ? "alert-danger" : "alert-success") alert-dismissible" role="alert">
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+        @Model.StatusMessage
+    </div>
+}
+
+@* Stats Overview *@
+@if (Model.Stats != null)
+{
+    <div class="row" style="margin-bottom: 20px;">
+        <div class="col-md-2 col-sm-4 col-xs-6">
+            <div class="panel panel-info">
+                <div class="panel-heading"><strong>Waiting</strong></div>
+                <div class="panel-body text-center"><h3>@Model.Stats.TotalWaiting</h3></div>
+            </div>
+        </div>
+        <div class="col-md-2 col-sm-4 col-xs-6">
+            <div class="panel panel-warning">
+                <div class="panel-heading"><strong>Notified</strong></div>
+                <div class="panel-body text-center"><h3>@Model.Stats.TotalNotified</h3></div>
+            </div>
+        </div>
+        <div class="col-md-2 col-sm-4 col-xs-6">
+            <div class="panel panel-success">
+                <div class="panel-heading"><strong>Fulfilled</strong></div>
+                <div class="panel-body text-center"><h3>@Model.Stats.TotalFulfilled</h3></div>
+            </div>
+        </div>
+        <div class="col-md-2 col-sm-4 col-xs-6">
+            <div class="panel panel-default">
+                <div class="panel-heading"><strong>Avg Wait</strong></div>
+                <div class="panel-body text-center"><h3>@Model.Stats.AverageWaitDays.ToString("F1")d</h3></div>
+            </div>
+        </div>
+        @if (!string.IsNullOrEmpty(Model.Stats.MostWaitlistedMovie))
+        {
+            <div class="col-md-4 col-sm-6 col-xs-12">
+                <div class="panel panel-danger">
+                    <div class="panel-heading"><strong>Most Wanted</strong></div>
+                    <div class="panel-body text-center">
+                        <h4>@Model.Stats.MostWaitlistedMovie <span class="badge">@Model.Stats.MostWaitlistedCount</span></h4>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@* Join Waitlist Form *@
+<div class="panel panel-primary">
+    <div class="panel-heading">
+        <span class="glyphicon glyphicon-plus"></span> Join Waitlist
+    </div>
+    <div class="panel-body">
+        @using (Html.BeginForm("Join", "Waitlist", FormMethod.Post, new { @class = "form-inline" }))
+        {
+            @Html.AntiForgeryToken()
+            <div class="form-group" style="margin-right: 10px;">
+                <label for="customerId">Customer:</label>
+                <select name="customerId" id="customerId" class="form-control" style="margin-left: 5px; min-width: 180px;" required>
+                    <option value="">-- Select --</option>
+                    @foreach (var c in Model.Customers)
+                    {
+                        <option value="@c.Id" @(Model.SelectedCustomerId == c.Id ? "selected" : "")>@c.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="form-group" style="margin-right: 10px;">
+                <label for="movieId">Movie:</label>
+                <select name="movieId" id="movieId" class="form-control" style="margin-left: 5px; min-width: 180px;" required>
+                    <option value="">-- Select --</option>
+                    @foreach (var m in Model.Movies)
+                    {
+                        <option value="@m.Id" @(Model.SelectedMovieId == m.Id ? "selected" : "")>@m.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="form-group" style="margin-right: 10px;">
+                <label for="priority">Priority:</label>
+                <select name="priority" id="priority" class="form-control" style="margin-left: 5px;">
+                    <option value="Normal">Normal</option>
+                    <option value="High">High (Loyalty)</option>
+                    <option value="Urgent">Urgent (Pre-order)</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-right: 10px;">
+                <label for="note">Note:</label>
+                <input type="text" name="note" id="note" class="form-control" placeholder="Optional note..." style="margin-left: 5px; min-width: 150px;" maxlength="500" />
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <span class="glyphicon glyphicon-plus"></span> Join
+            </button>
+        }
+    </div>
+</div>
+
+@* Filter *@
+<div class="panel panel-default">
+    <div class="panel-body">
+        @using (Html.BeginForm("Index", "Waitlist", FormMethod.Get, new { @class = "form-inline" }))
+        {
+            <div class="form-group" style="margin-right: 10px;">
+                <label for="filterCustomer">Filter by Customer:</label>
+                <select name="customerId" id="filterCustomer" class="form-control" style="margin-left: 5px; min-width: 180px;">
+                    <option value="">All Customers</option>
+                    @foreach (var c in Model.Customers)
+                    {
+                        <option value="@c.Id" @(Model.SelectedCustomerId == c.Id ? "selected" : "")>@c.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="form-group" style="margin-right: 10px;">
+                <label for="filterMovie">Filter by Movie:</label>
+                <select name="movieId" id="filterMovie" class="form-control" style="margin-left: 5px; min-width: 180px;">
+                    <option value="">All Movies</option>
+                    @foreach (var m in Model.Movies)
+                    {
+                        <option value="@m.Id" @(Model.SelectedMovieId == m.Id ? "selected" : "")>@m.Name</option>
+                    }
+                </select>
+            </div>
+            <button type="submit" class="btn btn-default">
+                <span class="glyphicon glyphicon-filter"></span> Filter
+            </button>
+            <a href="@Url.Action("Index", "Waitlist")" class="btn btn-link">Clear</a>
+        }
+    </div>
+</div>
+
+@* Waitlist Table *@
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Customer</th>
+                <th>Movie</th>
+                <th>Position</th>
+                <th>Priority</th>
+                <th>Status</th>
+                <th>Joined</th>
+                <th>Wait Time</th>
+                <th>Note</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (!Model.Entries.Any())
+            {
+                <tr>
+                    <td colspan="10" class="text-center text-muted" style="padding: 30px;">
+                        <span class="glyphicon glyphicon-info-sign"></span> No waitlist entries found.
+                    </td>
+                </tr>
+            }
+            @foreach (var entry in Model.Entries)
+            {
+                var statusClass = entry.Status == WaitlistStatus.Waiting ? "label-info"
+                    : entry.Status == WaitlistStatus.Notified ? "label-warning"
+                    : entry.Status == WaitlistStatus.Fulfilled ? "label-success"
+                    : entry.Status == WaitlistStatus.Expired ? "label-default"
+                    : "label-danger";
+
+                var priorityClass = entry.Priority == WaitlistPriority.Urgent ? "label-danger"
+                    : entry.Priority == WaitlistPriority.High ? "label-warning"
+                    : "label-default";
+
+                <tr>
+                    <td>@entry.Id</td>
+                    <td>@entry.CustomerName</td>
+                    <td>@entry.MovieName</td>
+                    <td><span class="badge">@entry.Position</span></td>
+                    <td><span class="label @priorityClass">@entry.Priority</span></td>
+                    <td><span class="label @statusClass">@entry.Status</span></td>
+                    <td>@entry.JoinedAt.ToString("MMM dd, yyyy")</td>
+                    <td>@((int)entry.WaitDuration.TotalDays)d @entry.WaitDuration.Hours h</td>
+                    <td>@(entry.Note ?? "—")</td>
+                    <td>
+                        @if (entry.Status == WaitlistStatus.Waiting)
+                        {
+                            using (Html.BeginForm("Notify", "Waitlist", new { id = entry.Id }, FormMethod.Post, new { style = "display:inline;" }))
+                            {
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-xs btn-warning" title="Notify customer">
+                                    <span class="glyphicon glyphicon-envelope"></span>
+                                </button>
+                            }
+                            using (Html.BeginForm("Cancel", "Waitlist", new { id = entry.Id }, FormMethod.Post, new { style = "display:inline;" }))
+                            {
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-xs btn-danger" title="Remove from waitlist">
+                                    <span class="glyphicon glyphicon-remove"></span>
+                                </button>
+                            }
+                        }
+                        @if (entry.Status == WaitlistStatus.Notified)
+                        {
+                            using (Html.BeginForm("Fulfill", "Waitlist", new { id = entry.Id }, FormMethod.Post, new { style = "display:inline;" }))
+                            {
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-xs btn-success" title="Mark as picked up">
+                                    <span class="glyphicon glyphicon-ok"></span>
+                                </button>
+                            }
+                            if (entry.ExpiresAt.HasValue)
+                            {
+                                <small class="text-muted">Expires @entry.ExpiresAt.Value.ToString("MMM dd")</small>
+                            }
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
