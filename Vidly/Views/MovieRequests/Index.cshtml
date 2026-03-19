@@ -1,0 +1,425 @@
+@model Vidly.ViewModels.MovieRequestViewModel
+@{
+    ViewBag.Title = "Movie Requests";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>
+    <span class="glyphicon glyphicon-bullhorn"></span> Movie Request Board
+</h2>
+<p class="text-muted">Request movies you want us to stock. Vote on others' requests to signal demand.</p>
+
+@* ── Flash Messages ── *@
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible" role="alert">
+        <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+        @TempData["SuccessMessage"]
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible" role="alert">
+        <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+        @TempData["ErrorMessage"]
+    </div>
+}
+
+@* ── Stats Row ── *@
+@if (Model.Stats != null)
+{
+    <div class="row" style="margin-bottom: 20px;">
+        <div class="col-md-2 col-sm-4 col-xs-6">
+            <div class="panel panel-primary">
+                <div class="panel-heading"><strong>Total</strong></div>
+                <div class="panel-body text-center"><h3>@Model.Stats.TotalRequests</h3></div>
+            </div>
+        </div>
+        <div class="col-md-2 col-sm-4 col-xs-6">
+            <div class="panel panel-info">
+                <div class="panel-heading"><strong>Open</strong></div>
+                <div class="panel-body text-center"><h3>@Model.Stats.OpenRequests</h3></div>
+            </div>
+        </div>
+        <div class="col-md-2 col-sm-4 col-xs-6">
+            <div class="panel panel-warning">
+                <div class="panel-heading"><strong>Under Review</strong></div>
+                <div class="panel-body text-center"><h3>@Model.Stats.UnderReviewRequests</h3></div>
+            </div>
+        </div>
+        <div class="col-md-2 col-sm-4 col-xs-6">
+            <div class="panel panel-success">
+                <div class="panel-heading"><strong>Fulfilled</strong></div>
+                <div class="panel-body text-center"><h3>@Model.Stats.FulfilledRequests</h3></div>
+            </div>
+        </div>
+        <div class="col-md-2 col-sm-4 col-xs-6">
+            <div class="panel panel-danger">
+                <div class="panel-heading"><strong>Declined</strong></div>
+                <div class="panel-body text-center"><h3>@Model.Stats.DeclinedRequests</h3></div>
+            </div>
+        </div>
+        <div class="col-md-2 col-sm-4 col-xs-6">
+            <div class="panel panel-default">
+                <div class="panel-heading"><strong>Total Votes</strong></div>
+                <div class="panel-body text-center"><h3>@Model.Stats.TotalVotes</h3></div>
+            </div>
+        </div>
+    </div>
+}
+
+@* ── Submit Request Form ── *@
+<div class="panel panel-default" style="margin-bottom: 20px;">
+    <div class="panel-heading">
+        <h4 class="panel-title">
+            <span class="glyphicon glyphicon-plus"></span> Submit a Request
+        </h4>
+    </div>
+    <div class="panel-body">
+        @using (Html.BeginForm("Submit", "MovieRequests", FormMethod.Post, new { @class = "form-horizontal" }))
+        {
+            @Html.AntiForgeryToken()
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label for="customerId">Customer ID</label>
+                        <input type="number" name="customerId" id="customerId" class="form-control" required min="1" placeholder="Your ID" />
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label for="title">Movie Title</label>
+                        <input type="text" name="title" id="title" class="form-control" required maxlength="200" placeholder="Movie title" />
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="form-group">
+                        <label for="year">Year</label>
+                        <input type="number" name="year" id="year" class="form-control" min="1888" max="2100" placeholder="Optional" />
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="form-group">
+                        <label for="genre">Genre</label>
+                        <select name="genre" id="genre" class="form-control">
+                            <option value="">Any</option>
+                            <option value="Action">Action</option>
+                            <option value="Adventure">Adventure</option>
+                            <option value="Animation">Animation</option>
+                            <option value="Comedy">Comedy</option>
+                            <option value="Documentary">Documentary</option>
+                            <option value="Drama">Drama</option>
+                            <option value="Horror">Horror</option>
+                            <option value="Romance">Romance</option>
+                            <option value="SciFi">Sci-Fi</option>
+                            <option value="Thriller">Thriller</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="form-group">
+                        <label>&nbsp;</label>
+                        <button type="submit" class="btn btn-primary btn-block">
+                            <span class="glyphicon glyphicon-send"></span> Submit
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="form-group">
+                        <label for="reason">Why do you want this movie? (optional)</label>
+                        <input type="text" name="reason" id="reason" class="form-control" maxlength="1000" placeholder="Classic film, heard great things, etc." />
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@* ── Trending Requests ── *@
+@if (Model.Trending != null && Model.Trending.Count > 0)
+{
+    <div class="panel panel-success" style="margin-bottom: 20px;">
+        <div class="panel-heading">
+            <h4 class="panel-title">
+                <span class="glyphicon glyphicon-fire"></span> Trending Requests
+            </h4>
+        </div>
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Title</th>
+                    <th>Genre</th>
+                    <th>Requested By</th>
+                    <th>Demand Score</th>
+                    <th>Votes</th>
+                    <th>Recent</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @{ var rank = 1; }
+                @foreach (var t in Model.Trending)
+                {
+                    <tr>
+                        <td><span class="badge">@(rank++)</span></td>
+                        <td>
+                            <strong>@t.Request.Title</strong>
+                            @if (t.Request.Year.HasValue)
+                            {
+                                <small class="text-muted">(@t.Request.Year)</small>
+                            }
+                        </td>
+                        <td>@(t.Request.Genre.HasValue ? t.Request.Genre.Value.ToString() : "—")</td>
+                        <td>@t.Request.CustomerName</td>
+                        <td><strong>@t.DemandScore.ToString("F1")</strong></td>
+                        <td>@t.TotalDemand</td>
+                        <td>
+                            @if (t.RecentVotes > 0)
+                            {
+                                <span class="label label-warning">+@t.RecentVotes this week</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">0</span>
+                            }
+                        </td>
+                        <td>
+                            @switch (t.Request.Status)
+                            {
+                                case Vidly.Models.MovieRequestStatus.Open:
+                                    <span class="label label-info">Open</span>
+                                    break;
+                                case Vidly.Models.MovieRequestStatus.UnderReview:
+                                    <span class="label label-warning">Under Review</span>
+                                    break;
+                                case Vidly.Models.MovieRequestStatus.Fulfilled:
+                                    <span class="label label-success">Fulfilled</span>
+                                    break;
+                                case Vidly.Models.MovieRequestStatus.Declined:
+                                    <span class="label label-danger">Declined</span>
+                                    break;
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@* ── Genre Demand Breakdown ── *@
+@if (Model.GenreBreakdown != null && Model.GenreBreakdown.Count > 0)
+{
+    <div class="panel panel-info" style="margin-bottom: 20px;">
+        <div class="panel-heading">
+            <h4 class="panel-title">
+                <span class="glyphicon glyphicon-stats"></span> Genre Demand
+            </h4>
+        </div>
+        <div class="panel-body">
+            @{
+                var maxCount = Model.GenreBreakdown.Values.Max();
+            }
+            @foreach (var kv in Model.GenreBreakdown)
+            {
+                var pct = maxCount > 0 ? (int)(100.0 * kv.Value / maxCount) : 0;
+                <div style="margin-bottom: 8px;">
+                    <strong>@kv.Key</strong> <span class="text-muted">(@kv.Value requests)</span>
+                    <div class="progress" style="margin-bottom: 0;">
+                        <div class="progress-bar progress-bar-info" role="progressbar"
+                             style="width: @(pct)%; min-width: 2em;">
+                            @kv.Value
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@* ── Filters & Search ── *@
+<div class="well well-sm" style="margin-bottom: 15px;">
+    @using (Html.BeginForm("Index", "MovieRequests", FormMethod.Get, new { @class = "form-inline" }))
+    {
+        <label>Filter:</label>
+        <select name="status" class="form-control input-sm">
+            <option value="">All Statuses</option>
+            <option value="Open" @(Model.StatusFilter == "Open" ? "selected" : "")>Open</option>
+            <option value="UnderReview" @(Model.StatusFilter == "UnderReview" ? "selected" : "")>Under Review</option>
+            <option value="Fulfilled" @(Model.StatusFilter == "Fulfilled" ? "selected" : "")>Fulfilled</option>
+            <option value="Declined" @(Model.StatusFilter == "Declined" ? "selected" : "")>Declined</option>
+        </select>
+        <select name="genre" class="form-control input-sm">
+            <option value="">All Genres</option>
+            <option value="Action" @(Model.GenreFilter == "Action" ? "selected" : "")>Action</option>
+            <option value="Comedy" @(Model.GenreFilter == "Comedy" ? "selected" : "")>Comedy</option>
+            <option value="Drama" @(Model.GenreFilter == "Drama" ? "selected" : "")>Drama</option>
+            <option value="Horror" @(Model.GenreFilter == "Horror" ? "selected" : "")>Horror</option>
+            <option value="SciFi" @(Model.GenreFilter == "SciFi" ? "selected" : "")>Sci-Fi</option>
+            <option value="Romance" @(Model.GenreFilter == "Romance" ? "selected" : "")>Romance</option>
+            <option value="Thriller" @(Model.GenreFilter == "Thriller" ? "selected" : "")>Thriller</option>
+        </select>
+        <input type="text" name="q" class="form-control input-sm" placeholder="Search titles..."
+               value="@Model.SearchQuery" style="width: 200px;" />
+        <button type="submit" class="btn btn-sm btn-default">
+            <span class="glyphicon glyphicon-filter"></span> Apply
+        </button>
+        @if (!string.IsNullOrEmpty(Model.StatusFilter) || !string.IsNullOrEmpty(Model.GenreFilter) || !string.IsNullOrEmpty(Model.SearchQuery))
+        {
+            <a href="@Url.Action("Index")" class="btn btn-sm btn-link">Clear</a>
+        }
+    }
+</div>
+
+@* ── All Requests Table ── *@
+<div class="panel panel-default">
+    <div class="panel-heading">
+        <h4 class="panel-title">
+            <span class="glyphicon glyphicon-list"></span> All Requests
+            <span class="badge">@Model.Requests.Count</span>
+        </h4>
+    </div>
+    @if (Model.Requests.Count == 0)
+    {
+        <div class="panel-body text-center text-muted">
+            <p>No requests found. Be the first to submit one!</p>
+        </div>
+    }
+    else
+    {
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Title</th>
+                    <th>Year</th>
+                    <th>Genre</th>
+                    <th>Requested By</th>
+                    <th>Date</th>
+                    <th>Votes</th>
+                    <th>Status</th>
+                    <th>Staff Note</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model.Requests)
+                {
+                    <tr>
+                        <td>@r.Id</td>
+                        <td>
+                            <strong>@r.Title</strong>
+                            @if (!string.IsNullOrEmpty(r.Reason))
+                            {
+                                <br /><small class="text-muted" title="@r.Reason">@(r.Reason.Length > 60 ? r.Reason.Substring(0, 60) + "…" : r.Reason)</small>
+                            }
+                        </td>
+                        <td>@(r.Year.HasValue ? r.Year.Value.ToString() : "—")</td>
+                        <td>@(r.Genre.HasValue ? r.Genre.Value.ToString() : "—")</td>
+                        <td>@r.CustomerName</td>
+                        <td>@r.RequestedDate.ToString("MMM d, yyyy")</td>
+                        <td><span class="badge">@r.UpvoteCount</span></td>
+                        <td>
+                            @switch (r.Status)
+                            {
+                                case Vidly.Models.MovieRequestStatus.Open:
+                                    <span class="label label-info">Open</span>
+                                    break;
+                                case Vidly.Models.MovieRequestStatus.UnderReview:
+                                    <span class="label label-warning">Under Review</span>
+                                    break;
+                                case Vidly.Models.MovieRequestStatus.Fulfilled:
+                                    <span class="label label-success">Fulfilled</span>
+                                    break;
+                                case Vidly.Models.MovieRequestStatus.Declined:
+                                    <span class="label label-danger">Declined</span>
+                                    break;
+                            }
+                        </td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(r.StaffNote))
+                            {
+                                <small>@r.StaffNote</small>
+                            }
+                            else
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                        </td>
+                        <td>
+                            @if (r.Status == Vidly.Models.MovieRequestStatus.Open || r.Status == Vidly.Models.MovieRequestStatus.UnderReview)
+                            {
+                                @* Upvote *@
+                                using (Html.BeginForm("Upvote", "MovieRequests", FormMethod.Post, new { style = "display:inline;" }))
+                                {
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="requestId" value="@r.Id" />
+                                    <input type="number" name="customerId" class="form-control input-sm" placeholder="Your ID" style="width:70px;display:inline;" required min="1" />
+                                    <button type="submit" class="btn btn-xs btn-default" title="Upvote">
+                                        <span class="glyphicon glyphicon-thumbs-up"></span>
+                                    </button>
+                                }
+                            }
+                            @if (r.Status == Vidly.Models.MovieRequestStatus.Open)
+                            {
+                                @* Staff: Review *@
+                                using (Html.BeginForm("Review", "MovieRequests", FormMethod.Post, new { style = "display:inline; margin-left:4px;" }))
+                                {
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="requestId" value="@r.Id" />
+                                    <input type="hidden" name="staffNote" value="" />
+                                    <button type="submit" class="btn btn-xs btn-warning" title="Mark Under Review">
+                                        <span class="glyphicon glyphicon-eye-open"></span>
+                                    </button>
+                                }
+                            }
+                            @if (r.Status == Vidly.Models.MovieRequestStatus.Open || r.Status == Vidly.Models.MovieRequestStatus.UnderReview)
+                            {
+                                @* Staff: Fulfill *@
+                                using (Html.BeginForm("Fulfill", "MovieRequests", FormMethod.Post, new { style = "display:inline; margin-left:4px;" }))
+                                {
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="requestId" value="@r.Id" />
+                                    <input type="hidden" name="staffNote" value="Added to catalog." />
+                                    <button type="submit" class="btn btn-xs btn-success" title="Fulfill">
+                                        <span class="glyphicon glyphicon-ok"></span>
+                                    </button>
+                                }
+                                @* Staff: Decline *@
+                                using (Html.BeginForm("Decline", "MovieRequests", FormMethod.Post, new { style = "display:inline; margin-left:4px;" }))
+                                {
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="requestId" value="@r.Id" />
+                                    <input type="hidden" name="staffNote" value="Not available at this time." />
+                                    <button type="submit" class="btn btn-xs btn-danger" title="Decline">
+                                        <span class="glyphicon glyphicon-remove"></span>
+                                    </button>
+                                }
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@* ── Fulfillment Rate ── *@
+@if (Model.Stats != null && Model.Stats.TotalRequests > 0)
+{
+    var pct = (int)(Model.Stats.FulfillmentRate * 100);
+    <div class="text-center text-muted" style="margin-top: 10px;">
+        <small>
+            Fulfillment rate: <strong>@(pct)%</strong> &middot;
+            @Model.Stats.UniqueRequesters unique requesters &middot;
+            Avg @Model.Stats.AverageVotesPerRequest.ToString("F1") votes/request
+            @if (!string.IsNullOrEmpty(Model.Stats.MostRequestedGenre))
+            {
+                <text>&middot; Most requested: <strong>@Model.Stats.MostRequestedGenre</strong></text>
+            }
+        </small>
+    </div>
+}
