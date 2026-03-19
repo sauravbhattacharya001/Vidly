@@ -10,6 +10,7 @@ on:
 permissions:
   contents: read
   packages: write
+  security-events: write
 
 env:
   REGISTRY: ghcr.io
@@ -68,6 +69,38 @@ jobs:
           $tags = "${{ steps.meta.outputs.tags }}".Split(",")
           $tagArgs = $tags | ForEach-Object { "-t", $_.Trim() }
           docker build @tagArgs .
+
+      - name: Scan image with Trivy
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        run: |
+          $repo = "${{ steps.meta.outputs.repo }}"
+          $tag = if ("${{ github.ref }}" -match "^refs/tags/") { "latest" } else { "edge" }
+          $image = "${repo}:${tag}"
+          # Install Trivy on Windows
+          Invoke-WebRequest -Uri "https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.60.0_windows-64bit.zip" -OutFile trivy.zip
+          Expand-Archive trivy.zip -DestinationPath trivy-bin
+          ./trivy-bin/trivy.exe image --severity HIGH,CRITICAL --exit-code 0 --format table $image
+          ./trivy-bin/trivy.exe image --severity HIGH,CRITICAL --format sarif --output trivy-results.sarif $image
+        continue-on-error: true
+
+      - name: Upload Trivy scan results
+        if: github.event_name != 'pull_request'
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+        continue-on-error: true
+
+      - name: Report image size
+        shell: pwsh
+        run: |
+          $repo = "${{ steps.meta.outputs.repo }}"
+          $tag = if ("${{ github.ref }}" -match "^refs/tags/") { "latest" } else { "edge" }
+          $image = "${repo}:${tag}"
+          $size = docker image inspect $image --format='{{.Size}}'
+          $sizeMB = [math]::Round([long]$size / 1MB, 1)
+          Write-Host "Image size: ${sizeMB} MB"
+          echo "| Image size | ${sizeMB} MB |" >> $env:GITHUB_STEP_SUMMARY
 
       - name: Verify container health
         if: github.event_name != 'pull_request'
