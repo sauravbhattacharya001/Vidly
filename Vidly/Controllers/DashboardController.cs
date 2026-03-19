@@ -34,7 +34,10 @@ namespace Vidly.Controllers
                 ?? throw new ArgumentNullException(nameof(dashboardService));
         }
 
-        // GET: Dashboard
+        /// <summary>
+        /// GET: Dashboard — Renders the admin revenue dashboard with KPIs,
+        /// top movies/customers, genre breakdown, and recent activity.
+        /// </summary>
         public ActionResult Index()
         {
             var data = _dashboardService.GetDashboard();
