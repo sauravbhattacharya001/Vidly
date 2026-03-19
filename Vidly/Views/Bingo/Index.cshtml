@@ -1,0 +1,201 @@
+@model Vidly.ViewModels.BingoViewModel
+@{
+    ViewBag.Title = "Movie Bingo";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>
+    <span class="glyphicon glyphicon-th"></span>
+    Movie Bingo
+</h2>
+<p class="text-muted">
+    Generate a bingo card full of movie tropes and clich&eacute;s. Perfect for watch parties!
+    Mark off squares as you spot them during the movie.
+</p>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title">Generate Card</h3>
+            </div>
+            <div class="panel-body">
+                @using (Html.BeginForm("Generate", "Bingo", FormMethod.Post))
+                {
+                    @Html.AntiForgeryToken()
+
+                    <div class="form-group">
+                        <label for="Theme">Theme</label>
+                        <select name="Theme" id="Theme" class="form-control">
+                            @foreach (var theme in Model.AvailableThemes)
+                            {
+                                <option value="@theme"
+                                        @(Model.Request.Theme == theme ? "selected" : "")>
+                                    @theme
+                                </option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="checkbox">
+                        <label>
+                            <input type="checkbox" name="IncludeFreeSpace" value="true"
+                                   @(Model.Request.IncludeFreeSpace ? "checked" : "") />
+                            Include Free Space
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block">
+                        <span class="glyphicon glyphicon-random"></span>
+                        Generate Card
+                    </button>
+                }
+            </div>
+        </div>
+
+        @if (Model.Card != null)
+        {
+            <div class="panel panel-info">
+                <div class="panel-heading">
+                    <h3 class="panel-title">How to Play</h3>
+                </div>
+                <div class="panel-body">
+                    <ol>
+                        <li>Generate a card before your movie</li>
+                        <li>Click squares when you spot the trope</li>
+                        <li>Get 5 in a row to win!</li>
+                        <li>Print cards for group play</li>
+                    </ol>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="col-md-8">
+        @if (Model.Card != null)
+        {
+            <div class="panel panel-success">
+                <div class="panel-heading">
+                    <h3 class="panel-title pull-left">
+                        @Model.Card.Title
+                        <small class="text-muted"> &mdash; Card #@Model.Card.Id</small>
+                    </h3>
+                    <button class="btn btn-xs btn-default pull-right" onclick="window.print()">
+                        <span class="glyphicon glyphicon-print"></span> Print
+                    </button>
+                    <div class="clearfix"></div>
+                </div>
+                <div class="panel-body">
+                    <table class="table table-bordered text-center" id="bingoCard"
+                           style="table-layout: fixed;">
+                        <thead>
+                            <tr class="active">
+                                <th class="text-center" style="width:20%">B</th>
+                                <th class="text-center" style="width:20%">I</th>
+                                <th class="text-center" style="width:20%">N</th>
+                                <th class="text-center" style="width:20%">G</th>
+                                <th class="text-center" style="width:20%">O</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (int r = 0; r < 5; r++)
+                            {
+                                <tr>
+                                    @for (int c = 0; c < 5; c++)
+                                    {
+                                        var cell = Model.Card.Cells[r * 5 + c];
+                                        var cellClass = cell.IsFreeSpace ? "success" : "";
+                                        <td class="bingo-cell @cellClass"
+                                            data-row="@r" data-col="@c"
+                                            style="height:90px; vertical-align:middle; cursor:pointer; font-size:12px; padding:6px;"
+                                            onclick="toggleCell(this)">
+                                            @if (cell.IsFreeSpace)
+                                            {
+                                                <strong>&#11088; FREE</strong>
+                                            }
+                                            else
+                                            {
+                                                @cell.Text
+                                            }
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+
+                    <div id="bingoAlert" class="alert alert-warning" style="display:none;">
+                        <strong>&#127881; BINGO!</strong> You got 5 in a row!
+                    </div>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="well text-center" style="padding: 60px 20px;">
+                <span class="glyphicon glyphicon-th" style="font-size:48px; color:#ccc;"></span>
+                <h3 class="text-muted">No card generated yet</h3>
+                <p class="text-muted">Choose a theme and click Generate to create your bingo card!</p>
+            </div>
+        }
+    </div>
+</div>
+
+@section scripts {
+<script>
+    var marked = {};
+    // Pre-mark free space
+    @if (Model.Card != null)
+    {
+        @:marked["2-2"] = true;
+    }
+
+    function toggleCell(el) {
+        var r = el.getAttribute('data-row');
+        var c = el.getAttribute('data-col');
+        var key = r + '-' + c;
+
+        if (el.classList.contains('success') && key === '2-2') return; // can't unmark free space
+
+        if (marked[key]) {
+            delete marked[key];
+            el.style.backgroundColor = '';
+            el.style.color = '';
+        } else {
+            marked[key] = true;
+            el.style.backgroundColor = '#dff0d8';
+            el.style.color = '#3c763d';
+        }
+        checkBingo();
+    }
+
+    function checkBingo() {
+        var won = false;
+        // Check rows
+        for (var r = 0; r < 5; r++) {
+            var rowWin = true;
+            for (var c = 0; c < 5; c++) {
+                if (!marked[r + '-' + c]) { rowWin = false; break; }
+            }
+            if (rowWin) won = true;
+        }
+        // Check cols
+        for (var c = 0; c < 5; c++) {
+            var colWin = true;
+            for (var r = 0; r < 5; r++) {
+                if (!marked[r + '-' + c]) { colWin = false; break; }
+            }
+            if (colWin) won = true;
+        }
+        // Check diagonals
+        var d1 = true, d2 = true;
+        for (var i = 0; i < 5; i++) {
+            if (!marked[i + '-' + i]) d1 = false;
+            if (!marked[i + '-' + (4-i)]) d2 = false;
+        }
+        if (d1 || d2) won = true;
+
+        document.getElementById('bingoAlert').style.display = won ? 'block' : 'none';
+    }
+</script>
+}
