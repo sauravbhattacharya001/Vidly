@@ -56,9 +56,14 @@ namespace Vidly.Controllers
                 {
                     viewModel.Quote = _swapService.GetQuote(rentalId.Value, newMovieId.Value);
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (ex is ArgumentException || ex is InvalidOperationException || ex is KeyNotFoundException)
                 {
                     viewModel.Message = ex.Message;
+                    viewModel.IsError = true;
+                }
+                catch (Exception)
+                {
+                    viewModel.Message = "An unexpected error occurred while getting the swap quote.";
                     viewModel.IsError = true;
                 }
             }

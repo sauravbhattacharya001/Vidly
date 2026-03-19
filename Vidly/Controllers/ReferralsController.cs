@@ -69,9 +69,13 @@ namespace Vidly.Controllers
                 TempData["Message"] = $"Referral sent to {referredName}!";
                 TempData["MessageType"] = "success";
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is ArgumentException || ex is InvalidOperationException || ex is KeyNotFoundException)
             {
                 TempData["Message"] = ex.Message;
+            }
+            catch (Exception)
+            {
+                TempData["Message"] = "An unexpected error occurred. Please try again.";
                 TempData["MessageType"] = "danger";
             }
 
@@ -89,9 +93,13 @@ namespace Vidly.Controllers
                 TempData["Message"] = "Referral converted successfully! Points awarded.";
                 TempData["MessageType"] = "success";
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is ArgumentException || ex is InvalidOperationException || ex is KeyNotFoundException)
             {
                 TempData["Message"] = ex.Message;
+            }
+            catch (Exception)
+            {
+                TempData["Message"] = "An unexpected error occurred. Please try again.";
                 TempData["MessageType"] = "danger";
             }
 

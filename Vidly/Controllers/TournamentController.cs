@@ -65,9 +65,13 @@ namespace Vidly.Controllers
 
                 return RedirectToAction("Bracket", new { id = tournament.Id });
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is ArgumentException || ex is InvalidOperationException || ex is KeyNotFoundException)
             {
                 TempData["Error"] = ex.Message;
+            }
+            catch (Exception)
+            {
+                TempData["Error"] = "An unexpected error occurred. Please try again.";
                 return RedirectToAction("Index");
             }
         }
@@ -109,9 +113,13 @@ namespace Vidly.Controllers
 
                 return RedirectToAction("Bracket", new { id = tournamentId });
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is ArgumentException || ex is InvalidOperationException || ex is KeyNotFoundException)
             {
                 TempData["Error"] = ex.Message;
+            }
+            catch (Exception)
+            {
+                TempData["Error"] = "An unexpected error occurred. Please try again.";
                 return RedirectToAction("Bracket", new { id = tournamentId });
             }
         }

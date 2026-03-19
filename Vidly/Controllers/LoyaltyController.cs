@@ -147,9 +147,13 @@ namespace Vidly.Controllers
                 _loyaltyService.EarnPointsForRental(rentalId);
                 TempData["EarnSuccess"] = true;
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException || ex is KeyNotFoundException)
             {
                 TempData["EarnError"] = ex.Message;
+            }
+            catch (Exception)
+            {
+                TempData["EarnError"] = "An unexpected error occurred while earning points. Please try again.";
             }
 
             return RedirectToAction("Index", new { customerId });
