@@ -42,7 +42,11 @@ namespace Vidly.Controllers
                 ?? throw new ArgumentNullException(nameof(movieRepository));
         }
 
-        // GET: Movies/Random
+        /// <summary>
+        /// GET: Movies/Random — Selects a random movie from the catalog and
+        /// displays it alongside a sample customer list. Returns 404 when the
+        /// catalog is empty.
+        /// </summary>
         public ActionResult Random()
         {
             var movie = _movieRepository.GetRandom();
@@ -65,7 +69,11 @@ namespace Vidly.Controllers
             return View(viewModel);
         }
 
-        // GET: Movies/Details/5
+        /// <summary>
+        /// GET: Movies/Details/{id} — Shows full details for a single movie.
+        /// Returns 404 if the movie ID does not exist.
+        /// </summary>
+        /// <param name="id">The movie identifier.</param>
         public ActionResult Details(int id)
         {
             var movie = _movieRepository.GetById(id);
@@ -76,13 +84,19 @@ namespace Vidly.Controllers
             return View(movie);
         }
 
-        // GET: Movies/Create
+        /// <summary>
+        /// GET: Movies/Create — Renders the movie editor form for a new movie.
+        /// </summary>
         public ActionResult Create()
         {
             return View("Edit", new Movie());
         }
 
-        // POST: Movies/Create
+        /// <summary>
+        /// POST: Movies/Create — Validates and persists a new movie.
+        /// Re-renders the edit form on validation failure.
+        /// </summary>
+        /// <param name="movie">The movie data from the form (Id excluded via Bind).</param>
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult Create([Bind(Exclude = "Id")] Movie movie)
@@ -95,7 +109,11 @@ namespace Vidly.Controllers
             return RedirectToAction("Index");
         }
 
-        // GET: Movies/Edit/5
+        /// <summary>
+        /// GET: Movies/Edit/{id} — Renders the movie editor form for an existing movie.
+        /// Returns 404 if the movie ID does not exist.
+        /// </summary>
+        /// <param name="id">The movie identifier.</param>
         public ActionResult Edit(int id)
         {
             var movie = _movieRepository.GetById(id);
@@ -106,7 +124,13 @@ namespace Vidly.Controllers
             return View(movie);
         }
 
-        // POST: Movies/Edit/5
+        /// <summary>
+        /// POST: Movies/Edit/{id} — Updates an existing movie.
+        /// Uses the route ID as authoritative to prevent over-posting attacks
+        /// where an attacker modifies the hidden Id field.
+        /// </summary>
+        /// <param name="id">Route-based movie identifier (authoritative).</param>
+        /// <param name="movie">Form-bound movie data (Id excluded via Bind).</param>
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult Edit(int id, [Bind(Include = "Name,ReleaseDate,Genre,Rating")] Movie movie)
@@ -142,7 +166,11 @@ namespace Vidly.Controllers
             return View(matches.ToList());
         }
 
-        // POST: Movies/Delete/5
+        /// <summary>
+        /// POST: Movies/Delete/{id} — Permanently removes a movie from the catalog.
+        /// Returns 404 if the movie does not exist.
+        /// </summary>
+        /// <param name="id">The movie identifier.</param>
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult Delete(int id)
@@ -159,7 +187,14 @@ namespace Vidly.Controllers
             return RedirectToAction("Index");
         }
 
-        // GET: Movies
+        /// <summary>
+        /// GET: Movies — Lists all movies with optional search, genre filter,
+        /// minimum rating filter, and configurable sort order.
+        /// </summary>
+        /// <param name="query">Case-insensitive substring search on movie name.</param>
+        /// <param name="genre">Optional genre filter.</param>
+        /// <param name="minRating">Optional minimum star rating filter.</param>
+        /// <param name="sortBy">Sort column key (name, rating, releasedate, genre, id).</param>
         public ActionResult Index(string query, Genre? genre, int? minRating, string sortBy)
         {
             var allMovies = _movieRepository.GetAll();

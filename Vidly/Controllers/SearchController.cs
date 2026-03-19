@@ -30,7 +30,11 @@ namespace Vidly.Controllers
             _rentalRepository = rentalRepository ?? throw new ArgumentNullException(nameof(rentalRepository));
         }
 
-        // GET: Search?q=term
+        /// <summary>
+        /// GET: Search?q={term} — Performs a global search across movies,
+        /// customers, and rentals. Returns empty results when no query is provided.
+        /// </summary>
+        /// <param name="q">The search query string.</param>
         public ActionResult Index(string q)
         {
             var results = new GlobalSearchResults { Query = q };

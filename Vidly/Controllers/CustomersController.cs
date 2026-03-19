@@ -41,7 +41,13 @@ namespace Vidly.Controllers
                 ?? throw new ArgumentNullException(nameof(customerRepository));
         }
 
-        // GET: Customers
+        /// <summary>
+        /// GET: Customers — Lists all customers with optional search, membership
+        /// type filter, and configurable sort order.
+        /// </summary>
+        /// <param name="query">Case-insensitive substring search on name or email.</param>
+        /// <param name="membershipType">Optional membership tier filter.</param>
+        /// <param name="sortBy">Sort column key (name, membership, membersince, email, id).</param>
         public ActionResult Index(string query, MembershipType? membershipType, string sortBy)
         {
             var allCustomers = _customerRepository.GetAll();
@@ -73,7 +79,11 @@ namespace Vidly.Controllers
             return View(viewModel);
         }
 
-        // GET: Customers/Details/5
+        /// <summary>
+        /// GET: Customers/Details/{id} — Shows full details for a single customer.
+        /// Returns 404 if the customer does not exist.
+        /// </summary>
+        /// <param name="id">The customer identifier.</param>
         public ActionResult Details(int id)
         {
             var customer = _customerRepository.GetById(id);
@@ -84,7 +94,10 @@ namespace Vidly.Controllers
             return View(customer);
         }
 
-        // GET: Customers/Create
+        /// <summary>
+        /// GET: Customers/Create — Renders the customer editor form with sensible defaults
+        /// (today's date, Basic membership).
+        /// </summary>
         public ActionResult Create()
         {
             var customer = new Customer
@@ -95,7 +108,11 @@ namespace Vidly.Controllers
             return View("Edit", customer);
         }
 
-        // POST: Customers/Create
+        /// <summary>
+        /// POST: Customers/Create — Validates and persists a new customer record.
+        /// Re-renders the edit form on validation failure.
+        /// </summary>
+        /// <param name="customer">Form-bound customer data (Id excluded via Bind).</param>
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult Create([Bind(Exclude = "Id")] Customer customer)
@@ -108,7 +125,11 @@ namespace Vidly.Controllers
             return RedirectToAction("Index");
         }
 
-        // GET: Customers/Edit/5
+        /// <summary>
+        /// GET: Customers/Edit/{id} — Renders the customer editor form for an existing customer.
+        /// Returns 404 if the customer does not exist.
+        /// </summary>
+        /// <param name="id">The customer identifier.</param>
         public ActionResult Edit(int id)
         {
             var customer = _customerRepository.GetById(id);
@@ -119,7 +140,13 @@ namespace Vidly.Controllers
             return View(customer);
         }
 
-        // POST: Customers/Edit/5
+        /// <summary>
+        /// POST: Customers/Edit/{id} — Updates an existing customer record.
+        /// Uses the route ID as authoritative to prevent over-posting attacks
+        /// where an attacker modifies the hidden Id field to update a different record.
+        /// </summary>
+        /// <param name="id">Route-based customer identifier (authoritative).</param>
+        /// <param name="customer">Form-bound customer data (Id excluded via Bind).</param>
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult Edit(int id, [Bind(Include = "Name,Email,Phone,MemberSince,MembershipType")] Customer customer)
@@ -143,7 +170,11 @@ namespace Vidly.Controllers
             return RedirectToAction("Index");
         }
 
-        // POST: Customers/Delete/5
+        /// <summary>
+        /// POST: Customers/Delete/{id} — Permanently removes a customer record.
+        /// Returns 404 if the customer does not exist.
+        /// </summary>
+        /// <param name="id">The customer identifier.</param>
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult Delete(int id)

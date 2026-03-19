@@ -61,7 +61,13 @@ namespace Vidly.Controllers
                 ?? throw new ArgumentNullException(nameof(couponRepository)));
         }
 
-        // GET: Rentals
+        /// <summary>
+        /// GET: Rentals — Lists all rentals with optional search, status filter,
+        /// and configurable sort order. Includes aggregate statistics.
+        /// </summary>
+        /// <param name="query">Case-insensitive search on customer or movie name.</param>
+        /// <param name="status">Optional rental status filter.</param>
+        /// <param name="sortBy">Sort column key (rentaldate, customer, movie, duedate, status, totalcost).</param>
         public ActionResult Index(string query, RentalStatus? status, string sortBy)
         {
             var allRentals = _rentalRepository.GetAll();
@@ -93,7 +99,11 @@ namespace Vidly.Controllers
             return View(viewModel);
         }
 
-        // GET: Rentals/Details/5
+        /// <summary>
+        /// GET: Rentals/Details/{id} — Shows full details for a single rental.
+        /// Returns 404 if the rental does not exist.
+        /// </summary>
+        /// <param name="id">The rental identifier.</param>
         public ActionResult Details(int id)
         {
             var rental = _rentalRepository.GetById(id);
@@ -104,7 +114,10 @@ namespace Vidly.Controllers
             return View(rental);
         }
 
-        // GET: Rentals/Checkout
+        /// <summary>
+        /// GET: Rentals/Checkout — Renders the checkout form with available movies
+        /// (excludes currently rented-out titles) and all customers.
+        /// </summary>
         public ActionResult Checkout()
         {
             var movies = _movieRepository.GetAll();
@@ -127,7 +140,13 @@ namespace Vidly.Controllers
             return View(viewModel);
         }
 
-        // POST: Rentals/Checkout
+        /// <summary>
+        /// POST: Rentals/Checkout — Validates and creates a new rental.
+        /// Enforces server-side pricing, rental periods, concurrent rental limits,
+        /// and movie availability via atomic checkout to prevent TOCTOU races.
+        /// Rate-limited to 15 requests per minute per IP.
+        /// </summary>
+        /// <param name="viewModel">The checkout form data including rental details and optional coupon.</param>
         [HttpPost]
         [ValidateAntiForgeryToken]
         [RateLimit(MaxRequests = 15, WindowSeconds = 60,
@@ -231,7 +250,12 @@ namespace Vidly.Controllers
             return RedirectToAction("Index");
         }
 
-        // POST: Rentals/Return/5
+        /// <summary>
+        /// POST: Rentals/Return/{id} — Marks a rental as returned, calculates
+        /// late fees based on membership tier grace periods and fee caps.
+        /// Sets a TempData message indicating the return result.
+        /// </summary>
+        /// <param name="id">The rental identifier.</param>
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult Return(int id)
@@ -255,7 +279,11 @@ namespace Vidly.Controllers
             return RedirectToAction("Index");
         }
 
-        // POST: Rentals/Delete/5
+        /// <summary>
+        /// POST: Rentals/Delete/{id} — Permanently removes a rental record.
+        /// Returns 404 if the rental does not exist.
+        /// </summary>
+        /// <param name="id">The rental identifier.</param>
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult Delete(int id)
@@ -272,7 +300,11 @@ namespace Vidly.Controllers
             return RedirectToAction("Index");
         }
 
-        // GET: Rentals/Receipt/5
+        /// <summary>
+        /// GET: Rentals/Receipt/{id} — Displays a printable receipt for a rental.
+        /// Returns 404 if the rental does not exist.
+        /// </summary>
+        /// <param name="id">The rental identifier.</param>
         public ActionResult Receipt(int id)
         {
             var rental = _rentalRepository.GetById(id);
@@ -283,14 +315,20 @@ namespace Vidly.Controllers
             return View(rental);
         }
 
-        // GET: Rentals/Overdue
+        /// <summary>
+        /// GET: Rentals/Overdue — Lists all active rentals that are past their due date.
+        /// </summary>
         public ActionResult Overdue()
         {
             var overdueRentals = _rentalRepository.GetOverdue();
             return View(overdueRentals);
         }
 
-        // GET: Rentals/Extend/5
+        /// <summary>
+        /// GET: Rentals/Extend/{id} — Renders the rental extension form.
+        /// A rental can only be extended once and must be active (not returned).
+        /// </summary>
+        /// <param name="id">The rental identifier.</param>
         public ActionResult Extend(int id)
         {
             var rental = _rentalRepository.GetById(id);
@@ -321,7 +359,13 @@ namespace Vidly.Controllers
             return View(viewModel);
         }
 
-        // POST: Rentals/Extend/5
+        /// <summary>
+        /// POST: Rentals/Extend/{id} — Extends the rental's due date by 1–7 days.
+        /// Charges an extension fee at half the daily rate per extension day.
+        /// A rental can only be extended once.
+        /// </summary>
+        /// <param name="id">The rental identifier.</param>
+        /// <param name="viewModel">Extension form data including the number of days.</param>
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult Extend(int id, RentalExtendViewModel viewModel)
