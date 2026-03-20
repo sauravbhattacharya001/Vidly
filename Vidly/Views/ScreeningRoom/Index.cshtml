@@ -1,0 +1,358 @@
+@{
+    ViewBag.Title = "Screening Room Booking";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var rooms = (IReadOnlyList<Vidly.Models.ScreeningRoom>)ViewBag.Rooms;
+    var bookings = (IReadOnlyList<Vidly.Models.ScreeningBooking>)ViewBag.Bookings;
+    var customers = (IReadOnlyList<Vidly.Models.Customer>)ViewBag.Customers;
+    var movies = (IReadOnlyList<Vidly.Models.Movie>)ViewBag.Movies;
+}
+
+<h2>
+    <span class="glyphicon glyphicon-film"></span>
+    Screening Room Booking
+</h2>
+<p class="text-muted">
+    Book a private screening room for movie nights, parties, or team events.
+    Pick a room, choose your time, invite your friends!
+</p>
+
+<!-- Stats row -->
+<div class="row" style="margin-bottom:20px">
+    <div class="col-md-3">
+        <div class="panel panel-primary">
+            <div class="panel-body text-center">
+                <h3 style="margin:0">@rooms.Count</h3>
+                <small class="text-muted">Rooms Available</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="panel panel-success">
+            <div class="panel-body text-center">
+                <h3 style="margin:0">@bookings.Count(b => b.Status == Vidly.Models.BookingStatus.Confirmed)</h3>
+                <small class="text-muted">Active Bookings</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="panel panel-info">
+            <div class="panel-body text-center">
+                <h3 style="margin:0">@rooms.Sum(r => r.Capacity)</h3>
+                <small class="text-muted">Total Capacity</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="panel panel-warning">
+            <div class="panel-body text-center">
+                <h3 style="margin:0">$@rooms.Min(r => r.HourlyRate)/hr</h3>
+                <small class="text-muted">Starting From</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Rooms & Booking Form -->
+    <div class="col-md-5">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title">
+                    <span class="glyphicon glyphicon-home"></span> Our Rooms
+                </h3>
+            </div>
+            <div class="panel-body" style="padding:0">
+                <table class="table table-hover" style="margin:0">
+                    <thead>
+                        <tr>
+                            <th>Room</th>
+                            <th>Capacity</th>
+                            <th>Rate</th>
+                            <th>Features</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var room in rooms)
+                        {
+                            <tr style="cursor:pointer" onclick="selectRoom(@room.Id)">
+                                <td><strong>@room.Name</strong></td>
+                                <td>@room.Capacity guests</td>
+                                <td>$@room.HourlyRate/hr</td>
+                                <td>
+                                    @if (room.Has4KProjector) { <span class="label label-info">4K</span> }
+                                    @if (room.HasSurroundSound) { <span class="label label-primary">Surround</span> }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Book form -->
+        <div class="panel panel-success">
+            <div class="panel-heading">
+                <h3 class="panel-title">
+                    <span class="glyphicon glyphicon-calendar"></span> New Booking
+                </h3>
+            </div>
+            <div class="panel-body">
+                <form id="bookingForm">
+                    <div class="form-group">
+                        <label>Room</label>
+                        <select id="roomId" class="form-control" required>
+                            <option value="">Select a room...</option>
+                            @foreach (var room in rooms)
+                            {
+                                <option value="@room.Id">@room.Name ($@room.HourlyRate/hr, up to @room.Capacity guests)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Customer</label>
+                        <select id="customerId" class="form-control" required>
+                            <option value="">Select customer...</option>
+                            @foreach (var c in customers)
+                            {
+                                <option value="@c.Id">@c.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Movie (optional)</label>
+                        <select id="movieId" class="form-control">
+                            <option value="">Customer's choice</option>
+                            @foreach (var m in movies)
+                            {
+                                <option value="@m.Id">@m.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label>Date</label>
+                                <input type="date" id="bookDate" class="form-control" required
+                                       min="@DateTime.Today.ToString("yyyy-MM-dd")"
+                                       value="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                            </div>
+                        </div>
+                        <div class="col-sm-3">
+                            <div class="form-group">
+                                <label>Start</label>
+                                <select id="startHour" class="form-control">
+                                    @for (int h = 10; h < 22; h++)
+                                    {
+                                        var label = DateTime.Today.AddHours(h).ToString("h tt");
+                                        <option value="@h">@label</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-sm-3">
+                            <div class="form-group">
+                                <label>Hours</label>
+                                <select id="durationHours" class="form-control">
+                                    <option value="1">1 hr</option>
+                                    <option value="2" selected>2 hrs</option>
+                                    <option value="3">3 hrs</option>
+                                    <option value="4">4 hrs</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label>Guests</label>
+                                <input type="number" id="guestCount" class="form-control" min="1" max="50" value="2" />
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label>Est. Cost</label>
+                                <p id="estCost" class="form-control-static" style="font-size:1.3em;font-weight:bold;color:#5cb85c">$0.00</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Notes</label>
+                        <input type="text" id="notes" class="form-control" placeholder="Birthday party, team event, etc." />
+                    </div>
+                    <button type="submit" class="btn btn-success btn-block">
+                        <span class="glyphicon glyphicon-ok"></span> Book Now
+                    </button>
+                </form>
+                <div id="bookMsg" style="margin-top:10px"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bookings list -->
+    <div class="col-md-7">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title">
+                    <span class="glyphicon glyphicon-list"></span> Bookings
+                </h3>
+            </div>
+            <div class="panel-body" style="padding:0">
+                <table class="table table-striped" style="margin:0" id="bookingsTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Room</th>
+                            <th>Customer</th>
+                            <th>Movie</th>
+                            <th>Date &amp; Time</th>
+                            <th>Guests</th>
+                            <th>Cost</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var b in bookings)
+                        {
+                            var statusClass = b.Status == Vidly.Models.BookingStatus.Confirmed ? "success"
+                                : b.Status == Vidly.Models.BookingStatus.Completed ? "info" : "default";
+                            <tr id="booking-@b.Id">
+                                <td>@b.Id</td>
+                                <td>@b.RoomName</td>
+                                <td>@b.CustomerName</td>
+                                <td>@(b.MovieName ?? "—")</td>
+                                <td>
+                                    @b.Date.ToString("MMM d") &middot;
+                                    @DateTime.Today.AddHours(b.StartHour).ToString("h tt")–@DateTime.Today.AddHours(b.EndHour).ToString("h tt")
+                                </td>
+                                <td>@b.GuestCount</td>
+                                <td>$@b.TotalCost.ToString("F2")</td>
+                                <td><span class="label label-@statusClass">@b.Status</span></td>
+                                <td>
+                                    @if (b.Status == Vidly.Models.BookingStatus.Confirmed)
+                                    {
+                                        <button class="btn btn-xs btn-danger" onclick="cancelBooking(@b.Id)">Cancel</button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                @if (!bookings.Any())
+                {
+                    <p class="text-muted text-center" style="padding:20px">No bookings yet. Be the first!</p>
+                }
+            </div>
+        </div>
+
+        <!-- Availability viewer -->
+        <div class="panel panel-info">
+            <div class="panel-heading">
+                <h3 class="panel-title">
+                    <span class="glyphicon glyphicon-time"></span> Slot Availability
+                </h3>
+            </div>
+            <div class="panel-body">
+                <p class="text-muted">Select a room and date above to check available time slots.</p>
+                <div id="slotGrid" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px"></div>
+                <div id="slotBookings" style="margin-top:15px"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+<script>
+    var roomRates = { @Html.Raw(string.Join(",", rooms.Select(r => $"{r.Id}:{r.HourlyRate}m"))) };
+
+    // Actually build a map
+    var rates = {};
+    @foreach (var r in rooms)
+    {
+        @:rates[@r.Id] = @r.HourlyRate;
+    }
+
+    function selectRoom(id) {
+        document.getElementById('roomId').value = id;
+        updateCost();
+        loadSlots();
+    }
+
+    function updateCost() {
+        var rid = +document.getElementById('roomId').value;
+        var hrs = +document.getElementById('durationHours').value;
+        var cost = (rates[rid] || 0) * hrs;
+        document.getElementById('estCost').textContent = '$' + cost.toFixed(2);
+    }
+
+    document.getElementById('roomId').addEventListener('change', function() { updateCost(); loadSlots(); });
+    document.getElementById('durationHours').addEventListener('change', updateCost);
+    document.getElementById('bookDate').addEventListener('change', loadSlots);
+
+    function loadSlots() {
+        var rid = document.getElementById('roomId').value;
+        var date = document.getElementById('bookDate').value;
+        if (!rid || !date) return;
+
+        $.getJSON('@Url.Action("Availability", "ScreeningRoom")', { roomId: rid, date: date }, function(data) {
+            if (data.error) return;
+
+            var html = '';
+            data.slots.forEach(function(s) {
+                var cls = s.available ? 'btn-success' : 'btn-default disabled';
+                html += '<button class="btn btn-xs ' + cls + '" style="min-width:60px"'
+                    + (s.available ? ' onclick="document.getElementById(\'startHour\').value=' + s.hour + '"' : '')
+                    + '>' + s.label + '</button>';
+            });
+            document.getElementById('slotGrid').innerHTML = html;
+
+            var bhtml = '';
+            if (data.bookings && data.bookings.length) {
+                bhtml = '<strong>Booked:</strong><ul>';
+                data.bookings.forEach(function(b) {
+                    bhtml += '<li>' + b.startLabel + '–' + b.endLabel + ' — ' + b.customerName
+                        + (b.movieName ? ' watching <em>' + b.movieName + '</em>' : '')
+                        + ' (' + b.guestCount + ' guests)</li>';
+                });
+                bhtml += '</ul>';
+            }
+            document.getElementById('slotBookings').innerHTML = bhtml;
+        });
+    }
+
+    document.getElementById('bookingForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        var data = {
+            roomId: +document.getElementById('roomId').value,
+            customerId: +document.getElementById('customerId').value,
+            movieId: document.getElementById('movieId').value || null,
+            date: document.getElementById('bookDate').value,
+            startHour: +document.getElementById('startHour').value,
+            durationHours: +document.getElementById('durationHours').value,
+            guestCount: +document.getElementById('guestCount').value,
+            notes: document.getElementById('notes').value
+        };
+
+        $.post('@Url.Action("Book", "ScreeningRoom")', data, function(res) {
+            var el = document.getElementById('bookMsg');
+            if (res.success) {
+                el.innerHTML = '<div class="alert alert-success">Booked! #' + res.booking.Id
+                    + ' — ' + res.booking.RoomName + ' for $' + res.booking.TotalCost.toFixed(2) + '</div>';
+                setTimeout(function() { location.reload(); }, 1500);
+            } else {
+                el.innerHTML = '<div class="alert alert-danger">' + res.error + '</div>';
+            }
+        });
+    });
+
+    function cancelBooking(id) {
+        if (!confirm('Cancel this booking?')) return;
+        $.post('@Url.Action("Cancel", "ScreeningRoom")/' + id, function(res) {
+            if (res.success) location.reload();
+            else alert(res.error);
+        });
+    }
+
+    updateCost();
+</script>
+}
