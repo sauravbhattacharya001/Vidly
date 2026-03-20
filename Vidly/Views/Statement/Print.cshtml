@@ -1,0 +1,193 @@
+@model Vidly.Models.CustomerStatement
+@{
+    ViewBag.Title = "Statement " + Model.StatementNumber;
+    Layout = null;
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>@ViewBag.Title</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; color: #333; padding: 40px; max-width: 900px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #2c3e50; padding-bottom: 20px; margin-bottom: 25px; }
+        .header h1 { font-size: 28px; color: #2c3e50; letter-spacing: 4px; }
+        .header .subtitle { color: #7f8c8d; font-size: 12px; margin-top: 4px; }
+        .header .stmt-info { text-align: right; font-size: 13px; }
+        .header .stmt-info .stmt-num { font-size: 16px; font-weight: bold; color: #2c3e50; }
+        .addresses { display: flex; justify-content: space-between; margin-bottom: 25px; font-size: 13px; }
+        .addresses .from, .addresses .to { width: 48%; }
+        .addresses h4 { color: #7f8c8d; text-transform: uppercase; font-size: 10px; letter-spacing: 2px; margin-bottom: 5px; }
+        .summary-bar { display: flex; gap: 15px; margin-bottom: 25px; }
+        .summary-bar .stat { flex: 1; text-align: center; padding: 12px 8px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 4px; }
+        .summary-bar .stat .num { font-size: 22px; font-weight: bold; color: #2c3e50; }
+        .summary-bar .stat .lbl { font-size: 10px; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 13px; }
+        th { background: #2c3e50; color: #fff; padding: 10px 8px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+        td { padding: 8px; border-bottom: 1px solid #e9ecef; }
+        tr:nth-child(even) { background: #f8f9fa; }
+        tr.late td { background: #fff3cd; }
+        tr.overdue td { background: #f8d7da; }
+        .text-right { text-align: right; }
+        .totals { margin-top: -1px; }
+        .totals td { font-weight: bold; border-top: 2px solid #2c3e50; background: #fff !important; }
+        .grand-total { font-size: 18px; color: #2c3e50; }
+        .footer { margin-top: 40px; padding-top: 20px; border-top: 2px solid #e9ecef; text-align: center; font-size: 11px; color: #95a5a6; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: bold; text-transform: uppercase; }
+        .badge-active { background: #d1ecf1; color: #0c5460; }
+        .badge-returned { background: #d4edda; color: #155724; }
+        .badge-overdue { background: #f8d7da; color: #721c24; }
+        .no-print { margin-bottom: 20px; text-align: center; }
+        .btn { display: inline-block; padding: 8px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; text-decoration: none; }
+        .btn-print { background: #2c3e50; color: #fff; }
+        .btn-back { background: #e9ecef; color: #333; margin-left: 10px; }
+        @@media print {
+            .no-print { display: none; }
+            body { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <button class="btn btn-print" onclick="window.print()">🖨️ Print Statement</button>
+        <a class="btn btn-back" href="javascript:history.back()">← Back</a>
+    </div>
+
+    <div class="header">
+        <div>
+            <h1>VIDLY</h1>
+            <div class="subtitle">Your Neighborhood Video Rental</div>
+            <div class="subtitle">123 Main Street • Anytown, USA</div>
+        </div>
+        <div class="stmt-info">
+            <div class="stmt-num">@Model.StatementNumber</div>
+            <div>@Model.PeriodStart.ToString("MMM dd, yyyy") — @Model.PeriodEnd.ToString("MMM dd, yyyy")</div>
+            <div>Generated: @Model.GeneratedAt.ToString("MMM dd, yyyy")</div>
+        </div>
+    </div>
+
+    <div class="addresses">
+        <div class="to">
+            <h4>Statement For</h4>
+            <strong>@Model.Customer.Name</strong><br />
+            @if (!string.IsNullOrEmpty(Model.Customer.Email))
+            {
+                @Model.Customer.Email<br />
+            }
+            @if (!string.IsNullOrEmpty(Model.Customer.Phone))
+            {
+                @Model.Customer.Phone<br />
+            }
+            Membership: @Model.Customer.MembershipType
+        </div>
+        <div class="from" style="text-align: right;">
+            <h4>From</h4>
+            <strong>Vidly Video Rentals</strong><br />
+            123 Main Street<br />
+            Anytown, USA 12345<br />
+            (555) 123-4567
+        </div>
+    </div>
+
+    <div class="summary-bar">
+        <div class="stat">
+            <div class="num">@Model.TotalRentals</div>
+            <div class="lbl">Rentals</div>
+        </div>
+        <div class="stat">
+            <div class="num">@Model.ReturnedRentals</div>
+            <div class="lbl">Returned</div>
+        </div>
+        <div class="stat">
+            <div class="num">@Model.ActiveRentals</div>
+            <div class="lbl">Active</div>
+        </div>
+        <div class="stat">
+            <div class="num">@Model.OverdueRentals</div>
+            <div class="lbl">Overdue</div>
+        </div>
+        <div class="stat">
+            <div class="num">@Model.AverageDurationDays</div>
+            <div class="lbl">Avg Days</div>
+        </div>
+    </div>
+
+    @if (Model.LineItems.Count == 0)
+    {
+        <p style="text-align: center; padding: 40px; color: #95a5a6;">No rentals found for this period.</p>
+    }
+    else
+    {
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Movie</th>
+                    <th>Rented</th>
+                    <th>Due</th>
+                    <th>Returned</th>
+                    <th>Days</th>
+                    <th class="text-right">Rate</th>
+                    <th class="text-right">Cost</th>
+                    <th class="text-right">Late Fee</th>
+                    <th class="text-right">Total</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.LineItems)
+                {
+                    var rowClass = item.Status == Vidly.Models.RentalStatus.Overdue ? "overdue" : item.WasLate ? "late" : "";
+                    <tr class="@rowClass">
+                        <td>@item.RentalId</td>
+                        <td>@item.MovieName</td>
+                        <td>@item.RentalDate.ToString("MM/dd/yy")</td>
+                        <td>@item.DueDate.ToString("MM/dd/yy")</td>
+                        <td>@(item.ReturnDate?.ToString("MM/dd/yy") ?? "—")</td>
+                        <td>@item.DaysRented</td>
+                        <td class="text-right">$@item.DailyRate.ToString("F2")</td>
+                        <td class="text-right">$@item.RentalCost.ToString("F2")</td>
+                        <td class="text-right" style="@(item.LateFee > 0 ? "color: #c0392b;" : "")">
+                            @(item.LateFee > 0 ? "$" + item.LateFee.ToString("F2") : "—")
+                        </td>
+                        <td class="text-right"><strong>$@item.LineTotal.ToString("F2")</strong></td>
+                        <td>
+                            @switch (item.Status)
+                            {
+                                case Vidly.Models.RentalStatus.Active:
+                                    <span class="badge badge-active">Active</span>
+                                    break;
+                                case Vidly.Models.RentalStatus.Returned:
+                                    <span class="badge badge-returned">Returned</span>
+                                    break;
+                                case Vidly.Models.RentalStatus.Overdue:
+                                    <span class="badge badge-overdue">Overdue</span>
+                                    break;
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr class="totals">
+                    <td colspan="7" class="text-right">Subtotal:</td>
+                    <td class="text-right">$@Model.Subtotal.ToString("F2")</td>
+                    <td class="text-right" style="color: #c0392b;">$@Model.TotalLateFees.ToString("F2")</td>
+                    <td colspan="2"></td>
+                </tr>
+                <tr class="totals">
+                    <td colspan="7" class="text-right grand-total">GRAND TOTAL:</td>
+                    <td colspan="2" class="text-right grand-total">$@Model.GrandTotal.ToString("F2")</td>
+                    <td colspan="2"></td>
+                </tr>
+            </tfoot>
+        </table>
+    }
+
+    <div class="footer">
+        <p>Thank you for being a valued Vidly customer!</p>
+        <p>Questions about this statement? Contact us at (555) 123-4567 or support@vidly.example.com</p>
+        <p style="margin-top: 10px;">Statement @Model.StatementNumber • Generated @Model.GeneratedAt.ToString("MMMM dd, yyyy")</p>
+    </div>
+</body>
+</html>
