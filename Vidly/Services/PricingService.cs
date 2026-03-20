@@ -390,8 +390,10 @@ namespace Vidly.Services
                 return NewReleaseDailyRate;
 
             // 3. Catalog titles (older than 1 year) get a discount
+            // Uses DateTime.Today for consistency with Movie.IsNewRelease
+            // (static method cannot access instance _clock field).
             if (movie.ReleaseDate.HasValue &&
-                (_clock.Today - movie.ReleaseDate.Value).TotalDays > 365)
+                (DateTime.Today - movie.ReleaseDate.Value).TotalDays > 365)
                 return CatalogDailyRate;
 
             // 4. Everything else uses the default rate
@@ -399,109 +401,5 @@ namespace Vidly.Services
         }
     }
 
-    // ── Models ───────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Benefits associated with a membership tier.
-    /// </summary>
-    public class MembershipBenefits
-    {
-        public MembershipType Tier { get; set; }
-        public int DiscountPercent { get; set; }
-        public int GracePeriodDays { get; set; }
-        public int MaxConcurrentRentals { get; set; }
-        public int FreeRentalsPerMonth { get; set; }
-        public int LateFeeDiscount { get; set; }
-        public int ExtendedRentalDays { get; set; }
-        public string Description { get; set; }
-    }
-
-    /// <summary>
-    /// Detailed rental price quote.
-    /// </summary>
-    public class RentalPriceQuote
-    {
-        public string MovieName { get; set; }
-        public string CustomerName { get; set; }
-        public MembershipType MembershipTier { get; set; }
-        public decimal BaseDailyRate { get; set; }
-        public int DiscountPercent { get; set; }
-        public decimal DiscountedDailyRate { get; set; }
-        public int RentalDays { get; set; }
-        public DateTime DueDate { get; set; }
-        public decimal SubTotal { get; set; }
-        public bool FreeRentalApplied { get; set; }
-        public decimal FinalTotal { get; set; }
-        public int GracePeriodDays { get; set; }
-        public decimal Savings { get; set; }
-    }
-
-    /// <summary>
-    /// Detailed late fee calculation result.
-    /// </summary>
-    public class LateFeeResult
-    {
-        public int RentalId { get; set; }
-        public int RawDaysLate { get; set; }
-        public int GracePeriodDays { get; set; }
-        public int EffectiveDaysLate { get; set; }
-        public decimal BaseFee { get; set; }
-        public decimal LateFeeDiscount { get; set; }
-        public decimal FinalFee { get; set; }
-        public bool WasFeeWaived { get; set; }
-        public string Explanation { get; set; }
-    }
-
-    /// <summary>
-    /// Cost comparison across membership tiers.
-    /// </summary>
-    public class PricingTierComparison
-    {
-        public MembershipType Tier { get; set; }
-        public decimal DailyRate { get; set; }
-        public int RentalDays { get; set; }
-        public decimal TotalCost { get; set; }
-        public decimal Savings { get; set; }
-        public int GracePeriodDays { get; set; }
-        public int FreeRentalsPerMonth { get; set; }
-        public int LateFeeReduction { get; set; }
-    }
-
-    /// <summary>
-    /// Customer billing summary.
-    /// </summary>
-    public class CustomerBillingSummary
-    {
-        public int CustomerId { get; set; }
-        public string CustomerName { get; set; }
-        public MembershipType MembershipTier { get; set; }
-        public MembershipBenefits Benefits { get; set; }
-        public int ActiveRentalCount { get; set; }
-        public int OverdueRentalCount { get; set; }
-        public int MaxConcurrentRentals { get; set; }
-        public bool CanRentMore { get; set; }
-        public int RemainingSlots { get; set; }
-        public decimal TotalProjectedLateFees { get; set; }
-        public decimal LifetimeSpend { get; set; }
-        public List<RentalBillingDetail> Rentals { get; set; }
-        public int FreeRentalsUsedThisMonth { get; set; }
-        public int FreeRentalsRemaining { get; set; }
-    }
-
-    /// <summary>
-    /// Billing detail for a single active rental.
-    /// </summary>
-    public class RentalBillingDetail
-    {
-        public int RentalId { get; set; }
-        public string MovieName { get; set; }
-        public DateTime RentalDate { get; set; }
-        public DateTime DueDate { get; set; }
-        public decimal DailyRate { get; set; }
-        public bool IsOverdue { get; set; }
-        public int DaysOverdue { get; set; }
-        public decimal ProjectedLateFee { get; set; }
-        public string LateFeeExplanation { get; set; }
-    }
 }
 
