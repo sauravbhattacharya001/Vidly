@@ -28,6 +28,21 @@ A video rental store web application built with **ASP.NET MVC 5** that demonstra
 
 ---
 
+## 📋 Table of Contents
+
+- [Features](#-features)
+- [Quick Start](#-quick-start)
+- [Architecture](#️-architecture)
+- [Getting Started](#-getting-started)
+- [API / Routes](#-api--routes)
+- [Testing](#-testing)
+- [Tech Stack](#️-tech-stack)
+- [Docker](#-docker)
+- [Packages](#-packages)
+- [Documentation](#-documentation)
+- [Contributing](#-contributing)
+- [License](#-license)
+
 ## ✨ Features
 
 - **Movie Catalog** — Browse, create, edit, and delete movies with full CRUD support
@@ -37,6 +52,17 @@ A video rental store web application built with **ASP.NET MVC 5** that demonstra
 - **Thread-Safe Data Store** — Concurrent access handled via lock-based synchronization
 - **Bundling & Minification** — Optimized client-side assets via `BundleConfig`
 - **Bootstrap UI** — Clean, responsive interface using Bootstrap with the Lumen theme
+
+## ⚡ Quick Start
+
+```bash
+git clone https://github.com/sauravbhattacharya001/Vidly.git
+cd Vidly
+nuget restore Vidly.sln
+# Open Vidly.sln in Visual Studio and press F5
+# Or run with Docker:
+docker build -t vidly . && docker run -d -p 8080:80 vidly
+```
 
 ## 🏗️ Architecture
 
