@@ -41,57 +41,33 @@ namespace Vidly.Controllers
             // Auto-expire disputes older than 30 days that are still open
             AutoExpireStaleDisputes();
 
-            var disputes = _repository.GetAll();
+            // Single fetch — reuse for both filtering and stats to avoid
+            // redundant repository calls and repeated full-list iterations.
+            var allDisputes = _repository.GetAll().ToList();
 
+            IEnumerable<Dispute> filtered;
             if (!string.IsNullOrWhiteSpace(q))
             {
                 var query = q.Trim().ToLowerInvariant();
-                disputes = disputes.Where(d =>
+                filtered = allDisputes.Where(d =>
                     (d.CustomerName != null && d.CustomerName.ToLowerInvariant().Contains(query)) ||
                     (d.MovieName != null && d.MovieName.ToLowerInvariant().Contains(query)) ||
                     (d.Reason != null && d.Reason.ToLowerInvariant().Contains(query)));
             }
             else
             {
-                if (status.HasValue) disputes = disputes.Where(d => d.Status == status.Value);
-                if (type.HasValue) disputes = disputes.Where(d => d.Type == type.Value);
-                if (priority.HasValue) disputes = disputes.Where(d => d.Priority == priority.Value);
+                filtered = allDisputes.AsEnumerable();
+                if (status.HasValue) filtered = filtered.Where(d => d.Status == status.Value);
+                if (type.HasValue) filtered = filtered.Where(d => d.Type == type.Value);
+                if (priority.HasValue) filtered = filtered.Where(d => d.Priority == priority.Value);
             }
 
-            var allDisputes = _repository.GetAll().ToList();
-            var resolved = allDisputes.Where(d =>
-                d.Status == DisputeStatus.Approved ||
-                d.Status == DisputeStatus.PartiallyApproved ||
-                d.Status == DisputeStatus.Denied).ToList();
-
-            var stats = new DisputeStats
-            {
-                Total = allDisputes.Count,
-                Open = allDisputes.Count(d => d.Status == DisputeStatus.Open),
-                UnderReview = allDisputes.Count(d => d.Status == DisputeStatus.UnderReview),
-                Approved = allDisputes.Count(d => d.Status == DisputeStatus.Approved),
-                PartiallyApproved = allDisputes.Count(d => d.Status == DisputeStatus.PartiallyApproved),
-                Denied = allDisputes.Count(d => d.Status == DisputeStatus.Denied),
-                Expired = allDisputes.Count(d => d.Status == DisputeStatus.Expired),
-                TotalDisputed = allDisputes.Sum(d => d.DisputedAmount),
-                TotalRefunded = allDisputes.Sum(d => d.RefundAmount),
-                ApprovalRate = resolved.Count > 0
-                    ? Math.Round(100.0 * resolved.Count(d =>
-                        d.Status == DisputeStatus.Approved ||
-                        d.Status == DisputeStatus.PartiallyApproved) / resolved.Count, 1)
-                    : 0,
-                AverageResolutionDays = resolved.Count > 0
-                    ? Math.Round(resolved
-                        .Where(d => d.ResolvedDate.HasValue)
-                        .Select(d => (d.ResolvedDate.Value - d.SubmittedDate).TotalDays)
-                        .DefaultIfEmpty(0)
-                        .Average(), 1)
-                    : 0,
-            };
+            // Compute stats in a single pass instead of N separate enumerations.
+            var stats = ComputeStats(allDisputes);
 
             var viewModel = new DisputeViewModel
             {
-                Disputes = disputes.OrderByDescending(d => d.Priority).ThenByDescending(d => d.SubmittedDate),
+                Disputes = filtered.OrderByDescending(d => d.Priority).ThenByDescending(d => d.SubmittedDate),
                 Stats = stats,
                 FilterStatus = status,
                 FilterType = type,
@@ -102,6 +78,87 @@ namespace Vidly.Controllers
             };
 
             return View(viewModel);
+        }
+
+        /// <summary>
+        /// Computes dispute statistics in a single pass over the list, replacing
+        /// the previous approach of 7+ separate Count/Sum enumerations.
+        /// </summary>
+        private static DisputeStats ComputeStats(List<Dispute> allDisputes)
+        {
+            int open = 0, underReview = 0, approved = 0, partiallyApproved = 0, denied = 0, expired = 0;
+            decimal totalDisputed = 0, totalRefunded = 0;
+            int resolvedCount = 0, approvedOrPartialCount = 0;
+            double resolutionDaysSum = 0;
+            int resolutionDaysCount = 0;
+
+            for (int i = 0; i < allDisputes.Count; i++)
+            {
+                var d = allDisputes[i];
+                totalDisputed += d.DisputedAmount;
+                totalRefunded += d.RefundAmount;
+
+                switch (d.Status)
+                {
+                    case DisputeStatus.Open:
+                        open++;
+                        break;
+                    case DisputeStatus.UnderReview:
+                        underReview++;
+                        break;
+                    case DisputeStatus.Approved:
+                        approved++;
+                        resolvedCount++;
+                        approvedOrPartialCount++;
+                        if (d.ResolvedDate.HasValue)
+                        {
+                            resolutionDaysSum += (d.ResolvedDate.Value - d.SubmittedDate).TotalDays;
+                            resolutionDaysCount++;
+                        }
+                        break;
+                    case DisputeStatus.PartiallyApproved:
+                        partiallyApproved++;
+                        resolvedCount++;
+                        approvedOrPartialCount++;
+                        if (d.ResolvedDate.HasValue)
+                        {
+                            resolutionDaysSum += (d.ResolvedDate.Value - d.SubmittedDate).TotalDays;
+                            resolutionDaysCount++;
+                        }
+                        break;
+                    case DisputeStatus.Denied:
+                        denied++;
+                        resolvedCount++;
+                        if (d.ResolvedDate.HasValue)
+                        {
+                            resolutionDaysSum += (d.ResolvedDate.Value - d.SubmittedDate).TotalDays;
+                            resolutionDaysCount++;
+                        }
+                        break;
+                    case DisputeStatus.Expired:
+                        expired++;
+                        break;
+                }
+            }
+
+            return new DisputeStats
+            {
+                Total = allDisputes.Count,
+                Open = open,
+                UnderReview = underReview,
+                Approved = approved,
+                PartiallyApproved = partiallyApproved,
+                Denied = denied,
+                Expired = expired,
+                TotalDisputed = totalDisputed,
+                TotalRefunded = totalRefunded,
+                ApprovalRate = resolvedCount > 0
+                    ? Math.Round(100.0 * approvedOrPartialCount / resolvedCount, 1)
+                    : 0,
+                AverageResolutionDays = resolutionDaysCount > 0
+                    ? Math.Round(resolutionDaysSum / resolutionDaysCount, 1)
+                    : 0,
+            };
         }
 
         // POST: Dispute/Submit
