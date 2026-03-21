@@ -289,7 +289,7 @@ namespace Vidly.Tests
 
             var movie = movieRepo.GetAll().First(m => !rentalRepo.IsMovieRentedOut(m.Id));
             var customer = customerRepo.GetAll().First();
-            var baseDailyRate = Services.PricingService.GetMovieDailyRate(movie);
+            var baseDailyRate = Services.PricingService.GetMovieDailyRate(movie, DateTime.Today);
 
             var viewModel = new CheckoutViewModel
             {
@@ -327,7 +327,7 @@ namespace Vidly.Tests
 
             var movie = movieRepo.GetAll().First(m => !rentalRepo.IsMovieRentedOut(m.Id));
             var customer = customerRepo.GetAll().First();
-            var baseDailyRate = Services.PricingService.GetMovieDailyRate(movie);
+            var baseDailyRate = Services.PricingService.GetMovieDailyRate(movie, DateTime.Today);
 
             var viewModel = new CheckoutViewModel
             {
