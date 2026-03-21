@@ -1,0 +1,349 @@
+@model Vidly.ViewModels.BudgetViewModel
+@{
+    ViewBag.Title = "Rental Budget Tracker";
+}
+
+<h2><span class="glyphicon glyphicon-piggy-bank"></span> Rental Budget Tracker</h2>
+<p class="lead">Set monthly spending limits, track your rental costs, and get smart savings tips.</p>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible">
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+        @TempData["Success"]
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible">
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+        @TempData["Error"]
+    </div>
+}
+
+<!-- Customer Selector -->
+<div class="well">
+    <form method="get" action="@Url.Action("Index")" class="form-inline">
+        <div class="form-group" style="margin-right: 15px;">
+            <label for="customerId">Customer: </label>
+            <select name="customerId" id="customerId" class="form-control" style="margin-left: 8px;">
+                <option value="">— Select Customer —</option>
+                @foreach (var c in Model.Customers)
+                {
+                    <option value="@c.Id" @(Model.SelectedCustomerId == c.Id ? "selected" : "")>@c.Name</option>
+                }
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">
+            <span class="glyphicon glyphicon-search"></span> View Budget
+        </button>
+    </form>
+</div>
+
+@if (Model.Dashboard != null)
+{
+    var dash = Model.Dashboard;
+    var hasbudget = dash.Budget != null;
+    var progressClass = dash.UsagePercent >= 100 ? "progress-bar-danger"
+                      : dash.UsagePercent >= 80 ? "progress-bar-warning"
+                      : "progress-bar-success";
+
+    <!-- Alerts -->
+    @foreach (var alert in dash.Alerts)
+    {
+        var cssClass = alert.Level == Vidly.Services.AlertLevel.Danger ? "alert-danger"
+                     : alert.Level == Vidly.Services.AlertLevel.Warning ? "alert-warning"
+                     : "alert-info";
+        <div class="alert @cssClass">
+            <strong>@alert.Icon</strong> @alert.Message
+        </div>
+    }
+
+    <!-- Budget Setup / Edit -->
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <h3 class="panel-title">
+                <span class="glyphicon glyphicon-cog"></span>
+                @(hasbudget ? "Your Budget" : "Set Up Budget")
+            </h3>
+        </div>
+        <div class="panel-body">
+            <form method="post" action="@Url.Action("SetBudget")" class="form-inline">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="customerId" value="@dash.CustomerId" />
+                <div class="form-group" style="margin-right: 10px;">
+                    <label>Monthly Limit: $</label>
+                    <input type="number" name="monthlyLimit" class="form-control" style="width: 120px; margin-left: 5px;"
+                           value="@(hasbudget ? dash.Budget.MonthlyLimit.ToString("F2") : "50.00")"
+                           min="0.01" max="9999.99" step="0.01" required />
+                </div>
+                <div class="form-group" style="margin-right: 10px;">
+                    <label>Alert at: </label>
+                    <input type="number" name="alertThreshold" class="form-control" style="width: 80px; margin-left: 5px;"
+                           value="@(hasbudget ? (dash.Budget.AlertThreshold * 100).ToString("F0") : "80")"
+                           min="10" max="100" />%
+                </div>
+                <div class="checkbox" style="margin-right: 10px;">
+                    <label>
+                        <input type="checkbox" name="alertsEnabled" value="true"
+                               @(hasbudget ? (dash.Budget.AlertsEnabled ? "checked" : "") : "checked") /> Alerts
+                    </label>
+                </div>
+                <button type="submit" class="btn btn-success">
+                    <span class="glyphicon glyphicon-ok"></span> @(hasbudget ? "Update" : "Set Budget")
+                </button>
+                @if (hasbudget)
+                {
+                    <text> </text>
+                    using (Html.BeginForm("RemoveBudget", "Budget", FormMethod.Post, new { style = "display:inline" }))
+                    {
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="customerId" value="@dash.CustomerId" />
+                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Remove budget tracking?');">
+                            <span class="glyphicon glyphicon-trash"></span> Remove
+                        </button>
+                    }
+                }
+            </form>
+        </div>
+    </div>
+
+    <!-- Spending Overview -->
+    <div class="row">
+        <div class="col-md-4">
+            <div class="panel panel-info">
+                <div class="panel-heading"><strong>@dash.MonthName</strong></div>
+                <div class="panel-body text-center">
+                    <h1 style="margin: 5px 0; color: @(dash.UsagePercent >= 100 ? "#d9534f" : "#333");">
+                        $@dash.TotalSpent.ToString("F2")
+                    </h1>
+                    <p class="text-muted">spent on @dash.RentalCount rental@(dash.RentalCount != 1 ? "s" : "")</p>
+                    @if (hasbudget)
+                    {
+                        <div class="progress" style="margin: 10px 0;">
+                            <div class="progress-bar @progressClass" role="progressbar"
+                                 style="width: @Math.Min(dash.UsagePercent, 100)%; min-width: 2em;">
+                                @dash.UsagePercent%
+                            </div>
+                        </div>
+                        <p>
+                            <strong>$@dash.Remaining.ToString("F2")</strong> remaining of
+                            <strong>$@dash.Budget.MonthlyLimit.ToString("F2")</strong>
+                        </p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Genre Breakdown -->
+        <div class="col-md-4">
+            <div class="panel panel-default">
+                <div class="panel-heading"><strong>Spending by Genre</strong></div>
+                <div class="panel-body">
+                    @if (dash.GenreBreakdown.Any())
+                    {
+                        <table class="table table-condensed">
+                            <thead><tr><th>Genre</th><th>Amount</th><th>%</th></tr></thead>
+                            <tbody>
+                            @foreach (var g in dash.GenreBreakdown)
+                            {
+                                <tr>
+                                    <td>@g.Genre (@g.RentalCount)</td>
+                                    <td>$@g.Amount.ToString("F2")</td>
+                                    <td>
+                                        <div class="progress" style="margin: 0; min-width: 60px;">
+                                            <div class="progress-bar progress-bar-info" style="width: @g.Percentage%;">
+                                                @g.Percentage%
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    }
+                    else
+                    {
+                        <p class="text-muted">No rentals this month.</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Weekly Pace -->
+        <div class="col-md-4">
+            <div class="panel panel-default">
+                <div class="panel-heading"><strong>Weekly Breakdown</strong></div>
+                <div class="panel-body">
+                    @if (dash.WeeklyBreakdown.Any())
+                    {
+                        var maxWeekly = dash.WeeklyBreakdown.Max(w => w.Amount);
+                        @foreach (var w in dash.WeeklyBreakdown)
+                        {
+                            var barWidth = maxWeekly > 0 ? Math.Round(w.Amount / maxWeekly * 100) : 0;
+                            <div style="margin-bottom: 8px;">
+                                <small><strong>Week @w.WeekNumber</strong>
+                                    (@w.StartDate.ToString("MMM d")–@w.EndDate.ToString("d"))</small>
+                                <div class="progress" style="margin: 2px 0;">
+                                    <div class="progress-bar progress-bar-striped" style="width: @barWidth%; min-width: 3em;">
+                                        $@w.Amount.ToString("F2")
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <p class="text-muted">No data yet.</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tips -->
+    @if (dash.Tips.Any())
+    {
+        <div class="panel panel-success">
+            <div class="panel-heading"><strong>💡 Smart Tips</strong></div>
+            <div class="panel-body">
+                <ul style="margin: 0; padding-left: 20px;">
+                    @foreach (var tip in dash.Tips)
+                    {
+                        <li>@tip</li>
+                    }
+                </ul>
+            </div>
+        </div>
+    }
+
+    <!-- 6-Month History -->
+    <div class="panel panel-default">
+        <div class="panel-heading"><strong>📈 6-Month Spending History</strong></div>
+        <div class="panel-body">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Month</th>
+                        <th>Spent</th>
+                        <th>Rentals</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var h in dash.SpendingHistory)
+                {
+                    <tr class="@(h.WasOverBudget ? "danger" : "")">
+                        <td>@h.MonthName</td>
+                        <td>$@h.TotalSpent.ToString("F2")</td>
+                        <td>@h.RentalCount</td>
+                        <td>
+                            @if (h.BudgetLimit > 0)
+                            {
+                                if (h.WasOverBudget)
+                                {
+                                    <span class="label label-danger">Over Budget</span>
+                                }
+                                else
+                                {
+                                    <span class="label label-success">On Track</span>
+                                }
+                            }
+                            else
+                            {
+                                <span class="label label-default">No Budget</span>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Recent Rentals -->
+    @if (dash.Rentals.Any())
+    {
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong>🎬 This Month's Rentals</strong></div>
+            <div class="panel-body">
+                <table class="table table-condensed table-hover">
+                    <thead>
+                        <tr><th>Date</th><th>Movie</th><th>Cost</th><th>Status</th></tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var r in dash.Rentals)
+                    {
+                        <tr>
+                            <td>@r.RentalDate.ToString("MMM d")</td>
+                            <td>@r.MovieName</td>
+                            <td>$@r.TotalCost.ToString("F2")</td>
+                            <td>
+                                @if (r.Status == Vidly.Models.RentalStatus.Active)
+                                {
+                                    <span class="label label-primary">Active</span>
+                                }
+                                else if (r.Status == Vidly.Models.RentalStatus.Returned)
+                                {
+                                    <span class="label label-success">Returned</span>
+                                }
+                                else
+                                {
+                                    <span class="label label-warning">@r.Status</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+}
+else if (!Model.SelectedCustomerId.HasValue)
+{
+    <!-- All Budgets Overview -->
+    @if (Model.AllBudgets.Any())
+    {
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong>Active Budgets</strong></div>
+            <div class="panel-body">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr><th>Customer</th><th>Budget</th><th>Spent</th><th>Usage</th><th>Status</th></tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var b in Model.AllBudgets)
+                    {
+                        var statusClass = b.Status == Vidly.Services.BudgetStatus.OverBudget ? "danger"
+                                        : b.Status == Vidly.Services.BudgetStatus.Warning ? "warning" : "";
+                        <tr class="@statusClass">
+                            <td>
+                                <a href="@Url.Action("Index", new { customerId = b.CustomerId })">@b.CustomerName</a>
+                            </td>
+                            <td>$@b.MonthlyLimit.ToString("F2")</td>
+                            <td>$@b.TotalSpent.ToString("F2")</td>
+                            <td>
+                                <div class="progress" style="margin: 0; min-width: 80px;">
+                                    <div class="progress-bar @(b.Status == Vidly.Services.BudgetStatus.OverBudget ? "progress-bar-danger" : b.Status == Vidly.Services.BudgetStatus.Warning ? "progress-bar-warning" : "progress-bar-success")"
+                                         style="width: @Math.Min(b.UsagePercent, 100)%; min-width: 2em;">
+                                        @b.UsagePercent%
+                                    </div>
+                                </div>
+                            </td>
+                            <td><span class="label label-@(b.Status == Vidly.Services.BudgetStatus.OverBudget ? "danger" : b.Status == Vidly.Services.BudgetStatus.Warning ? "warning" : "success")">@b.Status</span></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-info">
+            <span class="glyphicon glyphicon-info-sign"></span>
+            No budgets set yet. Select a customer above to start tracking spending!
+        </div>
+    }
+}
