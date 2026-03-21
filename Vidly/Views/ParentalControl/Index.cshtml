@@ -1,0 +1,223 @@
+@model Vidly.ViewModels.ParentalControlViewModel
+@{
+    ViewBag.Title = "Parental Controls";
+}
+
+<div class="row" style="margin-top: 70px;">
+    <div class="col-md-12">
+        <h2><span class="glyphicon glyphicon-lock"></span> Parental Controls</h2>
+        <p class="text-muted">Manage family profiles with age-rating restrictions, time windows, and genre blocking.</p>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible" role="alert">
+        <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+        @TempData["Success"]
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible" role="alert">
+        <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+        @TempData["Error"]
+    </div>
+}
+
+<!-- Active Profile Banner -->
+@if (Model.ActiveProfile != null)
+{
+    <div class="panel panel-@(Model.ActiveProfile.IsParent ? "primary" : "info")">
+        <div class="panel-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h4>
+                        <span class="glyphicon glyphicon-@(Model.ActiveProfile.AvatarIcon ?? "user")"></span>
+                        Active Profile: <strong>@Model.ActiveProfile.Name</strong>
+                        @if (Model.ActiveProfile.IsParent) { <span class="label label-primary">Parent</span> }
+                    </h4>
+                    <p>
+                        Max Rating: <span class="label label-default">@Model.ActiveProfile.MaxRating</span>
+                        @if (Model.ActiveProfile.WeeklyRentalLimit.HasValue)
+                        {
+                            <span class="text-muted"> | Weekly Limit: @Model.ActiveProfile.WeeklyRentalLimit rentals</span>
+                        }
+                        @if (Model.ActiveProfile.AllowedFromHour.HasValue && Model.ActiveProfile.AllowedUntilHour.HasValue)
+                        {
+                            <span class="text-muted"> | Hours: @Model.ActiveProfile.AllowedFromHour:00–@Model.ActiveProfile.AllowedUntilHour:00</span>
+                        }
+                    </p>
+                </div>
+                <div class="col-md-6 text-right">
+                    <span class="text-muted">Blocked this week:</span>
+                    <span class="badge" style="font-size: 1.2em; background: @(Model.TotalBlockedThisWeek > 5 ? "#d9534f" : Model.TotalBlockedThisWeek > 0 ? "#f0ad4e" : "#5cb85c")">
+                        @Model.TotalBlockedThisWeek
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Family Profiles -->
+<div class="row">
+    <div class="col-md-12">
+        <h3>Family Profiles
+            <a href="@Url.Action("Create")" class="btn btn-success btn-sm pull-right">
+                <span class="glyphicon glyphicon-plus"></span> Add Profile
+            </a>
+        </h3>
+    </div>
+</div>
+
+<div class="row" style="margin-top: 10px;">
+    @foreach (var profile in Model.Profiles)
+    {
+        var isActive = Model.ActiveProfile != null && Model.ActiveProfile.Id == profile.Id;
+        var panelClass = isActive ? "panel-success" : "panel-default";
+        <div class="col-md-4" style="margin-bottom: 15px;">
+            <div class="panel @panelClass">
+                <div class="panel-heading">
+                    <h3 class="panel-title">
+                        <span class="glyphicon glyphicon-@(profile.AvatarIcon ?? "user")"></span>
+                        @profile.Name
+                        @if (profile.IsParent) { <span class="label label-primary" style="font-size: 0.7em;">Parent</span> }
+                        @if (isActive) { <span class="label label-success" style="font-size: 0.7em;">Active</span> }
+                        @if (profile.Pin != null) { <span class="glyphicon glyphicon-lock pull-right" title="PIN protected"></span> }
+                    </h3>
+                </div>
+                <div class="panel-body">
+                    <table class="table table-condensed" style="margin-bottom: 5px;">
+                        <tr><td class="text-muted" style="width:50%">Max Rating</td><td><span class="label label-@(RatingColor(profile.MaxRating))">@profile.MaxRating</span></td></tr>
+                        <tr><td class="text-muted">Weekly Limit</td><td>@(profile.WeeklyRentalLimit.HasValue ? profile.WeeklyRentalLimit.ToString() : "Unlimited")</td></tr>
+                        <tr><td class="text-muted">Hours</td><td>@(profile.AllowedFromHour.HasValue ? $"{profile.AllowedFromHour}:00–{profile.AllowedUntilHour}:00" : "Any time")</td></tr>
+                        <tr><td class="text-muted">Blocked Genres</td><td>@(string.IsNullOrWhiteSpace(profile.BlockedGenres) ? "None" : profile.BlockedGenres)</td></tr>
+                    </table>
+                    <div class="btn-group btn-group-sm btn-group-justified">
+                        @if (!isActive)
+                        {
+                            if (profile.Pin != null)
+                            {
+                                <div class="btn-group">
+                                    <button type="button" class="btn btn-info" data-toggle="modal" data-target="#pinModal-@profile.Id">
+                                        <span class="glyphicon glyphicon-log-in"></span> Switch
+                                    </button>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="btn-group">
+                                    @using (Html.BeginForm("Switch", "ParentalControl", new { profileId = profile.Id }, FormMethod.Post, new { style = "display:inline" }))
+                                    {
+                                        <button type="submit" class="btn btn-info"><span class="glyphicon glyphicon-log-in"></span> Switch</button>
+                                    }
+                                </div>
+                            }
+                        }
+                        <div class="btn-group">
+                            <a href="@Url.Action("Edit", new { id = profile.Id })" class="btn btn-default"><span class="glyphicon glyphicon-pencil"></span> Edit</a>
+                        </div>
+                        <div class="btn-group">
+                            <a href="@Url.Action("Logs", new { id = profile.Id })" class="btn btn-default"><span class="glyphicon glyphicon-list-alt"></span> Logs</a>
+                        </div>
+                    </div>
+                    @if (!profile.IsParent)
+                    {
+                        using (Html.BeginForm("Delete", "ParentalControl", new { id = profile.Id }, FormMethod.Post, new { style = "margin-top: 8px;" }))
+                        {
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-danger btn-xs btn-block" onclick="return confirm('Delete profile @profile.Name?');">
+                                <span class="glyphicon glyphicon-trash"></span> Delete
+                            </button>
+                        }
+                    }
+                </div>
+            </div>
+
+            @* PIN Modal *@
+            @if (profile.Pin != null && !isActive)
+            {
+                <div class="modal fade" id="pinModal-@profile.Id" tabindex="-1" role="dialog">
+                    <div class="modal-dialog modal-sm">
+                        <div class="modal-content">
+                            @using (Html.BeginForm("Switch", "ParentalControl", FormMethod.Post))
+                            {
+                                <input type="hidden" name="profileId" value="@profile.Id" />
+                                <div class="modal-header">
+                                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                                    <h4 class="modal-title"><span class="glyphicon glyphicon-lock"></span> Enter PIN for @profile.Name</h4>
+                                </div>
+                                <div class="modal-body text-center">
+                                    <input type="password" name="pin" maxlength="4" pattern="\d{4}" class="form-control input-lg text-center" placeholder="••••" style="letter-spacing: 0.5em; font-size: 2em; width: 180px; margin: 0 auto;" autofocus />
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="submit" class="btn btn-primary btn-block">Unlock</button>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<!-- Blocked Attempts Summary -->
+@if (Model.BlockedAttemptsByRating.Any())
+{
+    <div class="row">
+        <div class="col-md-6">
+            <div class="panel panel-warning">
+                <div class="panel-heading"><h3 class="panel-title"><span class="glyphicon glyphicon-ban-circle"></span> Blocked Attempts by Rating</h3></div>
+                <div class="panel-body">
+                    @foreach (var kv in Model.BlockedAttemptsByRating.OrderByDescending(x => x.Value))
+                    {
+                        var pct = Model.TotalBlockedThisWeek > 0 ? (int)(kv.Value * 100.0 / Model.BlockedAttemptsByRating.Values.Sum()) : 0;
+                        <div style="margin-bottom: 8px;">
+                            <strong>@kv.Key</strong> <span class="badge">@kv.Value</span>
+                            <div class="progress" style="margin-top: 4px; margin-bottom: 0;">
+                                <div class="progress-bar progress-bar-warning" style="width: @pct%;">@pct%</div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="col-md-6">
+            <div class="panel panel-default">
+                <div class="panel-heading"><h3 class="panel-title"><span class="glyphicon glyphicon-time"></span> Recent Activity</h3></div>
+                <table class="table table-condensed table-hover" style="margin-bottom: 0;">
+                    @foreach (var log in Model.RecentLogs.Take(8))
+                    {
+                        var icon = log.Action == "Blocked" ? "ban-circle" : log.Action == "Switch" ? "transfer" : "info-sign";
+                        var rowClass = log.Action == "Blocked" ? "danger" : "";
+                        <tr class="@rowClass">
+                            <td><span class="glyphicon glyphicon-@icon"></span></td>
+                            <td><strong>@log.ProfileName</strong></td>
+                            <td>@log.Details</td>
+                            <td class="text-muted">@log.Timestamp.ToString("MMM d, h:mm tt")</td>
+                        </tr>
+                    }
+                </table>
+            </div>
+        </div>
+    </div>
+}
+
+@functions {
+    string RatingColor(Vidly.Models.ContentRating rating)
+    {
+        switch (rating)
+        {
+            case Vidly.Models.ContentRating.G: return "success";
+            case Vidly.Models.ContentRating.PG: return "info";
+            case Vidly.Models.ContentRating.PG13: return "warning";
+            case Vidly.Models.ContentRating.R: return "danger";
+            case Vidly.Models.ContentRating.NC17: return "danger";
+            default: return "default";
+        }
+    }
+}

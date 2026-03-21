@@ -1,0 +1,156 @@
+@model Vidly.ViewModels.ProfileFormViewModel
+@{
+    ViewBag.Title = Model.IsEdit ? "Edit Profile" : "New Profile";
+}
+
+<div class="row" style="margin-top: 70px;">
+    <div class="col-md-8 col-md-offset-2">
+        <h2>
+            <span class="glyphicon glyphicon-@(Model.IsEdit ? "pencil" : "plus")"></span>
+            @(Model.IsEdit ? "Edit" : "New") Family Profile
+        </h2>
+
+        @using (Html.BeginForm(Model.IsEdit ? "Edit" : "Create", "ParentalControl", FormMethod.Post, new { @class = "form-horizontal", role = "form" }))
+        {
+            @Html.AntiForgeryToken()
+
+            if (Model.IsEdit)
+            {
+                <input type="hidden" name="Profile.Id" value="@Model.Profile.Id" />
+            }
+
+            <div class="panel panel-default" style="margin-top: 20px;">
+                <div class="panel-heading"><strong>Basic Settings</strong></div>
+                <div class="panel-body">
+                    <div class="form-group">
+                        <label class="col-md-3 control-label">Profile Name</label>
+                        <div class="col-md-6">
+                            <input type="text" name="Profile.Name" value="@Model.Profile.Name" class="form-control" required maxlength="50" placeholder="e.g., Kids, Teen, Guest" />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="col-md-3 control-label">Max Content Rating</label>
+                        <div class="col-md-6">
+                            <select name="Profile.MaxRating" class="form-control">
+                                <option value="1" @(Model.Profile.MaxRating == Vidly.Models.ContentRating.G ? "selected" : "")>G — General Audiences</option>
+                                <option value="2" @(Model.Profile.MaxRating == Vidly.Models.ContentRating.PG ? "selected" : "")>PG — Parental Guidance</option>
+                                <option value="3" @(Model.Profile.MaxRating == Vidly.Models.ContentRating.PG13 ? "selected" : "")>PG-13 — Parents Strongly Cautioned</option>
+                                <option value="4" @(Model.Profile.MaxRating == Vidly.Models.ContentRating.R ? "selected" : "")>R — Restricted</option>
+                                <option value="5" @(Model.Profile.MaxRating == Vidly.Models.ContentRating.NC17 ? "selected" : "")>NC-17 — Adults Only</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="col-md-3 control-label">Avatar</label>
+                        <div class="col-md-6">
+                            @foreach (var icon in Model.AvatarOptions)
+                            {
+                                var isSelected = Model.Profile.AvatarIcon == icon;
+                                <label class="btn btn-default @(isSelected ? "active" : "")" style="margin: 2px; font-size: 1.3em;">
+                                    <input type="radio" name="Profile.AvatarIcon" value="@icon" @(isSelected ? "checked" : "") style="display:none;" />
+                                    <span class="glyphicon glyphicon-@icon"></span>
+                                </label>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="col-md-offset-3 col-md-6">
+                            <label>
+                                <input type="checkbox" name="Profile.IsParent" value="true" @(Model.Profile.IsParent ? "checked" : "") />
+                                Parent / Admin profile (unrestricted access)
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel panel-default">
+                <div class="panel-heading"><strong>Security</strong></div>
+                <div class="panel-body">
+                    <div class="form-group">
+                        <label class="col-md-3 control-label">PIN (4 digits)</label>
+                        <div class="col-md-4">
+                            <input type="password" name="Profile.Pin" maxlength="4" pattern="\d{4}" class="form-control" placeholder="@(Model.IsEdit ? "Leave blank to keep" : "Optional")" />
+                            <p class="help-block">Required to switch to this profile. Leave blank for no PIN.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel panel-default">
+                <div class="panel-heading"><strong>Restrictions</strong></div>
+                <div class="panel-body">
+                    <div class="form-group">
+                        <label class="col-md-3 control-label">Rental Hours</label>
+                        <div class="col-md-3">
+                            <div class="input-group">
+                                <span class="input-group-addon">From</span>
+                                <input type="number" name="Profile.AllowedFromHour" min="0" max="23" class="form-control" value="@Model.Profile.AllowedFromHour" placeholder="Any" />
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="input-group">
+                                <span class="input-group-addon">Until</span>
+                                <input type="number" name="Profile.AllowedUntilHour" min="0" max="23" class="form-control" value="@Model.Profile.AllowedUntilHour" placeholder="Any" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="col-md-3 control-label">Weekly Rental Limit</label>
+                        <div class="col-md-3">
+                            <input type="number" name="Profile.WeeklyRentalLimit" min="1" max="50" class="form-control" value="@Model.Profile.WeeklyRentalLimit" placeholder="Unlimited" />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="col-md-3 control-label">Blocked Genres</label>
+                        <div class="col-md-6">
+                            @{
+                                var currentBlocked = (Model.Profile.BlockedGenres ?? "").Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).Select(g => g.Trim()).ToList();
+                            }
+                            @foreach (var genre in Model.AvailableGenres)
+                            {
+                                <label class="checkbox-inline">
+                                    <input type="checkbox" class="genre-check" value="@genre" @(currentBlocked.Contains(genre) ? "checked" : "") />
+                                    @genre
+                                </label>
+                            }
+                            <input type="hidden" name="Profile.BlockedGenres" id="blockedGenresHidden" value="@Model.Profile.BlockedGenres" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="col-md-offset-3 col-md-6">
+                    <button type="submit" class="btn btn-primary"><span class="glyphicon glyphicon-ok"></span> @(Model.IsEdit ? "Save Changes" : "Create Profile")</button>
+                    <a href="@Url.Action("Index")" class="btn btn-default">Cancel</a>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@section scripts {
+    <script>
+        $(function () {
+            // Sync genre checkboxes to hidden field
+            function syncGenres() {
+                var checked = [];
+                $('.genre-check:checked').each(function () { checked.push($(this).val()); });
+                $('#blockedGenresHidden').val(checked.join(','));
+            }
+            $('.genre-check').on('change', syncGenres);
+
+            // Avatar radio button visual toggle
+            $('input[name="Profile.AvatarIcon"]').on('change', function () {
+                $(this).closest('.col-md-6').find('label.btn').removeClass('active');
+                $(this).closest('label').addClass('active');
+            });
+        });
+    </script>
+}
