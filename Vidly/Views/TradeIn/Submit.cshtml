@@ -1,0 +1,108 @@
+@model Vidly.Models.TradeIn
+@{
+    ViewBag.Title = "Submit Trade-In";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>
+    <span class="glyphicon glyphicon-transfer"></span> Submit a Trade-In
+</h2>
+<p class="text-muted">Trade in a physical movie you own and earn rental credits based on format and condition.</p>
+
+<div class="row">
+    <div class="col-md-7">
+        @using (Html.BeginForm("Submit", "TradeIn", FormMethod.Post, new { @class = "form-horizontal" }))
+        {
+            @Html.AntiForgeryToken()
+
+            <div class="form-group">
+                @Html.Label("CustomerId", "Customer", new { @class = "control-label col-md-3" })
+                <div class="col-md-9">
+                    @Html.DropDownList("CustomerId", (IEnumerable<SelectListItem>)ViewBag.Customers, "-- Select Customer --", new { @class = "form-control", required = "required" })
+                </div>
+            </div>
+
+            <div class="form-group">
+                @Html.Label("MovieTitle", "Movie Title", new { @class = "control-label col-md-3" })
+                <div class="col-md-9">
+                    @Html.TextBoxFor(m => m.MovieTitle, new { @class = "form-control", placeholder = "e.g. The Dark Knight", required = "required" })
+                    @Html.ValidationMessageFor(m => m.MovieTitle, "", new { @class = "text-danger" })
+                </div>
+            </div>
+
+            <div class="form-group">
+                @Html.Label("Format", "Format", new { @class = "control-label col-md-3" })
+                <div class="col-md-9">
+                    @Html.DropDownList("Format", (IEnumerable<SelectListItem>)ViewBag.Formats, new { @class = "form-control", id = "tradeFormat" })
+                </div>
+            </div>
+
+            <div class="form-group">
+                @Html.Label("Condition", "Condition", new { @class = "control-label col-md-3" })
+                <div class="col-md-9">
+                    @Html.DropDownList("Condition", (IEnumerable<SelectListItem>)ViewBag.Conditions, new { @class = "form-control", id = "tradeCondition" })
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="col-md-offset-3 col-md-9">
+                    <div class="well well-sm" id="quoteBox">
+                        <strong>Estimated Credit:</strong> <span id="quoteAmount">—</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                @Html.Label("Notes", "Notes (optional)", new { @class = "control-label col-md-3" })
+                <div class="col-md-9">
+                    @Html.TextAreaFor(m => m.Notes, new { @class = "form-control", rows = 3, placeholder = "Any notes about the disc condition..." })
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="col-md-offset-3 col-md-9">
+                    <button type="submit" class="btn btn-success">
+                        <span class="glyphicon glyphicon-ok"></span> Submit Trade-In
+                    </button>
+                    <a href="@Url.Action("Index")" class="btn btn-default">Cancel</a>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="col-md-5">
+        <div class="panel panel-info">
+            <div class="panel-heading"><strong>Credit Guide</strong></div>
+            <div class="panel-body">
+                <table class="table table-condensed">
+                    <thead>
+                        <tr><th>Format</th><th>Like New</th><th>Good</th><th>Fair</th><th>Poor</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><strong>4K UHD</strong></td><td>$8.00</td><td>$6.00</td><td>$4.00</td><td>$1.50</td></tr>
+                        <tr><td><strong>Blu-ray</strong></td><td>$5.00</td><td>$3.50</td><td>$2.00</td><td>$1.00</td></tr>
+                        <tr><td><strong>DVD</strong></td><td>$3.00</td><td>$2.00</td><td>$1.00</td><td>$0.50</td></tr>
+                        <tr><td><strong>VHS</strong></td><td>$1.50</td><td>$1.00</td><td>$0.50</td><td>$0.25</td></tr>
+                    </tbody>
+                </table>
+                <p class="text-muted small">Credits are applied after staff review and can be used toward future rentals.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+<script>
+    $(function () {
+        function updateQuote() {
+            var format = $('#tradeFormat').val();
+            var condition = $('#tradeCondition').val();
+            $.getJSON('@Url.Action("Quote")', { format: format, condition: condition }, function (data) {
+                $('#quoteAmount').text(data.display);
+            });
+        }
+        $('#tradeFormat, #tradeCondition').on('change', updateQuote);
+        updateQuote();
+    });
+</script>
+}

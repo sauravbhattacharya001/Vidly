@@ -1,0 +1,76 @@
+@model System.Collections.Generic.List<Vidly.Models.TradeIn>
+@{
+    ViewBag.Title = "Pending Trade-Ins";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>
+    <span class="glyphicon glyphicon-eye-open"></span> Pending Trade-Ins
+</h2>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible" role="alert">
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+        @TempData["Success"]
+    </div>
+}
+
+@if (Model.Any())
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Customer</th>
+                <th>Movie</th>
+                <th>Format</th>
+                <th>Condition</th>
+                <th>Est. Credit</th>
+                <th>Submitted</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>@item.Id</td>
+                    <td>Customer #@item.CustomerId</td>
+                    <td><strong>@item.MovieTitle</strong></td>
+                    <td>@item.Format</td>
+                    <td>@item.Condition</td>
+                    <td>@Vidly.Repositories.InMemoryTradeInRepository.CalculateCredits(item.Format, item.Condition).ToString("C")</td>
+                    <td>@item.TradeInDate.ToString("MMM dd, yyyy")</td>
+                    <td>
+                        @using (Html.BeginForm("Accept", "TradeIn", new { id = item.Id }, FormMethod.Post, new { style = "display:inline" }))
+                        {
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-success btn-sm">
+                                <span class="glyphicon glyphicon-ok"></span> Accept
+                            </button>
+                        }
+                        @using (Html.BeginForm("Reject", "TradeIn", new { id = item.Id }, FormMethod.Post, new { style = "display:inline" }))
+                        {
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="reason" value="" />
+                            <button type="submit" class="btn btn-danger btn-sm">
+                                <span class="glyphicon glyphicon-remove"></span> Reject
+                            </button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <div class="alert alert-info">No pending trade-ins to review.</div>
+}
+
+<a href="@Url.Action("Index")" class="btn btn-default">
+    <span class="glyphicon glyphicon-arrow-left"></span> Back to All Trade-Ins
+</a>
