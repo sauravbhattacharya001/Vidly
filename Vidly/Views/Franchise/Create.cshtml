@@ -1,0 +1,87 @@
+@model Vidly.ViewModels.FranchiseFormViewModel
+
+@{
+    ViewBag.Title = "Create Franchise";
+}
+
+<style>
+    .create-header {
+        text-align: center; padding: 25px 0 15px;
+        background: linear-gradient(135deg, #2d1b69 0%, #11998e 100%);
+        color: #fff; margin: -20px -15px 30px; border-radius: 0 0 20px 20px;
+    }
+    .create-header h1 { font-size: 28px; font-weight: 700; }
+    .form-card { background: #fff; border-radius: 12px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); max-width: 700px; margin: 0 auto; }
+</style>
+
+<div class="create-header">
+    <span style="font-size: 40px;">➕</span>
+    <h1>Create Franchise</h1>
+</div>
+
+<div class="form-card">
+    @using (Html.BeginForm("Create", "Franchise", FormMethod.Post))
+    {
+        @Html.AntiForgeryToken()
+        @Html.ValidationSummary(true, "", new { @class = "text-danger" })
+
+        <div class="form-group">
+            <label for="Name">Franchise Name *</label>
+            @Html.TextBoxFor(m => m.Name, new { @class = "form-control", placeholder = "e.g., The Godfather Trilogy" })
+            @Html.ValidationMessageFor(m => m.Name, "", new { @class = "text-danger" })
+        </div>
+
+        <div class="form-group">
+            <label for="Description">Description</label>
+            @Html.TextAreaFor(m => m.Description, new { @class = "form-control", rows = 3, placeholder = "Brief description of this franchise" })
+        </div>
+
+        <div class="row">
+            <div class="col-sm-6">
+                <div class="form-group">
+                    <label for="StartYear">Start Year</label>
+                    @Html.TextBoxFor(m => m.StartYear, new { @class = "form-control", type = "number", placeholder = "e.g., 1977" })
+                </div>
+            </div>
+            <div class="col-sm-6">
+                <div class="form-group">
+                    <label for="Tags">Tags (comma-separated)</label>
+                    @Html.TextBoxFor(m => m.Tags, new { @class = "form-control", placeholder = "e.g., action, superhero" })
+                </div>
+            </div>
+        </div>
+
+        <div class="checkbox">
+            <label>
+                @Html.CheckBoxFor(m => m.IsOngoing) This franchise is still ongoing
+            </label>
+        </div>
+
+        <div class="form-group">
+            <label>Movies (select in viewing order) *</label>
+            <div style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 6px; padding: 10px;">
+                @for (int i = 0; i < Model.AvailableMovies.Count; i++)
+                {
+                    var movie = Model.AvailableMovies[i];
+                    <div class="checkbox" style="margin: 4px 0;">
+                        <label>
+                            <input type="checkbox" name="SelectedMovieIds" value="@movie.Id"
+                                   @(Model.SelectedMovieIds.Contains(movie.Id) ? "checked" : "") />
+                            @movie.Name
+                            @if (movie.ReleaseDate.HasValue) { <text class="text-muted">(@movie.ReleaseDate.Value.Year)</text> }
+                            @if (movie.Genre.HasValue) { <text class="text-muted"> · @movie.Genre</text> }
+                        </label>
+                    </div>
+                }
+            </div>
+            @Html.ValidationMessageFor(m => m.SelectedMovieIds, "", new { @class = "text-danger" })
+        </div>
+
+        <div style="margin-top: 20px;">
+            <button type="submit" class="btn btn-success">
+                <span class="glyphicon glyphicon-ok"></span> Create Franchise
+            </button>
+            <a href="@Url.Action("Index")" class="btn btn-default">Cancel</a>
+        </div>
+    }
+</div>

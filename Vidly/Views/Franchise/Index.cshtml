@@ -1,0 +1,134 @@
+@model Vidly.ViewModels.FranchiseIndexViewModel
+
+@{
+    ViewBag.Title = "Movie Franchises";
+}
+
+<style>
+    .franchise-header {
+        text-align: center;
+        padding: 35px 0 25px;
+        background: linear-gradient(135deg, #2d1b69 0%, #11998e 100%);
+        color: #fff;
+        margin: -20px -15px 30px;
+        border-radius: 0 0 20px 20px;
+    }
+    .franchise-header h1 { font-size: 36px; font-weight: 700; margin-bottom: 5px; }
+    .franchise-header .icon { font-size: 56px; display: block; margin-bottom: 10px; }
+    .franchise-header .tagline { font-size: 15px; opacity: 0.8; }
+    .search-bar { max-width: 500px; margin: 0 auto 30px; }
+    .franchise-card {
+        background: #fff; border-radius: 12px; padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 18px;
+        transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .franchise-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+    .franchise-name { font-size: 20px; font-weight: 600; color: #2d1b69; }
+    .franchise-meta { color: #666; font-size: 13px; margin-top: 6px; }
+    .franchise-tags .badge { margin-right: 4px; }
+    .stat-pill {
+        display: inline-block; padding: 3px 10px; border-radius: 12px;
+        font-size: 12px; margin-right: 6px; background: #f0f0f0; color: #444;
+    }
+    .stat-pill.rentals { background: #e8f5e9; color: #2e7d32; }
+    .stat-pill.rating { background: #fff3e0; color: #e65100; }
+    .empty-state { text-align: center; padding: 60px 20px; color: #999; }
+    .ongoing-badge { background: #4caf50; color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 10px; }
+</style>
+
+<div class="franchise-header">
+    <span class="icon">🎬</span>
+    <h1>Movie Franchises</h1>
+    <p class="tagline">Browse movie series &amp; track your marathon progress</p>
+</div>
+
+<div class="search-bar">
+    @using (Html.BeginForm("Index", "Franchise", FormMethod.Get, new { @class = "input-group" }))
+    {
+        <input type="text" name="q" class="form-control" placeholder="Search franchises by name, description, or tag..."
+               value="@Model.SearchQuery" />
+        <span class="input-group-btn">
+            <button type="submit" class="btn btn-primary">
+                <span class="glyphicon glyphicon-search"></span> Search
+            </button>
+        </span>
+    }
+</div>
+
+<div class="row" style="margin-bottom: 20px;">
+    <div class="col-sm-6">
+        <span class="text-muted">
+            Showing @Model.Franchises.Count of @Model.TotalCount franchise(s)
+            @if (!string.IsNullOrEmpty(Model.SearchQuery)) { <text> matching "<strong>@Model.SearchQuery</strong>"</text> }
+        </span>
+    </div>
+    <div class="col-sm-6 text-right">
+        <a href="@Url.Action("Create")" class="btn btn-success btn-sm">
+            <span class="glyphicon glyphicon-plus"></span> New Franchise
+        </a>
+        <a href="@Url.Action("Progress")" class="btn btn-info btn-sm">
+            <span class="glyphicon glyphicon-user"></span> My Progress
+        </a>
+        <a href="@Url.Action("Popular")" class="btn btn-warning btn-sm">
+            <span class="glyphicon glyphicon-fire"></span> Popular
+        </a>
+    </div>
+</div>
+
+@if (TempData["Message"] != null)
+{
+    <div class="alert alert-success alert-dismissible" role="alert">
+        <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+        @TempData["Message"]
+    </div>
+}
+
+@if (Model.Franchises.Count == 0)
+{
+    <div class="empty-state">
+        <span style="font-size: 48px;">🎬</span>
+        <h3>No franchises found</h3>
+        <p>@(string.IsNullOrEmpty(Model.SearchQuery) ? "Create the first franchise to get started!" : "Try a different search term.")</p>
+    </div>
+}
+else
+{
+    foreach (var item in Model.Franchises)
+    {
+        <div class="franchise-card">
+            <div class="row">
+                <div class="col-sm-8">
+                    <a href="@Url.Action("Details", new { id = item.Franchise.Id })" class="franchise-name" style="text-decoration: none;">
+                        @item.Franchise.Name
+                    </a>
+                    @if (item.Franchise.IsOngoing) { <span class="ongoing-badge">Ongoing</span> }
+                    @if (!string.IsNullOrEmpty(item.Franchise.Description))
+                    {
+                        <p class="franchise-meta">@item.Franchise.Description</p>
+                    }
+                    @if (item.Franchise.Tags.Count > 0)
+                    {
+                        <div class="franchise-tags" style="margin-top: 6px;">
+                            @foreach (var tag in item.Franchise.Tags)
+                            {
+                                <span class="badge">@tag</span>
+                            }
+                        </div>
+                    }
+                </div>
+                <div class="col-sm-4 text-right" style="padding-top: 10px;">
+                    <span class="stat-pill">🎥 @item.MovieCount movies</span>
+                    <span class="stat-pill rentals">📀 @item.TotalRentals rentals</span>
+                    @if (item.AverageRating > 0)
+                    {
+                        <span class="stat-pill rating">⭐ @item.AverageRating</span>
+                    }
+                    @if (item.Franchise.StartYear.HasValue)
+                    {
+                        <span class="stat-pill">📅 @item.Franchise.StartYear</span>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+}
