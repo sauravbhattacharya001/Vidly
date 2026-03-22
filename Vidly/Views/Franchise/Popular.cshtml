@@ -1,0 +1,70 @@
+@model System.Collections.Generic.List<Vidly.ViewModels.FranchiseListItem>
+
+@{
+    ViewBag.Title = "Popular Franchises";
+}
+
+<style>
+    .popular-header {
+        text-align: center; padding: 30px 0 20px;
+        background: linear-gradient(135deg, #e65100 0%, #ff8f00 100%);
+        color: #fff; margin: -20px -15px 30px; border-radius: 0 0 20px 20px;
+    }
+    .popular-header h1 { font-size: 30px; font-weight: 700; }
+    .rank-card {
+        background: #fff; border-radius: 12px; padding: 16px 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 12px;
+        display: flex; align-items: center;
+    }
+    .rank-num { font-size: 32px; font-weight: 800; color: #e65100; width: 50px; text-align: center; }
+    .rank-info { flex: 1; margin-left: 15px; }
+    .rank-info h4 { margin: 0 0 4px; font-weight: 600; }
+    .rank-info .meta { font-size: 13px; color: #666; }
+    .rank-stats { text-align: right; }
+    .rank-stats .big { font-size: 22px; font-weight: 700; color: #e65100; }
+    .rank-stats .small-label { font-size: 11px; color: #888; text-transform: uppercase; }
+</style>
+
+<div class="popular-header">
+    <span style="font-size: 48px;">🔥</span>
+    <h1>Most Popular Franchises</h1>
+    <p style="opacity: 0.8;">Ranked by total rentals</p>
+</div>
+
+@if (Model.Count == 0)
+{
+    <div style="text-align: center; padding: 60px; color: #999;">
+        <span style="font-size: 48px;">🎬</span>
+        <h3>No franchise data yet</h3>
+    </div>
+}
+else
+{
+    for (int i = 0; i < Model.Count; i++)
+    {
+        var item = Model[i];
+        <div class="rank-card">
+            <div class="rank-num">#@(i + 1)</div>
+            <div class="rank-info">
+                <h4>
+                    <a href="@Url.Action("Details", new { id = item.Franchise.Id })" style="text-decoration: none; color: #333;">
+                        @item.Franchise.Name
+                    </a>
+                </h4>
+                <div class="meta">
+                    @item.MovieCount movies
+                    @if (item.AverageRating > 0) { <text> · ⭐ @item.AverageRating</text> }
+                    @if (item.Franchise.IsOngoing) { <text> · 🔄 Ongoing</text> }
+                </div>
+            </div>
+            <div class="rank-stats">
+                <div class="big">@item.TotalRentals</div>
+                <div class="small-label">Rentals</div>
+            </div>
+        </div>
+    }
+}
+
+<div style="text-align: center; margin-top: 20px;">
+    <a href="@Url.Action("Index")" class="btn btn-default">&laquo; All Franchises</a>
+</div>

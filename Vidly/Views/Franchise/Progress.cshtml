@@ -1,0 +1,120 @@
+@model Vidly.ViewModels.FranchiseProgressViewModel
+
+@{
+    ViewBag.Title = "Franchise Progress";
+}
+
+<style>
+    .progress-header {
+        text-align: center; padding: 30px 0 20px;
+        background: linear-gradient(135deg, #2d1b69 0%, #11998e 100%);
+        color: #fff; margin: -20px -15px 30px; border-radius: 0 0 20px 20px;
+    }
+    .progress-header h1 { font-size: 30px; font-weight: 700; }
+    .progress-card { background: #fff; border-radius: 12px; padding: 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 15px; }
+    .progress-card h4 { font-weight: 600; color: #2d1b69; margin-top: 0; }
+    .completion-bar { height: 10px; border-radius: 5px; background: #e0e0e0; }
+    .completion-fill { height: 100%; border-radius: 5px; background: linear-gradient(90deg, #11998e, #2d1b69); }
+    .rec-card { background: #f8f9fa; border-left: 4px solid #11998e; padding: 14px; margin-bottom: 10px; border-radius: 0 8px 8px 0; }
+    .section-title { font-size: 20px; font-weight: 600; color: #333; margin: 25px 0 15px; }
+    .empty-msg { text-align: center; color: #999; padding: 30px; }
+</style>
+
+<div class="progress-header">
+    <span style="font-size: 48px;">🏆</span>
+    <h1>Franchise Progress</h1>
+    <p style="opacity: 0.8;">Track your journey through movie franchises</p>
+</div>
+
+<div style="max-width: 400px; margin: 0 auto 30px;">
+    @using (Html.BeginForm("Progress", "Franchise", FormMethod.Get, new { @class = "input-group" }))
+    {
+        <select name="customerId" class="form-control" onchange="this.form.submit()">
+            <option value="">-- Select Customer --</option>
+            @if (ViewBag.Customers != null)
+            {
+                foreach (SelectListItem c in ViewBag.Customers)
+                {
+                    <option value="@c.Value" @(Model.CustomerId.ToString() == c.Value ? "selected" : "")>@c.Text</option>
+                }
+            }
+        </select>
+    }
+</div>
+
+@if (Model.CustomerId > 0)
+{
+    <h4 style="text-align: center; color: #555;">Progress for <strong>@Model.CustomerName</strong></h4>
+
+    @* In Progress *@
+    <div class="section-title">🔄 In Progress (@Model.InProgress.Count)</div>
+    @if (Model.InProgress.Count == 0)
+    {
+        <div class="empty-msg">No franchises in progress yet.</div>
+    }
+    else
+    {
+        foreach (var p in Model.InProgress)
+        {
+            var name = Model.FranchiseNames.ContainsKey(p.FranchiseId) ? Model.FranchiseNames[p.FranchiseId] : "Unknown";
+            <div class="progress-card">
+                <h4>
+                    <a href="@Url.Action("Details", new { id = p.FranchiseId })" style="text-decoration: none; color: #2d1b69;">
+                        @name
+                    </a>
+                </h4>
+                <div class="completion-bar">
+                    <div class="completion-fill" style="width: @(p.CompletionPercent)%;"></div>
+                </div>
+                <div style="margin-top: 6px; font-size: 13px; color: #666;">
+                    @p.WatchedMovieIds.Count watched · @(Math.Round(p.CompletionPercent, 0))% complete
+                    @if (p.StartedDate.HasValue) { <text> · Started @p.StartedDate.Value.ToString("MMM d, yyyy")</text> }
+                </div>
+            </div>
+        }
+    }
+
+    @* Completed *@
+    <div class="section-title">✅ Completed (@Model.Completed.Count)</div>
+    @if (Model.Completed.Count == 0)
+    {
+        <div class="empty-msg">No completed franchises yet. Keep watching!</div>
+    }
+    else
+    {
+        foreach (var p in Model.Completed)
+        {
+            var name = Model.FranchiseNames.ContainsKey(p.FranchiseId) ? Model.FranchiseNames[p.FranchiseId] : "Unknown";
+            <div class="progress-card" style="border-left: 4px solid #4caf50;">
+                <h4>🏆 @name</h4>
+                <div style="font-size: 13px; color: #666;">
+                    Completed @(p.CompletedDate.HasValue ? p.CompletedDate.Value.ToString("MMM d, yyyy") : "")
+                    · @p.WatchedMovieIds.Count movies watched
+                </div>
+            </div>
+        }
+    }
+
+    @* Recommendations *@
+    @if (Model.Recommendations.Count > 0)
+    {
+        <div class="section-title">💡 Recommended For You</div>
+        foreach (var rec in Model.Recommendations)
+        {
+            <div class="rec-card">
+                <strong>@rec.Franchise.Name</strong>
+                <span class="text-muted" style="font-size: 13px;"> — @rec.Reason</span>
+                @if (!string.IsNullOrEmpty(rec.NextMovieName))
+                {
+                    <div style="font-size: 13px; margin-top: 4px;">
+                        ▶ Next up: <strong>@rec.NextMovieName</strong>
+                    </div>
+                }
+            </div>
+        }
+    }
+}
+
+<div style="text-align: center; margin-top: 20px;">
+    <a href="@Url.Action("Index")" class="btn btn-default">&laquo; All Franchises</a>
+</div>

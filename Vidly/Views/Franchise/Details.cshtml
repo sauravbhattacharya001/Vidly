@@ -1,0 +1,136 @@
+@model Vidly.ViewModels.FranchiseDetailViewModel
+
+@{
+    ViewBag.Title = Model.Franchise.Name;
+}
+
+<style>
+    .detail-header {
+        text-align: center; padding: 30px 0 20px;
+        background: linear-gradient(135deg, #2d1b69 0%, #11998e 100%);
+        color: #fff; margin: -20px -15px 30px; border-radius: 0 0 20px 20px;
+    }
+    .detail-header h1 { font-size: 32px; font-weight: 700; margin-bottom: 5px; }
+    .detail-header .desc { opacity: 0.85; font-size: 15px; max-width: 600px; margin: 0 auto; }
+    .movie-row { background: #fff; border-radius: 10px; padding: 14px 18px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+    .movie-position { font-size: 24px; font-weight: 700; color: #2d1b69; width: 40px; display: inline-block; }
+    .movie-name { font-size: 16px; font-weight: 600; }
+    .movie-meta { font-size: 13px; color: #666; }
+    .report-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 20px; }
+    .report-card h3 { font-size: 18px; font-weight: 600; color: #2d1b69; margin-top: 0; }
+    .stat-box { text-align: center; padding: 15px; }
+    .stat-box .number { font-size: 28px; font-weight: 700; color: #2d1b69; }
+    .stat-box .label { font-size: 12px; color: #888; text-transform: uppercase; }
+    .dropoff-bar { height: 8px; border-radius: 4px; background: #e0e0e0; margin-top: 4px; }
+    .dropoff-fill { height: 100%; border-radius: 4px; background: #ef5350; }
+    .tag-list .badge { margin-right: 4px; font-size: 12px; }
+</style>
+
+<div class="detail-header">
+    <span style="font-size: 48px;">🎬</span>
+    <h1>@Model.Franchise.Name</h1>
+    @if (!string.IsNullOrEmpty(Model.Franchise.Description))
+    {
+        <p class="desc">@Model.Franchise.Description</p>
+    }
+    @if (Model.Franchise.Tags.Count > 0)
+    {
+        <div class="tag-list" style="margin-top: 10px;">
+            @foreach (var tag in Model.Franchise.Tags)
+            {
+                <span class="badge" style="background: rgba(255,255,255,0.2); color: #fff;">@tag</span>
+            }
+        </div>
+    }
+</div>
+
+<div class="row" style="margin-bottom: 15px;">
+    <div class="col-xs-6">
+        <a href="@Url.Action("Index")" class="btn btn-default btn-sm">&laquo; All Franchises</a>
+    </div>
+    <div class="col-xs-6 text-right">
+        @using (Html.BeginForm("Delete", "Franchise", new { id = Model.Franchise.Id }, FormMethod.Post, new { style = "display:inline" }))
+        {
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-danger btn-sm"
+                    onclick="return confirm('Delete this franchise?');">
+                <span class="glyphicon glyphicon-trash"></span> Delete
+            </button>
+        }
+    </div>
+</div>
+
+@* Report Stats *@
+@if (Model.Report != null)
+{
+    <div class="report-card">
+        <h3>📊 Franchise Stats</h3>
+        <div class="row">
+            <div class="col-sm-2 col-xs-4 stat-box">
+                <div class="number">@Model.Report.TotalMovies</div>
+                <div class="label">Movies</div>
+            </div>
+            <div class="col-sm-2 col-xs-4 stat-box">
+                <div class="number">@Model.Report.TotalRentals</div>
+                <div class="label">Rentals</div>
+            </div>
+            <div class="col-sm-2 col-xs-4 stat-box">
+                <div class="number">$@Model.Report.TotalRevenue.ToString("F2")</div>
+                <div class="label">Revenue</div>
+            </div>
+            <div class="col-sm-2 col-xs-4 stat-box">
+                <div class="number">@Model.Report.AverageRating</div>
+                <div class="label">Avg Rating</div>
+            </div>
+            <div class="col-sm-2 col-xs-4 stat-box">
+                <div class="number">@Model.Report.CustomersStarted</div>
+                <div class="label">Started</div>
+            </div>
+            <div class="col-sm-2 col-xs-4 stat-box">
+                <div class="number">@Model.Report.CompletionRate%</div>
+                <div class="label">Completion</div>
+            </div>
+        </div>
+    </div>
+}
+
+@* Movies in Order *@
+<div class="report-card">
+    <h3>🎥 Movies (Viewing Order)</h3>
+    @foreach (var movie in Model.Movies)
+    {
+        <div class="movie-row">
+            <span class="movie-position">#@movie.Position</span>
+            <span class="movie-name">@movie.Movie.Name</span>
+            <span class="movie-meta" style="margin-left: 10px;">
+                @if (movie.Movie.ReleaseDate.HasValue) { <text>@movie.Movie.ReleaseDate.Value.Year</text> }
+                @if (movie.Movie.Genre.HasValue) { <text> · @movie.Movie.Genre</text> }
+                @if (movie.Movie.Rating.HasValue) { <text> · ⭐ @movie.Movie.Rating/5</text> }
+                · 📀 @movie.RentalCount rentals
+            </span>
+        </div>
+    }
+</div>
+
+@* Drop-off Analysis *@
+@if (Model.Report != null && Model.Report.Dropoffs.Count > 0)
+{
+    <div class="report-card">
+        <h3>📉 Drop-off Analysis</h3>
+        <p class="text-muted" style="font-size: 13px;">Where do viewers stop watching?</p>
+        @foreach (var d in Model.Report.Dropoffs)
+        {
+            <div style="margin-bottom: 12px;">
+                <div>
+                    <strong>#@d.Position @d.MovieName</strong>
+                    <span class="text-muted" style="float: right;">
+                        @d.WatchedCount watched · @d.DroppedCount dropped (@d.DropoffRate%)
+                    </span>
+                </div>
+                <div class="dropoff-bar">
+                    <div class="dropoff-fill" style="width: @(d.DropoffRate)%;"></div>
+                </div>
+            </div>
+        }
+    </div>
+}
