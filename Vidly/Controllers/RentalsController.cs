@@ -199,7 +199,7 @@ namespace Vidly.Controllers
             // Uses PricingService logic: new releases get premium rate ($5.99),
             // catalog titles (>1 year old) get discount ($2.99), per-movie overrides
             // take priority, and membership discounts are applied.
-            var baseDailyRate = Services.PricingService.GetMovieDailyRate(movie);
+            var baseDailyRate = Services.PricingService.GetMovieDailyRate(movie, DateTime.Today);
             var benefits = Services.PricingService.GetBenefits(customer.MembershipType);
             var discountAmount = baseDailyRate * benefits.DiscountPercent / 100m;
             rental.DailyRate = baseDailyRate - discountAmount;
