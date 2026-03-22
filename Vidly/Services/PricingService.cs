@@ -379,7 +379,13 @@ namespace Vidly.Services
         /// Determine the daily rate for a movie based on its properties.
         /// Priority: explicit DailyRate override > new release premium > catalog discount > default.
         /// </summary>
-        internal static decimal GetMovieDailyRate(Movie movie)
+        /// <summary>
+        /// Determine the daily rate for a movie based on its properties.
+        /// Priority: explicit DailyRate override > new release premium > catalog discount > default.
+        /// </summary>
+        /// <param name="movie">The movie to price.</param>
+        /// <param name="today">Current date for catalog-age calculation.</param>
+        internal static decimal GetMovieDailyRate(Movie movie, DateTime today)
         {
             // 1. Explicit per-movie rate override takes highest priority
             if (movie.DailyRate.HasValue)
@@ -391,12 +397,18 @@ namespace Vidly.Services
 
             // 3. Catalog titles (older than 1 year) get a discount
             if (movie.ReleaseDate.HasValue &&
-                (_clock.Today - movie.ReleaseDate.Value).TotalDays > 365)
+                (today - movie.ReleaseDate.Value).TotalDays > 365)
                 return CatalogDailyRate;
 
             // 4. Everything else uses the default rate
             return DefaultDailyRate;
         }
+
+        /// <summary>
+        /// Instance convenience overload that uses the injected clock.
+        /// </summary>
+        internal decimal GetMovieDailyRate(Movie movie)
+            => GetMovieDailyRate(movie, _clock.Today);
     }
 
     // ── Models ───────────────────────────────────────────────────────
