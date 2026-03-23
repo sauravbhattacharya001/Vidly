@@ -413,42 +413,42 @@ namespace Vidly.Tests
         public void GetMovieDailyRate_ExplicitOverride_TakesPriority()
         {
             var movie = new Movie { Id = 99, Name = "Custom", DailyRate = 7.99m };
-            Assert.AreEqual(7.99m, PricingService.GetMovieDailyRate(movie));
+            Assert.AreEqual(7.99m, PricingService.GetMovieDailyRate(movie, DateTime.Today));
         }
 
         [TestMethod]
         public void GetMovieDailyRate_NewRelease_PremiumRate()
         {
             var movie = new Movie { Id = 99, Name = "New Film", ReleaseDate = DateTime.Today.AddDays(-30) };
-            Assert.AreEqual(PricingService.NewReleaseDailyRate, PricingService.GetMovieDailyRate(movie));
+            Assert.AreEqual(PricingService.NewReleaseDailyRate, PricingService.GetMovieDailyRate(movie, DateTime.Today));
         }
 
         [TestMethod]
         public void GetMovieDailyRate_CatalogTitle_DiscountRate()
         {
             var movie = new Movie { Id = 99, Name = "Old Classic", ReleaseDate = DateTime.Today.AddDays(-400) };
-            Assert.AreEqual(PricingService.CatalogDailyRate, PricingService.GetMovieDailyRate(movie));
+            Assert.AreEqual(PricingService.CatalogDailyRate, PricingService.GetMovieDailyRate(movie, DateTime.Today));
         }
 
         [TestMethod]
         public void GetMovieDailyRate_MidRangeTitle_DefaultRate()
         {
             var movie = new Movie { Id = 99, Name = "Recent", ReleaseDate = DateTime.Today.AddDays(-200) };
-            Assert.AreEqual(PricingService.DefaultDailyRate, PricingService.GetMovieDailyRate(movie));
+            Assert.AreEqual(PricingService.DefaultDailyRate, PricingService.GetMovieDailyRate(movie, DateTime.Today));
         }
 
         [TestMethod]
         public void GetMovieDailyRate_NoReleaseDate_DefaultRate()
         {
             var movie = new Movie { Id = 99, Name = "Unknown" };
-            Assert.AreEqual(PricingService.DefaultDailyRate, PricingService.GetMovieDailyRate(movie));
+            Assert.AreEqual(PricingService.DefaultDailyRate, PricingService.GetMovieDailyRate(movie, DateTime.Today));
         }
 
         [TestMethod]
         public void GetMovieDailyRate_ExplicitOverride_OverridesNewRelease()
         {
             var movie = new Movie { Id = 99, Name = "New", ReleaseDate = DateTime.Today.AddDays(-10), DailyRate = 1.99m };
-            Assert.AreEqual(1.99m, PricingService.GetMovieDailyRate(movie));
+            Assert.AreEqual(1.99m, PricingService.GetMovieDailyRate(movie, DateTime.Today));
         }
     }
 }
