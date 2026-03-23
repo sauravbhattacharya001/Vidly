@@ -1,0 +1,95 @@
+@model Vidly.Models.Promotion
+@{
+    ViewBag.Title = "Edit Promotion";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var movies = ViewBag.Movies as System.Collections.Generic.IReadOnlyList<Vidly.Models.Movie>;
+}
+
+<h2><span class="glyphicon glyphicon-edit"></span> Edit Promotion</h2>
+
+@using (Html.BeginForm("Edit", "Promotions", FormMethod.Post, new { @class = "form-horizontal" }))
+{
+    @Html.AntiForgeryToken()
+    @Html.HiddenFor(m => m.Id)
+    @Html.ValidationSummary(true, "", new { @class = "text-danger" })
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.Name, new { @class = "col-md-2 control-label" })
+        <div class="col-md-6">
+            @Html.TextBoxFor(m => m.Name, new { @class = "form-control" })
+            @Html.ValidationMessageFor(m => m.Name, "", new { @class = "text-danger" })
+        </div>
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.Description, new { @class = "col-md-2 control-label" })
+        <div class="col-md-6">
+            @Html.TextAreaFor(m => m.Description, new { @class = "form-control", rows = 3 })
+        </div>
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.Season, new { @class = "col-md-2 control-label" })
+        <div class="col-md-4">
+            @Html.EnumDropDownListFor(m => m.Season, "-- Select Season --", new { @class = "form-control" })
+        </div>
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.DiscountPercent, new { @class = "col-md-2 control-label" })
+        <div class="col-md-3">
+            <div class="input-group">
+                @Html.TextBoxFor(m => m.DiscountPercent, new { @class = "form-control", type = "number", min = 1, max = 90 })
+                <span class="input-group-addon">%</span>
+            </div>
+            @Html.ValidationMessageFor(m => m.DiscountPercent, "", new { @class = "text-danger" })
+        </div>
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.StartDate, new { @class = "col-md-2 control-label" })
+        <div class="col-md-3">
+            @Html.TextBoxFor(m => m.StartDate, "{0:yyyy-MM-dd}", new { @class = "form-control", type = "date" })
+        </div>
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.EndDate, new { @class = "col-md-2 control-label" })
+        <div class="col-md-3">
+            @Html.TextBoxFor(m => m.EndDate, "{0:yyyy-MM-dd}", new { @class = "form-control", type = "date" })
+            @Html.ValidationMessageFor(m => m.EndDate, "", new { @class = "text-danger" })
+        </div>
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.BannerColor, new { @class = "col-md-2 control-label" })
+        <div class="col-md-2">
+            @Html.TextBoxFor(m => m.BannerColor, new { @class = "form-control", type = "color" })
+        </div>
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.FeaturedMovieIds, new { @class = "col-md-2 control-label" })
+        <div class="col-md-6">
+            @Html.TextBoxFor(m => m.FeaturedMovieIds, new { @class = "form-control", placeholder = "1,3,5" })
+            @if (movies != null && movies.Any())
+            {
+                <ul class="list-unstyled text-muted" style="margin-top:5px; font-size: 0.9em">
+                    @foreach (var movie in movies)
+                    {
+                        <li><strong>@movie.Id</strong> — @movie.Name</li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+
+    <div class="form-group">
+        <div class="col-md-offset-2 col-md-6">
+            <button type="submit" class="btn btn-primary">
+                <span class="glyphicon glyphicon-ok"></span> Save Changes
+            </button>
+            <a href="@Url.Action("Index")" class="btn btn-default">Cancel</a>
+        </div>
+    </div>
+}

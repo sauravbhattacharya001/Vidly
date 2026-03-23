@@ -1,0 +1,56 @@
+@model Vidly.ViewModels.PromotionDetailsViewModel
+@{
+    ViewBag.Title = Model.Promotion.Name;
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>
+    <span class="glyphicon glyphicon-gift"></span> @Model.Promotion.Name
+    @if (Model.Promotion.IsActive)
+    {
+        <span class="label label-success">Active</span>
+    }
+    else
+    {
+        <span class="label label-default">@Model.Promotion.StatusDisplay</span>
+    }
+</h2>
+
+<div class="well" style="border-left: 5px solid @Model.Promotion.BannerColor">
+    <p class="lead">@Model.Promotion.Description</p>
+    <dl class="dl-horizontal">
+        <dt>Discount</dt>
+        <dd><strong>@Model.Promotion.DiscountPercent%</strong> off</dd>
+        <dt>Season</dt>
+        <dd>@Model.Promotion.Season</dd>
+        <dt>Period</dt>
+        <dd>@Model.Promotion.StartDate.ToString("MMMM d, yyyy") &ndash; @Model.Promotion.EndDate.ToString("MMMM d, yyyy")</dd>
+        @if (Model.Promotion.IsActive)
+        {
+            <dt>Days Remaining</dt>
+            <dd>@Model.Promotion.DaysRemaining</dd>
+        }
+    </dl>
+</div>
+
+@if (Model.FeaturedMovies.Any())
+{
+    <h3>Featured Movies</h3>
+    <div class="list-group">
+    @foreach (var movie in Model.FeaturedMovies)
+    {
+        <div class="list-group-item">
+            <h4 class="list-group-item-heading">@movie.Name</h4>
+            <p class="list-group-item-text">
+                @if (movie.Genre.HasValue) { <span class="label label-info">@movie.Genre</span> }
+                @if (movie.ReleaseDate.HasValue) { <span class="text-muted">(@movie.ReleaseDate.Value.Year)</span> }
+            </p>
+        </div>
+    }
+    </div>
+}
+
+<a href="@Url.Action("Index")" class="btn btn-default">
+    <span class="glyphicon glyphicon-arrow-left"></span> Back to Promotions
+</a>
+<a href="@Url.Action("Edit", new { id = Model.Promotion.Id })" class="btn btn-warning">Edit</a>

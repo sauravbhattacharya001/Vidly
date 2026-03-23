@@ -1,0 +1,94 @@
+@model Vidly.ViewModels.PromotionIndexViewModel
+@{
+    ViewBag.Title = "Seasonal Promotions";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>
+    <span class="glyphicon glyphicon-gift"></span> Seasonal Promotions
+    <small class="text-muted">(@Model.TotalCount total)</small>
+</h2>
+
+@if (TempData["Message"] != null)
+{
+    <div class="alert alert-success alert-dismissible">
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+        @TempData["Message"]
+    </div>
+}
+
+<div class="row" style="margin-bottom:15px">
+    <div class="col-md-8">
+        <div class="btn-group">
+            <a href="@Url.Action("Index")" class="btn btn-default @(string.IsNullOrEmpty(Model.StatusFilter) ? "active" : "")">
+                All <span class="badge">@Model.TotalCount</span>
+            </a>
+            <a href="@Url.Action("Index", new { status = "Active" })" class="btn btn-success @(Model.StatusFilter == "Active" ? "active" : "")">
+                Active <span class="badge">@Model.ActiveCount</span>
+            </a>
+            <a href="@Url.Action("Index", new { status = "Upcoming" })" class="btn btn-info @(Model.StatusFilter == "Upcoming" ? "active" : "")">
+                Upcoming <span class="badge">@Model.UpcomingCount</span>
+            </a>
+            <a href="@Url.Action("Index", new { status = "Expired" })" class="btn btn-default @(Model.StatusFilter == "Expired" ? "active" : "")">
+                Expired <span class="badge">@Model.ExpiredCount</span>
+            </a>
+        </div>
+    </div>
+    <div class="col-md-4 text-right">
+        <a href="@Url.Action("Create")" class="btn btn-primary">
+            <span class="glyphicon glyphicon-plus"></span> New Promotion
+        </a>
+    </div>
+</div>
+
+@if (!Model.Promotions.Any())
+{
+    <div class="alert alert-info">No promotions found.</div>
+}
+else
+{
+    <div class="row">
+    @foreach (var promo in Model.Promotions)
+    {
+        <div class="col-md-6" style="margin-bottom:20px">
+            <div class="panel panel-default" style="border-left: 5px solid @promo.BannerColor">
+                <div class="panel-heading" style="background: @promo.BannerColor; color: #fff">
+                    <h3 class="panel-title">
+                        @promo.Name
+                        <span class="pull-right label label-default">@promo.Season</span>
+                    </h3>
+                </div>
+                <div class="panel-body">
+                    <p>@promo.Description</p>
+                    <p>
+                        <strong>@promo.DiscountPercent% off</strong> &middot;
+                        @promo.StartDate.ToString("MMM d") &ndash; @promo.EndDate.ToString("MMM d, yyyy")
+                    </p>
+                    @if (promo.IsActive)
+                    {
+                        <span class="label label-success">Active &mdash; @promo.DaysRemaining day(s) left</span>
+                    }
+                    else if (promo.StatusDisplay == "Upcoming")
+                    {
+                        <span class="label label-info">Upcoming</span>
+                    }
+                    else
+                    {
+                        <span class="label label-default">Expired</span>
+                    }
+                </div>
+                <div class="panel-footer text-right">
+                    <a href="@Url.Action("Details", new { id = promo.Id })" class="btn btn-sm btn-info">Details</a>
+                    <a href="@Url.Action("Edit", new { id = promo.Id })" class="btn btn-sm btn-warning">Edit</a>
+                    @using (Html.BeginForm("Delete", "Promotions", new { id = promo.Id }, FormMethod.Post, new { style = "display:inline" }))
+                    {
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-sm btn-danger"
+                                onclick="return confirm('Delete this promotion?')">Delete</button>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+    </div>
+}
