@@ -145,7 +145,7 @@ namespace Vidly.Controllers
                 var dailyRates = new Dictionary<int, decimal>();
                 foreach (var movie in selectedMovies)
                 {
-                    dailyRates[movie.Id] = PricingService.GetMovieDailyRate(movie);
+                    dailyRates[movie.Id] = PricingService.GetMovieDailyRate(movie, DateTime.Today);
                 }
 
                 viewModel.Result = _bundleService.FindBestBundle(selectedMovies, dailyRates, viewModel.RentalDays);

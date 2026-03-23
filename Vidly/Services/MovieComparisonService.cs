@@ -68,7 +68,7 @@ namespace Vidly.Services
                     ? Math.Round(reviews.Average(r => r.Stars), 1)
                     : (double?)null;
 
-                var dailyRate = PricingService.GetMovieDailyRate(movie);
+                var dailyRate = PricingService.GetMovieDailyRate(movie, _clock?.Today ?? DateTime.Today);
 
                 entries.Add(new MovieComparisonEntry
                 {
