@@ -124,21 +124,27 @@ Vidly/
 | Method | Route | Description |
 |--------|-------|-------------|
 | `GET` | `/` | Home page |
-| `GET` | `/movies` | Movie listing (supports `?pageIndex=N&sortBy=Name`) |
+| `GET` | `/movies` | Movie listing with search, filter, and sort |
+| `GET` | `/movies/details/{id}` | Full details for a single movie |
 | `GET` | `/movies/random` | Random movie showcase with customers |
 | `GET` | `/movies/create` | Create a new movie (form) |
-| `POST` | `/movies/create` | Submit new movie |
+| `POST` | `/movies/create` | Submit new movie (CSRF-protected) |
 | `GET` | `/movies/edit/{id}` | Edit an existing movie (form) |
-| `POST` | `/movies/edit/{id}` | Submit movie edits |
-| `POST` | `/movies/delete/{id}` | Delete a movie |
+| `POST` | `/movies/edit/{id}` | Submit movie edits (CSRF-protected) |
+| `POST` | `/movies/delete/{id}` | Delete a movie (CSRF-protected) |
 | `GET` | `/movies/released/{year}/{month}` | Filter movies by release year and month |
 
-### URL Parameters
+### Query Parameters (Movie Index)
 
-- **`pageIndex`** — Page number for pagination (default: 1)
-- **`sortBy`** — Sort field: `Name` (default) or `Id`
-- **`year`** — Release year filter (range: 1888–2100)
-- **`month`** — Release month filter (range: 1–12, two digits)
+- **`query`** — Case-insensitive substring search on movie name
+- **`genre`** — Filter by genre enum value (e.g., `Action`, `Comedy`)
+- **`minRating`** — Minimum star rating filter (integer)
+- **`sortBy`** — Sort column: `name` (default), `rating`, `releasedate`, `genre`, or `id`
+
+### Route Constraints
+
+- **`year`** — Release year (range: 1888–2100)
+- **`month`** — Release month (range: 1–12, two digits)
 
 ## 🧪 Testing
 
