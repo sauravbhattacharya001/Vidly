@@ -1,0 +1,84 @@
+@model Vidly.ViewModels.PenaltyWaiverCreateViewModel
+@{
+    ViewBag.Title = "Grant Waiver";
+}
+
+<div class="container" style="margin-top: 20px;">
+    <div class="page-header">
+        <h1><span class="glyphicon glyphicon-ok-circle"></span> Grant Late-Fee Waiver</h1>
+    </div>
+
+    @* Rental Details *@
+    <div class="panel panel-default" style="margin-bottom: 20px;">
+        <div class="panel-heading"><strong>Rental Details</strong></div>
+        <div class="panel-body">
+            <dl class="dl-horizontal">
+                <dt>Customer</dt>
+                <dd>@Model.Rental.CustomerName</dd>
+                <dt>Movie</dt>
+                <dd>@Model.Rental.MovieName</dd>
+                <dt>Rented On</dt>
+                <dd>@Model.Rental.RentalDate.ToString("MMM d, yyyy")</dd>
+                <dt>Due Date</dt>
+                <dd>@Model.Rental.DueDate.ToString("MMM d, yyyy")</dd>
+                <dt>Days Overdue</dt>
+                <dd><span class="text-danger">@Model.Rental.DaysOverdue day(s)</span></dd>
+                <dt>Total Late Fee</dt>
+                <dd><strong>@Model.Rental.LateFee.ToString("C")</strong></dd>
+                @if (Model.AlreadyWaived > 0)
+                {
+                    <dt>Already Waived</dt>
+                    <dd class="text-success">@Model.AlreadyWaived.ToString("C")</dd>
+                    <dt>Remaining Waivable</dt>
+                    <dd><strong>@Model.MaxWaivable.ToString("C")</strong></dd>
+                }
+            </dl>
+        </div>
+    </div>
+
+    @using (Html.BeginForm("Create", "PenaltyWaiver", FormMethod.Post))
+    {
+        @Html.AntiForgeryToken()
+        @Html.HiddenFor(m => m.Waiver.RentalId)
+
+        @Html.ValidationSummary(true, "", new { @class = "alert alert-danger" })
+
+        <div class="form-group">
+            <label>Waiver Type</label>
+            @Html.DropDownListFor(m => m.Waiver.Type,
+                new SelectList(new[]
+                {
+                    new { Value = "1", Text = "Full Waiver" },
+                    new { Value = "2", Text = "Partial Waiver" },
+                    new { Value = "3", Text = "Goodwill Gesture" },
+                    new { Value = "4", Text = "System Error" },
+                    new { Value = "5", Text = "First Offense" }
+                }, "Value", "Text"),
+                new { @class = "form-control" })
+        </div>
+
+        <div class="form-group">
+            <label>Amount to Waive</label>
+            <div class="input-group">
+                <span class="input-group-addon">$</span>
+                @Html.TextBoxFor(m => m.Waiver.AmountWaived,
+                    new { @class = "form-control", type = "number", step = "0.01", min = "0.01", max = Model.MaxWaivable })
+            </div>
+            <p class="help-block">Maximum waivable: @Model.MaxWaivable.ToString("C")</p>
+        </div>
+
+        <div class="form-group">
+            <label>Reason <span class="text-danger">*</span></label>
+            @Html.TextAreaFor(m => m.Waiver.Reason,
+                new { @class = "form-control", rows = 3, placeholder = "Explain why this waiver is being granted..." })
+            @Html.ValidationMessageFor(m => m.Waiver.Reason, "", new { @class = "text-danger" })
+        </div>
+
+        <div style="margin-top: 20px;">
+            <button type="submit" class="btn btn-success">
+                <span class="glyphicon glyphicon-ok"></span> Grant Waiver
+            </button>
+            <a href="@Url.Action("Index")" class="btn btn-default">Cancel</a>
+        </div>
+    }
+</div>
