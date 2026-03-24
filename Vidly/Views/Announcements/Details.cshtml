@@ -1,0 +1,122 @@
+@model Vidly.ViewModels.AnnouncementDetailViewModel
+@{
+    ViewBag.Title = Model.Announcement.Title;
+}
+
+<div class="container" style="margin-top: 20px;">
+    @if (TempData["Message"] != null)
+    {
+        <div class="alert alert-success alert-dismissible">
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+            @TempData["Message"]
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible">
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+            @TempData["Error"]
+        </div>
+    }
+
+    @{
+        var a = Model.Announcement;
+        var panelClass = "panel-default";
+        if (a.Priority == AnnouncementPriority.Urgent) panelClass = "panel-danger";
+        else if (a.Priority == AnnouncementPriority.High) panelClass = "panel-warning";
+    }
+
+    <div class="panel @panelClass">
+        <div class="panel-heading">
+            @if (Model.IsPinned)
+            {
+                <span class="glyphicon glyphicon-pushpin text-danger"></span>
+                <span class="label label-danger">PINNED</span>
+            }
+            <h3 style="display: inline; margin-left: 8px;">@a.Title</h3>
+            <div class="pull-right">
+                <span class="label label-info">@a.Category</span>
+                @{
+                    var priLabel = "label-default";
+                    if (a.Priority == AnnouncementPriority.High) priLabel = "label-warning";
+                    else if (a.Priority == AnnouncementPriority.Urgent) priLabel = "label-danger";
+                }
+                <span class="label @priLabel">@a.Priority</span>
+                @{
+                    var statusLabel = "label-default";
+                    switch (a.Status)
+                    {
+                        case AnnouncementStatus.Active: statusLabel = "label-success"; break;
+                        case AnnouncementStatus.Draft: statusLabel = "label-warning"; break;
+                        case AnnouncementStatus.Expired: statusLabel = "label-danger"; break;
+                    }
+                }
+                <span class="label @statusLabel">@a.Status</span>
+            </div>
+        </div>
+        <div class="panel-body">
+            <div style="font-size: 1.1em; line-height: 1.6; margin-bottom: 20px;">
+                @a.Body
+            </div>
+
+            @if (a.Tags.Any())
+            {
+                <p>
+                    <strong>Tags:</strong>
+                    @foreach (var tag in a.Tags)
+                    {
+                        <span class="label label-info" style="margin-right: 4px;">@tag</span>
+                    }
+                </p>
+            }
+
+            <hr />
+            <div class="row">
+                <div class="col-md-6">
+                    <dl class="dl-horizontal">
+                        <dt>Author</dt>
+                        <dd>@a.AuthorStaffId</dd>
+                        <dt>Created</dt>
+                        <dd>@a.CreatedAt.ToString("MMM dd, yyyy h:mm tt")</dd>
+                        @if (a.PublishedAt.HasValue)
+                        {
+                            <dt>Published</dt>
+                            <dd>@a.PublishedAt.Value.ToString("MMM dd, yyyy h:mm tt")</dd>
+                        }
+                        @if (a.ExpiresAt.HasValue)
+                        {
+                            <dt>Expires</dt>
+                            <dd>@a.ExpiresAt.Value.ToString("MMM dd, yyyy")</dd>
+                        }
+                        <dt>Views</dt>
+                        <dd>@a.ViewCount</dd>
+                    </dl>
+                </div>
+                <div class="col-md-6">
+                    @if (a.RequiresAcknowledgment)
+                    {
+                        <div class="well">
+                            <h4><span class="glyphicon glyphicon-exclamation-sign text-warning"></span> This announcement requires your acknowledgment</h4>
+                            <p>Please confirm that you have read and understood this announcement.</p>
+                            @using (Html.BeginForm("Acknowledge", "Announcements", new { id = a.Id }, FormMethod.Post))
+                            {
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="customerId" value="1" />
+                                <button type="submit" class="btn btn-warning">
+                                    <span class="glyphicon glyphicon-ok"></span> I Acknowledge
+                                </button>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <a href="@Url.Action("Index")" class="btn btn-default">
+        <span class="glyphicon glyphicon-arrow-left"></span> Back to Announcements
+    </a>
+    <a href="@Url.Action("Manage")" class="btn btn-default">
+        <span class="glyphicon glyphicon-cog"></span> Management
+    </a>
+</div>

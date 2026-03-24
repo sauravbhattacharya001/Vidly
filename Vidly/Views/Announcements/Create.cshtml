@@ -1,0 +1,86 @@
+@model Vidly.ViewModels.AnnouncementCreateViewModel
+@{
+    ViewBag.Title = "Create Announcement";
+}
+
+<div class="container" style="margin-top: 20px;">
+    <div class="page-header">
+        <h1><span class="glyphicon glyphicon-plus"></span> Create Announcement</h1>
+    </div>
+
+    @using (Html.BeginForm("Create", "Announcements", FormMethod.Post))
+    {
+        @Html.AntiForgeryToken()
+        @Html.ValidationSummary(true, "", new { @class = "alert alert-danger" })
+
+        <div class="form-group">
+            <label for="Title">Title</label>
+            @Html.TextBoxFor(m => m.Title, new { @class = "form-control", placeholder = "Announcement title", maxlength = "200" })
+            @Html.ValidationMessageFor(m => m.Title, "", new { @class = "text-danger" })
+        </div>
+
+        <div class="form-group">
+            <label for="Body">Body</label>
+            @Html.TextAreaFor(m => m.Body, new { @class = "form-control", rows = "5", placeholder = "Write your announcement here..." })
+            @Html.ValidationMessageFor(m => m.Body, "", new { @class = "text-danger" })
+        </div>
+
+        <div class="row">
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label for="Category">Category</label>
+                    @Html.DropDownListFor(m => m.Category,
+                        new SelectList(Enum.GetValues(typeof(AnnouncementCategory))),
+                        new { @class = "form-control" })
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label for="Priority">Priority</label>
+                    @Html.DropDownListFor(m => m.Priority,
+                        new SelectList(Enum.GetValues(typeof(AnnouncementPriority))),
+                        new { @class = "form-control" })
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label for="Tags">Tags (comma-separated)</label>
+                    @Html.TextBoxFor(m => m.Tags, new { @class = "form-control", placeholder = "e.g. promo, weekend, new" })
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-4">
+                <div class="checkbox">
+                    <label>
+                        @Html.CheckBoxFor(m => m.RequiresAcknowledgment)
+                        Requires customer acknowledgment
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="checkbox">
+                    <label>
+                        @Html.CheckBoxFor(m => m.HasExpiration)
+                        Set expiration
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label for="ExpirationDays">Expires after (days)</label>
+                    @Html.TextBoxFor(m => m.ExpirationDays, new { @class = "form-control", type = "number", min = "1", max = "365" })
+                </div>
+            </div>
+        </div>
+
+        <hr />
+        <button type="submit" class="btn btn-primary">
+            <span class="glyphicon glyphicon-save"></span> Create as Draft
+        </button>
+        <a href="@Url.Action("Manage")" class="btn btn-default">Cancel</a>
+    }
+</div>
+
+
