@@ -1,0 +1,112 @@
+@model Vidly.Models.AnnouncementAnalytics
+@{
+    ViewBag.Title = "Announcement Analytics";
+}
+
+<div class="container" style="margin-top: 20px;">
+    <div class="page-header">
+        <h1><span class="glyphicon glyphicon-stats"></span> Announcement Analytics</h1>
+        <p class="lead text-muted">Insights into announcement engagement and reach</p>
+    </div>
+
+    <div class="row">
+        <div class="col-md-3">
+            <div class="panel panel-primary">
+                <div class="panel-body text-center">
+                    <h2 style="margin: 0;">@Model.TotalAnnouncements</h2>
+                    <small>Total Announcements</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="panel panel-success">
+                <div class="panel-body text-center">
+                    <h2 style="margin: 0;">@Model.ActiveCount</h2>
+                    <small>Active</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="panel panel-warning">
+                <div class="panel-body text-center">
+                    <h2 style="margin: 0;">@Model.DraftCount</h2>
+                    <small>Drafts</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="panel panel-info">
+                <div class="panel-body text-center">
+                    <h2 style="margin: 0;">@Model.PinnedCount</h2>
+                    <small>Pinned</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="panel panel-default">
+                <div class="panel-heading"><strong>By Category</strong></div>
+                <table class="table table-condensed">
+                    @foreach (var kv in Model.ByCategory)
+                    {
+                        <tr>
+                            <td><span class="label label-info">@kv.Key</span></td>
+                            <td>
+                                <div class="progress" style="margin: 0;">
+                                    <div class="progress-bar" style="width: @(Model.TotalAnnouncements > 0 ? (int)(100.0 * kv.Value / Model.TotalAnnouncements) : 0)%;">
+                                        @kv.Value
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </table>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="panel panel-default">
+                <div class="panel-heading"><strong>By Priority</strong></div>
+                <table class="table table-condensed">
+                    @foreach (var kv in Model.ByPriority)
+                    {
+                        var priClass = "label-default";
+                        if (kv.Key == AnnouncementPriority.High) priClass = "label-warning";
+                        else if (kv.Key == AnnouncementPriority.Urgent) priClass = "label-danger";
+
+                        <tr>
+                            <td><span class="label @priClass">@kv.Key</span></td>
+                            <td>
+                                <div class="progress" style="margin: 0;">
+                                    <div class="progress-bar" style="width: @(Model.TotalAnnouncements > 0 ? (int)(100.0 * kv.Value / Model.TotalAnnouncements) : 0)%;">
+                                        @kv.Value
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </table>
+            </div>
+        </div>
+    </div>
+
+    @if (Model.MostViewedAnnouncement != null)
+    {
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong>Most Viewed Announcement</strong></div>
+            <div class="panel-body">
+                <h4>@Model.MostViewedAnnouncement.Title</h4>
+                <p class="text-muted">@Model.MostViewedAnnouncement.ViewCount views</p>
+            </div>
+        </div>
+    }
+
+    <div class="well text-center">
+        <p><strong>Average Acknowledgment Rate:</strong> @Model.AverageAcknowledgmentRate.ToString("P1")</p>
+    </div>
+
+    <a href="@Url.Action("Manage")" class="btn btn-default">
+        <span class="glyphicon glyphicon-arrow-left"></span> Back to Management
+    </a>
+</div>
