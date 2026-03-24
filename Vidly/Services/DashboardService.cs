@@ -84,7 +84,7 @@ namespace Vidly.Services
         /// Replaces 6 separate O(R) iterations with one O(R) pass plus
         /// O(R × log(recentCount)) for the recent-rentals min-heap.
         /// </summary>
-        internal static DashboardAggregate AggregateSinglePass(
+        internal DashboardAggregate AggregateSinglePass(
             IReadOnlyList<Rental> rentals,
             Dictionary<int, Movie> movieLookup,
             Dictionary<int, Customer> customerLookup,

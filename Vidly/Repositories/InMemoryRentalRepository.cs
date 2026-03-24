@@ -348,13 +348,18 @@ namespace Vidly.Repositories
                 // the cap by letting their rentals go overdue (bug fix).
                 if (maxConcurrentRentals < int.MaxValue)
                 {
-                    // Refresh statuses first so Overdue is accurate
+                    // Only refresh and count rentals for this specific customer
+                    // instead of refreshing ALL rentals (O(N) → O(K) where K is
+                    // the customer's rental count).
+                    int outstandingCount = 0;
                     foreach (var r in _rentals.Values)
+                    {
+                        if (r.CustomerId != rental.CustomerId)
+                            continue;
                         RefreshStatus(r);
-
-                    var outstandingCount = _rentals.Values.Count(r =>
-                        r.CustomerId == rental.CustomerId &&
-                        r.Status != RentalStatus.Returned);
+                        if (r.Status != RentalStatus.Returned)
+                            outstandingCount++;
+                    }
                     if (outstandingCount >= maxConcurrentRentals)
                     {
                         throw new InvalidOperationException(
