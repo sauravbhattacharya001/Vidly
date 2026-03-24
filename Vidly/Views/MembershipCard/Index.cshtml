@@ -1,0 +1,36 @@
+@model IEnumerable<Vidly.Models.Customer>
+@{
+    ViewBag.Title = "Membership Cards";
+}
+
+<h2><span class="glyphicon glyphicon-credit-card"></span> Membership Cards</h2>
+<p class="text-muted">Select a customer to generate their digital membership card.</p>
+
+<div class="row" style="margin-top: 20px;">
+    <div class="col-md-8 col-md-offset-2">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title">Choose a Customer</h3>
+            </div>
+            <div class="list-group">
+                @foreach (var customer in Model)
+                {
+                    <a href="@Url.Action("Card", new { id = customer.Id })" class="list-group-item">
+                        <span class="badge">@customer.MembershipType</span>
+                        <h4 class="list-group-item-heading">@customer.Name</h4>
+                        <p class="list-group-item-text text-muted">
+                            @if (customer.MemberSince.HasValue)
+                            {
+                                <text>Member since @customer.MemberSince.Value.ToString("MMMM yyyy")</text>
+                            }
+                            else
+                            {
+                                <text>New member</text>
+                            }
+                        </p>
+                    </a>
+                }
+            </div>
+        </div>
+    </div>
+</div>
