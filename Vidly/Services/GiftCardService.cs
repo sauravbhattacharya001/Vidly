@@ -19,6 +19,13 @@ namespace Vidly.Services
         /// </summary>
         private const int MaxCodeGenerationAttempts = 10;
 
+        /// <summary>
+        /// Maximum balance allowed on a single gift card.
+        /// Prevents abuse through repeated top-ups that could be used
+        /// for money laundering or to circumvent per-transaction limits.
+        /// </summary>
+        private const decimal MaxCardBalance = 2000.00m;
+
         public GiftCardService() : this(new InMemoryGiftCardRepository()) { }
 
         public GiftCardService(IGiftCardRepository giftCardRepository,
@@ -187,6 +194,11 @@ namespace Vidly.Services
 
             if (!card.IsActive)
                 return GiftCardRedemptionResult.Fail("This gift card has been disabled.");
+
+            if (card.Balance + amount > MaxCardBalance)
+                return GiftCardRedemptionResult.Fail(
+                    $"Top-up would exceed maximum card balance of ${MaxCardBalance:F2}. " +
+                    $"Current balance: ${card.Balance:F2}, maximum top-up: ${MaxCardBalance - card.Balance:F2}.");
 
             card.Balance += amount;
             _giftCardRepository.Update(card);
