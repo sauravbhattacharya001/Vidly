@@ -1,0 +1,113 @@
+@model Vidly.Controllers.MembershipCardViewModel
+@{
+    ViewBag.Title = "Membership Card - " + Model.CustomerName;
+}
+
+<div class="row" style="margin-top: 20px;">
+    <div class="col-md-8 col-md-offset-2">
+        <div class="text-right" style="margin-bottom: 15px;">
+            <button onclick="window.print()" class="btn btn-primary">
+                <span class="glyphicon glyphicon-print"></span> Print Card
+            </button>
+            <a href="@Url.Action("Index")" class="btn btn-default">
+                <span class="glyphicon glyphicon-arrow-left"></span> Back
+            </a>
+        </div>
+
+        <!-- Membership Card -->
+        <div id="membership-card" style="
+            max-width: 500px;
+            margin: 0 auto;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        ">
+            <!-- Card Front -->
+            <div style="
+                background: linear-gradient(135deg, @Model.TierGradientStart, @Model.TierGradientEnd);
+                color: white;
+                padding: 30px;
+                position: relative;
+            ">
+                <div style="position: absolute; top: 15px; right: 20px; font-size: 11px; opacity: 0.8; letter-spacing: 2px;">
+                    VIDLY
+                </div>
+                <div style="font-size: 12px; letter-spacing: 3px; text-transform: uppercase; opacity: 0.9; margin-bottom: 20px;">
+                    @Model.TierName Membership
+                </div>
+                <div style="font-size: 22px; font-weight: 600; margin-bottom: 5px;">
+                    @Model.CustomerName
+                </div>
+                <div style="font-size: 16px; letter-spacing: 3px; font-family: 'Courier New', monospace; margin-bottom: 20px;">
+                    @Model.CardNumber
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 11px; opacity: 0.85;">
+                    <div>
+                        <div style="text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px;">Member Since</div>
+                        <div style="font-size: 14px;">@(Model.MemberSince.HasValue ? Model.MemberSince.Value.ToString("MMM yyyy") : "N/A")</div>
+                    </div>
+                    <div>
+                        <div style="text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px;">Valid Thru</div>
+                        <div style="font-size: 14px;">@Model.ValidThrough</div>
+                    </div>
+                    <div>
+                        <div style="text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px;">ID</div>
+                        <div style="font-size: 14px;">#@Model.CustomerId.ToString("D4")</div>
+                    </div>
+                </div>
+
+                <!-- Barcode-style visual -->
+                <div style="margin-top: 20px; text-align: center;">
+                    @{
+                        var barcode = Model.CardNumber.Replace("-", "");
+                        foreach (char c in barcode)
+                        {
+                            var width = (c % 3) + 1;
+                            <span style="display: inline-block; width: @(width)px; height: 30px; background: rgba(255,255,255,0.7); margin: 0 1px;"></span>
+                        }
+                    }
+                </div>
+            </div>
+
+            <!-- Card Back / Stats -->
+            <div style="background: #fafafa; padding: 25px; color: #333;">
+                <div style="display: flex; justify-content: space-around; text-align: center; margin-bottom: 20px;">
+                    <div>
+                        <div style="font-size: 24px; font-weight: 700; color: @Model.TierGradientStart;">@Model.TotalRentals</div>
+                        <div style="font-size: 11px; text-transform: uppercase; color: #888; letter-spacing: 1px;">Rentals</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 24px; font-weight: 700; color: @Model.TierGradientStart;">$@Model.TotalSpend.ToString("F0")</div>
+                        <div style="font-size: 11px; text-transform: uppercase; color: #888; letter-spacing: 1px;">Spent</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 24px; font-weight: 700; color: @Model.TierGradientStart;">@Model.OnTimeReturns</div>
+                        <div style="font-size: 11px; text-transform: uppercase; color: #888; letter-spacing: 1px;">On Time</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 24px; font-weight: 700; color: @Model.TierGradientStart;">@Model.MembershipDays</div>
+                        <div style="font-size: 11px; text-transform: uppercase; color: #888; letter-spacing: 1px;">Days</div>
+                    </div>
+                </div>
+
+                <div style="border-top: 1px solid #eee; padding-top: 15px;">
+                    <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 10px;">
+                        @Model.TierName Benefits
+                    </div>
+                    <ul style="list-style: none; padding: 0; margin: 0; font-size: 13px; color: #555;">
+                        @foreach (var benefit in Model.Benefits)
+                        {
+                            <li style="padding: 3px 0;">✓ @benefit</li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style media="print">
+    .navbar, .body-content > hr, footer, .btn { display: none !important; }
+    #membership-card { box-shadow: none !important; border: 1px solid #ccc; }
+</style>
