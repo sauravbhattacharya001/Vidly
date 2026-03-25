@@ -1,0 +1,126 @@
+@model Vidly.ViewModels.MovieClubIndexViewModel
+@{
+    ViewBag.Title = "Movie Clubs";
+}
+
+<div class="container" style="margin-top: 20px;">
+    <div class="page-header">
+        <h1><span class="glyphicon glyphicon-tower"></span> Movie Clubs</h1>
+        <p class="lead text-muted">Form clubs, vote on movies, and watch together with group discounts</p>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible">
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+            @TempData["Success"]
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible">
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+            @TempData["Error"]
+        </div>
+    }
+
+    @* Create New Club *@
+    <div class="panel panel-primary">
+        <div class="panel-heading">
+            <h3 class="panel-title"><span class="glyphicon glyphicon-plus"></span> Start a New Club</h3>
+        </div>
+        <div class="panel-body">
+            @using (Html.BeginForm("Create", "MovieClub", FormMethod.Post))
+            {
+                @Html.AntiForgeryToken()
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>Club Name</label>
+                            <input type="text" name="name" class="form-control" placeholder="e.g. Sci-Fi Enthusiasts" required maxlength="100" />
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>Genre Focus</label>
+                            <input type="text" name="genre" class="form-control" placeholder="e.g. Sci-Fi, Horror" />
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label>Max Members</label>
+                            <input type="number" name="maxMembers" class="form-control" value="20" min="2" max="100" />
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label>Group Discount %</label>
+                            <input type="number" name="groupDiscount" class="form-control" value="10" min="0" max="50" step="1" />
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label>Founded By</label>
+                            <select name="founderId" class="form-control" required>
+                                <option value="">-- Select --</option>
+                                @foreach (var c in Model.Customers)
+                                {
+                                    <option value="@c.Id">@c.Name</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea name="description" class="form-control" rows="2" placeholder="What's this club about?" maxlength="500"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary"><span class="glyphicon glyphicon-plus"></span> Create Club</button>
+            }
+        </div>
+    </div>
+
+    @* Club List *@
+    <div class="row">
+        @foreach (var club in Model.Clubs)
+        {
+            var memberCount = Model.MemberCounts.ContainsKey(club.Id) ? Model.MemberCounts[club.Id] : 0;
+            var statusClass = club.Status == Vidly.Models.ClubStatus.Active ? "success" : (club.Status == Vidly.Models.ClubStatus.Paused ? "warning" : "default");
+            <div class="col-md-4" style="margin-bottom: 20px;">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">
+                            @club.Name
+                            <span class="label label-@statusClass pull-right">@club.Status</span>
+                        </h3>
+                    </div>
+                    <div class="panel-body">
+                        <p>@club.Description</p>
+                        <p>
+                            <span class="label label-info">@club.Genre</span>
+                            <span class="badge" style="margin-left: 8px;" title="Members">
+                                <span class="glyphicon glyphicon-user"></span> @memberCount / @club.MaxMembers
+                            </span>
+                            <span class="badge" style="margin-left: 8px;" title="Group Discount">
+                                @club.GroupDiscountPercent% off
+                            </span>
+                        </p>
+                        <p class="text-muted"><small>Created @club.CreatedDate.ToString("MMM dd, yyyy")</small></p>
+                    </div>
+                    <div class="panel-footer">
+                        <a href="@Url.Action("Details", "MovieClub", new { id = club.Id })" class="btn btn-sm btn-primary">
+                            <span class="glyphicon glyphicon-eye-open"></span> View Club
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    @if (!Model.Clubs.Any())
+    {
+        <div class="alert alert-info">
+            <span class="glyphicon glyphicon-info-sign"></span> No clubs yet. Be the first to start one!
+        </div>
+    }
+</div>
