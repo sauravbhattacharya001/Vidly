@@ -85,6 +85,7 @@ namespace Vidly.Controllers
 
         // POST: /ScreeningRoom/Book
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public ActionResult Book(int roomId, int customerId, int? movieId,
             string date, int startHour, int durationHours, int guestCount, string notes)
         {
@@ -155,6 +156,7 @@ namespace Vidly.Controllers
 
         // POST: /ScreeningRoom/Cancel/5
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public ActionResult Cancel(int id)
         {
             var booking = _repo.GetBookingById(id);

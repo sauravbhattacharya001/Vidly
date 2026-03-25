@@ -114,6 +114,7 @@ namespace Vidly.Controllers
         /// POST /Trivia/Like/5 — like a trivia fact.
         /// </summary>
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public ActionResult Like(int id)
         {
             _triviaRepository.Like(id);
