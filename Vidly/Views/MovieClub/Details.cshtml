@@ -1,0 +1,294 @@
+@model Vidly.ViewModels.MovieClubDetailViewModel
+@{
+    ViewBag.Title = Model.Club.Name;
+}
+
+<div class="container" style="margin-top: 20px;">
+    <ol class="breadcrumb">
+        <li><a href="@Url.Action("Index", "MovieClub")">Movie Clubs</a></li>
+        <li class="active">@Model.Club.Name</li>
+    </ol>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible">
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+            @TempData["Success"]
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible">
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+            @TempData["Error"]
+        </div>
+    }
+
+    <div class="page-header">
+        <h1>
+            <span class="glyphicon glyphicon-tower"></span> @Model.Club.Name
+            <span class="label label-info">@Model.Club.Genre</span>
+        </h1>
+        <p class="lead">@Model.Club.Description</p>
+    </div>
+
+    @* Stats Row *@
+    @if (Model.Stats != null)
+    {
+        <div class="row" style="margin-bottom: 20px;">
+            <div class="col-md-2 col-sm-4">
+                <div class="panel panel-info text-center">
+                    <div class="panel-body">
+                        <h2>@Model.Stats.MemberCount</h2>
+                        <p class="text-muted">Members</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2 col-sm-4">
+                <div class="panel panel-success text-center">
+                    <div class="panel-body">
+                        <h2>@Model.Stats.MoviesWatched</h2>
+                        <p class="text-muted">Watched</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2 col-sm-4">
+                <div class="panel panel-warning text-center">
+                    <div class="panel-body">
+                        <h2>@Model.Stats.WatchlistSize</h2>
+                        <p class="text-muted">In Queue</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2 col-sm-4">
+                <div class="panel panel-default text-center">
+                    <div class="panel-body">
+                        <h2>@Model.Stats.AverageMovieRating.ToString("F1")</h2>
+                        <p class="text-muted">Avg Rating</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2 col-sm-4">
+                <div class="panel panel-primary text-center">
+                    <div class="panel-body">
+                        <h2>@Model.Club.GroupDiscountPercent%</h2>
+                        <p class="text-muted">Discount</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2 col-sm-4">
+                <div class="panel panel-default text-center">
+                    <div class="panel-body">
+                        <h2>@Model.Stats.PollsCompleted</h2>
+                        <p class="text-muted">Polls Done</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="row">
+        @* Members Panel *@
+        <div class="col-md-4">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h3 class="panel-title"><span class="glyphicon glyphicon-user"></span> Members (@Model.Members.Count())</h3>
+                </div>
+                <ul class="list-group">
+                    @foreach (var member in Model.Members)
+                    {
+                        var name = Model.CustomerNames.ContainsKey(member.CustomerId) ? Model.CustomerNames[member.CustomerId] : "Customer #" + member.CustomerId;
+                        var roleLabel = member.Role == Vidly.Models.ClubRole.Founder ? "danger" : (member.Role == Vidly.Models.ClubRole.Moderator ? "warning" : "default");
+                        <li class="list-group-item">
+                            @name
+                            <span class="label label-@roleLabel pull-right">@member.Role</span>
+                        </li>
+                    }
+                </ul>
+                <div class="panel-footer">
+                    @using (Html.BeginForm("Join", "MovieClub", FormMethod.Post, new { @class = "form-inline" }))
+                    {
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="clubId" value="@Model.Club.Id" />
+                        <select name="customerId" class="form-control input-sm" required style="width: 60%;">
+                            <option value="">-- Join as --</option>
+                            @foreach (var c in Model.AllCustomers)
+                            {
+                                <option value="@c.Id">@c.Name</option>
+                            }
+                        </select>
+                        <button type="submit" class="btn btn-sm btn-success"><span class="glyphicon glyphicon-plus"></span> Join</button>
+                    }
+                </div>
+            </div>
+        </div>
+
+        @* Watchlist Panel *@
+        <div class="col-md-8">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h3 class="panel-title"><span class="glyphicon glyphicon-film"></span> Club Watchlist</h3>
+                </div>
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Movie</th>
+                            <th>Added</th>
+                            <th>Status</th>
+                            <th>Rating</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.Watchlist)
+                        {
+                            <tr class="@(item.IsWatched ? "success" : "")">
+                                <td>Movie #@item.MovieId</td>
+                                <td>@item.AddedDate.ToString("MMM dd")</td>
+                                <td>
+                                    @if (item.IsWatched)
+                                    {
+                                        <span class="label label-success">Watched</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="label label-warning">Queued</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (item.AverageRating.HasValue)
+                                    {
+                                        @: @item.AverageRating.Value.ToString("F1") / 5
+                                    }
+                                    else
+                                    {
+                                        @: —
+                                    }
+                                </td>
+                                <td>
+                                    @if (!item.IsWatched)
+                                    {
+                                        using (Html.BeginForm("MarkWatched", "MovieClub", FormMethod.Post, new { @class = "form-inline" }))
+                                        {
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="clubId" value="@Model.Club.Id" />
+                                            <input type="hidden" name="itemId" value="@item.Id" />
+                                            <input type="number" name="rating" class="form-control input-sm" style="width: 60px;" min="1" max="5" step="0.5" value="4" />
+                                            <button type="submit" class="btn btn-xs btn-success">✓ Watched</button>
+                                        }
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                <div class="panel-footer">
+                    @using (Html.BeginForm("AddToWatchlist", "MovieClub", FormMethod.Post, new { @class = "form-inline" }))
+                    {
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="clubId" value="@Model.Club.Id" />
+                        <input type="hidden" name="customerId" value="1" />
+                        <select name="movieId" class="form-control input-sm" required style="width: 50%;">
+                            <option value="">-- Add Movie --</option>
+                            @foreach (var m in Model.AllMovies)
+                            {
+                                <option value="@m.Id">@m.Name</option>
+                            }
+                        </select>
+                        <button type="submit" class="btn btn-sm btn-primary"><span class="glyphicon glyphicon-plus"></span> Add</button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Polls Section *@
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <h3 class="panel-title"><span class="glyphicon glyphicon-stats"></span> Movie Polls</h3>
+        </div>
+        <div class="panel-body">
+            @if (Model.Polls.Any())
+            {
+                foreach (var poll in Model.Polls)
+                {
+                    var totalVotes = poll.Options.Sum(o => o.VoterIds.Count);
+                    <div class="well">
+                        <h4>
+                            @poll.Title
+                            <span class="label label-@(poll.Status == Vidly.Models.PollStatus.Open ? "success" : "default")">@poll.Status</span>
+                        </h4>
+                        @foreach (var option in poll.Options)
+                        {
+                            var pct = totalVotes > 0 ? (int)Math.Round(100.0 * option.VoterIds.Count / totalVotes) : 0;
+                            <div style="margin-bottom: 8px;">
+                                <strong>@option.MovieTitle</strong> — @option.VoterIds.Count vote(s)
+                                <div class="progress" style="margin-bottom: 0;">
+                                    <div class="progress-bar progress-bar-info" role="progressbar" style="width: @pct%; min-width: 2em;">
+                                        @pct%
+                                    </div>
+                                </div>
+                                @if (poll.Status == Vidly.Models.PollStatus.Open)
+                                {
+                                    using (Html.BeginForm("Vote", "MovieClub", FormMethod.Post, new { @class = "form-inline", style = "display:inline;" }))
+                                    {
+                                        <input type="hidden" name="clubId" value="@Model.Club.Id" />
+                                        <input type="hidden" name="pollId" value="@poll.Id" />
+                                        <input type="hidden" name="optionId" value="@option.OptionId" />
+                                        <input type="hidden" name="customerId" value="1" />
+                                        <button type="submit" class="btn btn-xs btn-default">Vote</button>
+                                    }
+                                }
+                            </div>
+                        }
+                        @if (poll.Status == Vidly.Models.PollStatus.Open)
+                        {
+                            using (Html.BeginForm("ClosePoll", "MovieClub", FormMethod.Post, new { style = "display:inline;" }))
+                            {
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="clubId" value="@Model.Club.Id" />
+                                <input type="hidden" name="pollId" value="@poll.Id" />
+                                <button type="submit" class="btn btn-xs btn-warning">Close Poll</button>
+                            }
+                        }
+                    </div>
+                }
+            }
+            else
+            {
+                <p class="text-muted">No polls yet.</p>
+            }
+
+            @* Create Poll *@
+            <hr />
+            <h4>Create New Poll</h4>
+            @using (Html.BeginForm("CreatePoll", "MovieClub", FormMethod.Post))
+            {
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="clubId" value="@Model.Club.Id" />
+                <input type="hidden" name="createdBy" value="1" />
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label>Poll Title</label>
+                            <input type="text" name="title" class="form-control" placeholder="e.g. Next Movie Night" required />
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Movie IDs (comma-separated)</label>
+                            <input type="text" name="movieIds" class="form-control" placeholder="e.g. 1,3,5" required />
+                            <p class="help-block">Enter at least 2 movie IDs to vote on.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label>&nbsp;</label>
+                            <button type="submit" class="btn btn-primary btn-block">Create Poll</button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
