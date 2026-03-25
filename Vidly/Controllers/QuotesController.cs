@@ -110,6 +110,7 @@ namespace Vidly.Controllers
         /// POST /Quotes/Upvote/5 — vote on a quote.
         /// </summary>
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public ActionResult Upvote(int id)
         {
             _quoteRepository.Upvote(id);
