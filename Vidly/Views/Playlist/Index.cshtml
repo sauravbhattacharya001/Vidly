@@ -1,0 +1,131 @@
+@model Vidly.ViewModels.PlaylistIndexViewModel
+@{
+    ViewBag.Title = "Movie Playlists";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>
+    <span class="glyphicon glyphicon-th-list"></span> Movie Playlists
+</h2>
+
+@if (!string.IsNullOrEmpty(Model.StatusMessage))
+{
+    <div class="alert @(Model.IsError ? "alert-danger" : "alert-success") alert-dismissible" role="alert">
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+        @Model.StatusMessage
+    </div>
+}
+
+<div class="panel panel-default">
+    <div class="panel-body">
+        @using (Html.BeginForm("Index", "Playlist", FormMethod.Get, new { @class = "form-inline" }))
+        {
+            <div class="form-group" style="margin-right: 10px;">
+                <label for="customerId">Customer:</label>
+                <select name="customerId" id="customerId" class="form-control" style="margin-left: 5px; min-width: 200px;">
+                    <option value="">-- Select Customer --</option>
+                    @foreach (var c in Model.Customers)
+                    {
+                        <option value="@c.Id" @(Model.SelectedCustomerId == c.Id ? "selected" : "")>@c.Name</option>
+                    }
+                </select>
+            </div>
+            <button type="submit" class="btn btn-info">
+                <span class="glyphicon glyphicon-list"></span> View Playlists
+            </button>
+            <a href="@Url.Action("Create", "Playlist", Model.SelectedCustomerId.HasValue ? new { customerId = Model.SelectedCustomerId } : null)"
+               class="btn btn-primary" style="margin-left: 5px;">
+                <span class="glyphicon glyphicon-plus"></span> New Playlist
+            </a>
+        }
+    </div>
+</div>
+
+@if (Model.SelectedCustomerId.HasValue && Model.CustomerPlaylists != null)
+{
+    <h3>@Model.SelectedCustomerName's Playlists</h3>
+    if (Model.CustomerPlaylists.Count == 0)
+    {
+        <div class="alert alert-info">No playlists yet. Create one!</div>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var p in Model.CustomerPlaylists)
+            {
+                <div class="col-md-4" style="margin-bottom: 15px;">
+                    <div class="panel panel-info">
+                        <div class="panel-heading">
+                            <h4 class="panel-title">
+                                <a href="@Url.Action("Detail", "Playlist", new { id = p.Id, customerId = Model.SelectedCustomerId })">
+                                    @p.Name
+                                </a>
+                                @if (p.IsPublic)
+                                {
+                                    <span class="label label-success pull-right">Public</span>
+                                }
+                                else
+                                {
+                                    <span class="label label-default pull-right">Private</span>
+                                }
+                            </h4>
+                        </div>
+                        <div class="panel-body">
+                            <p>@(string.IsNullOrEmpty(p.Description) ? "No description." : p.Description)</p>
+                            <p>
+                                <span class="glyphicon glyphicon-film"></span> @p.MovieCount movie(s)
+                                &nbsp;
+                                <span class="glyphicon glyphicon-eye-open"></span> @p.ViewCount views
+                                &nbsp;
+                                <span class="glyphicon glyphicon-share"></span> @p.ForkCount forks
+                            </p>
+                            <small class="text-muted">Last updated @p.LastModifiedDate.ToString("MMM d, yyyy")</small>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+}
+
+@if (Model.PublicPlaylists != null && Model.PublicPlaylists.Count > 0)
+{
+    <h3><span class="glyphicon glyphicon-globe"></span> Popular Public Playlists</h3>
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>Playlist</th>
+                <th>Created By</th>
+                <th>Movies</th>
+                <th>Views</th>
+                <th>Forks</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in Model.PublicPlaylists)
+            {
+                <tr>
+                    <td>
+                        <a href="@Url.Action("Detail", "Playlist", new { id = p.Id, customerId = Model.SelectedCustomerId })">
+                            <strong>@p.Name</strong>
+                        </a>
+                        <br /><small class="text-muted">@p.Description</small>
+                    </td>
+                    <td>@p.CreatedByCustomerName</td>
+                    <td>@p.MovieCount</td>
+                    <td>@p.ViewCount</td>
+                    <td>@p.ForkCount</td>
+                    <td>
+                        <a href="@Url.Action("Detail", "Playlist", new { id = p.Id, customerId = Model.SelectedCustomerId })"
+                           class="btn btn-xs btn-default">
+                            <span class="glyphicon glyphicon-eye-open"></span> View
+                        </a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
