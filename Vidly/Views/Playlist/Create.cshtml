@@ -1,0 +1,50 @@
+@model Vidly.ViewModels.PlaylistCreateViewModel
+@{
+    ViewBag.Title = "Create Playlist";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2><span class="glyphicon glyphicon-plus"></span> Create Playlist</h2>
+
+@using (Html.BeginForm("Create", "Playlist", FormMethod.Post))
+{
+    @Html.AntiForgeryToken()
+    @Html.ValidationSummary(true, "", new { @class = "text-danger" })
+
+    <div class="form-group">
+        <label for="CreatedByCustomerId">Customer</label>
+        <select name="CreatedByCustomerId" id="CreatedByCustomerId" class="form-control" required>
+            <option value="">-- Select Customer --</option>
+            @foreach (var c in Model.Customers)
+            {
+                <option value="@c.Id" @(Model.Playlist.CreatedByCustomerId == c.Id ? "selected" : "")>@c.Name</option>
+            }
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="Name">Playlist Name</label>
+        <input type="text" name="Name" id="Name" class="form-control"
+               value="@Model.Playlist.Name" required maxlength="100"
+               placeholder="e.g. Sunday Sci-Fi Marathon" />
+    </div>
+
+    <div class="form-group">
+        <label for="Description">Description</label>
+        <textarea name="Description" id="Description" class="form-control" rows="3"
+                  maxlength="500" placeholder="What's this playlist about?">@Model.Playlist.Description</textarea>
+    </div>
+
+    <div class="checkbox">
+        <label>
+            <input type="checkbox" name="IsPublic" value="true"
+                   @(Model.Playlist.IsPublic ? "checked" : "") />
+            Make this playlist public (other customers can see and copy it)
+        </label>
+    </div>
+
+    <button type="submit" class="btn btn-primary">
+        <span class="glyphicon glyphicon-ok"></span> Create Playlist
+    </button>
+    <a href="@Url.Action("Index", "Playlist")" class="btn btn-default">Cancel</a>
+}

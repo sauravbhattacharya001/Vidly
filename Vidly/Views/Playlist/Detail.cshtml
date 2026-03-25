@@ -1,0 +1,171 @@
+@model Vidly.ViewModels.PlaylistDetailViewModel
+@{
+    ViewBag.Title = Model.Playlist.Name;
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="row">
+    <div class="col-md-8">
+        <h2>
+            <span class="glyphicon glyphicon-th-list"></span> @Model.Playlist.Name
+            @if (Model.Playlist.IsPublic)
+            {
+                <span class="label label-success">Public</span>
+            }
+            else
+            {
+                <span class="label label-default">Private</span>
+            }
+        </h2>
+        <p class="text-muted">
+            By <strong>@Model.Playlist.CreatedByCustomerName</strong>
+            &middot; @Model.Playlist.MovieCount movie(s)
+            @if (Model.Playlist.EstimatedDuration.HasValue)
+            {
+                <text>&middot; ~@Model.Playlist.EstimatedDuration.Value.TotalHours.ToString("0.#")h runtime</text>
+            }
+            &middot; @Model.Playlist.ViewCount views
+            &middot; @Model.Playlist.ForkCount forks
+        </p>
+        @if (!string.IsNullOrEmpty(Model.Playlist.Description))
+        {
+            <p>@Model.Playlist.Description</p>
+        }
+    </div>
+    <div class="col-md-4 text-right" style="margin-top: 20px;">
+        @if (Model.IsOwner)
+        {
+            <a href="@Url.Action("AddMovie", "Playlist", new { id = Model.Playlist.Id, customerId = Model.ViewerCustomerId })"
+               class="btn btn-primary">
+                <span class="glyphicon glyphicon-plus"></span> Add Movie
+            </a>
+        }
+        @if (Model.ViewerCustomerId.HasValue && !Model.IsOwner)
+        {
+            using (Html.BeginForm("Fork", "Playlist", new { id = Model.Playlist.Id, customerId = Model.ViewerCustomerId }, FormMethod.Post, new { style = "display:inline" }))
+            {
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-success">
+                    <span class="glyphicon glyphicon-share"></span> Copy to My Playlists
+                </button>
+            }
+        }
+        <a href="@Url.Action("Index", "Playlist", new { customerId = Model.ViewerCustomerId })"
+           class="btn btn-default">
+            <span class="glyphicon glyphicon-arrow-left"></span> Back
+        </a>
+    </div>
+</div>
+
+<hr />
+
+@if (Model.Playlist.Entries.Count == 0)
+{
+    <div class="alert alert-info">
+        <span class="glyphicon glyphicon-info-sign"></span>
+        This playlist is empty. @(Model.IsOwner ? "Add some movies!" : "")
+    </div>
+}
+else
+{
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th style="width: 50px;">#</th>
+                <th>Movie</th>
+                <th>Genre</th>
+                <th>Rating</th>
+                <th>Note</th>
+                @if (Model.IsOwner)
+                {
+                    <th style="width: 160px;">Actions</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var entry in Model.Playlist.Entries)
+            {
+                <tr>
+                    <td><span class="badge">@entry.Position</span></td>
+                    <td><strong>@entry.MovieName</strong></td>
+                    <td>@(entry.MovieGenre.HasValue ? entry.MovieGenre.ToString() : "—")</td>
+                    <td>
+                        @if (entry.MovieRating.HasValue)
+                        {
+                            for (int i = 0; i < entry.MovieRating.Value; i++)
+                            {
+                                <span class="glyphicon glyphicon-star text-warning"></span>
+                            }
+                        }
+                        else
+                        {
+                            <text>—</text>
+                        }
+                    </td>
+                    <td><em>@(string.IsNullOrEmpty(entry.Note) ? "" : entry.Note)</em></td>
+                    @if (Model.IsOwner)
+                    {
+                        <td>
+                            @if (entry.Position > 1)
+                            {
+                                using (Html.BeginForm("MoveMovie", "Playlist", FormMethod.Post, new { style = "display:inline" }))
+                                {
+                                    @Html.AntiForgeryToken()
+                                    @Html.Hidden("playlistId", Model.Playlist.Id)
+                                    @Html.Hidden("entryId", entry.Id)
+                                    @Html.Hidden("newPosition", entry.Position - 1)
+                                    @Html.Hidden("customerId", Model.ViewerCustomerId)
+                                    <button type="submit" class="btn btn-xs btn-default" title="Move up">
+                                        <span class="glyphicon glyphicon-arrow-up"></span>
+                                    </button>
+                                }
+                            }
+                            @if (entry.Position < Model.Playlist.Entries.Count)
+                            {
+                                using (Html.BeginForm("MoveMovie", "Playlist", FormMethod.Post, new { style = "display:inline" }))
+                                {
+                                    @Html.AntiForgeryToken()
+                                    @Html.Hidden("playlistId", Model.Playlist.Id)
+                                    @Html.Hidden("entryId", entry.Id)
+                                    @Html.Hidden("newPosition", entry.Position + 1)
+                                    @Html.Hidden("customerId", Model.ViewerCustomerId)
+                                    <button type="submit" class="btn btn-xs btn-default" title="Move down">
+                                        <span class="glyphicon glyphicon-arrow-down"></span>
+                                    </button>
+                                }
+                            }
+                            @using (Html.BeginForm("RemoveMovie", "Playlist", FormMethod.Post, new { style = "display:inline" }))
+                            {
+                                @Html.AntiForgeryToken()
+                                @Html.Hidden("playlistId", Model.Playlist.Id)
+                                @Html.Hidden("entryId", entry.Id)
+                                @Html.Hidden("customerId", Model.ViewerCustomerId)
+                                <button type="submit" class="btn btn-xs btn-danger" title="Remove"
+                                        onclick="return confirm('Remove this movie?');">
+                                    <span class="glyphicon glyphicon-remove"></span>
+                                </button>
+                            }
+                        </td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (Model.IsOwner)
+{
+    <div class="panel panel-danger" style="margin-top: 30px;">
+        <div class="panel-heading">Danger Zone</div>
+        <div class="panel-body">
+            @using (Html.BeginForm("Delete", "Playlist", new { id = Model.Playlist.Id, customerId = Model.ViewerCustomerId }, FormMethod.Post, new { style = "display:inline" }))
+            {
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-danger"
+                        onclick="return confirm('Delete this playlist? This cannot be undone.');">
+                    <span class="glyphicon glyphicon-trash"></span> Delete Playlist
+                </button>
+            }
+        </div>
+    </div>
+}

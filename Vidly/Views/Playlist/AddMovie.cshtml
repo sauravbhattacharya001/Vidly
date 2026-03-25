@@ -1,0 +1,39 @@
+@model Vidly.ViewModels.PlaylistAddMovieViewModel
+@{
+    ViewBag.Title = "Add Movie to " + Model.PlaylistName;
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>
+    <span class="glyphicon glyphicon-plus"></span> Add Movie to "@Model.PlaylistName"
+</h2>
+
+@using (Html.BeginForm("AddMovie", "Playlist", FormMethod.Post))
+{
+    @Html.AntiForgeryToken()
+    @Html.Hidden("playlistId", Model.PlaylistId)
+
+    <div class="form-group">
+        <label for="movieId">Movie</label>
+        <select name="movieId" id="movieId" class="form-control" required>
+            <option value="">-- Select Movie --</option>
+            @foreach (var m in Model.AvailableMovies)
+            {
+                <option value="@m.Id" @(Model.SelectedMovieId == m.Id ? "selected" : "")>
+                    @m.Name @(m.Genre.HasValue ? "(" + m.Genre + ")" : "")
+                </option>
+            }
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="note">Note (optional)</label>
+        <input type="text" name="note" id="note" class="form-control"
+               maxlength="300" placeholder="e.g. The one that started the franchise" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">
+        <span class="glyphicon glyphicon-plus"></span> Add to Playlist
+    </button>
+    <a href="@Url.Action("Detail", "Playlist", new { id = Model.PlaylistId })" class="btn btn-default">Cancel</a>
+}
