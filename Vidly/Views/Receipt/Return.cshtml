@@ -1,0 +1,137 @@
+@model Vidly.Models.ReturnReceipt
+@{
+    ViewBag.Title = "Return Receipt " + Model.ReceiptNumber;
+    Layout = null;
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>@ViewBag.Title</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; color: #333; padding: 40px; max-width: 600px; margin: 0 auto; }
+        .no-print { margin-bottom: 20px; text-align: center; }
+        .btn { display: inline-block; padding: 8px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; text-decoration: none; }
+        .btn-print { background: #2c3e50; color: #fff; }
+        .btn-back { background: #e9ecef; color: #333; margin-left: 10px; }
+        .receipt { border: 2px solid #2c3e50; border-radius: 8px; padding: 30px; }
+        .header { text-align: center; border-bottom: 2px dashed #ccc; padding-bottom: 20px; margin-bottom: 20px; }
+        .header h1 { font-size: 28px; color: #2c3e50; letter-spacing: 4px; }
+        .header .subtitle { color: #7f8c8d; font-size: 12px; margin-top: 2px; }
+        .receipt-num { font-size: 14px; color: #2c3e50; font-weight: bold; margin-top: 10px; }
+        .receipt-date { font-size: 11px; color: #95a5a6; }
+        .section { margin-bottom: 18px; }
+        .section-title { font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: #7f8c8d; margin-bottom: 6px; }
+        .detail-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 14px; }
+        .detail-row .label { color: #7f8c8d; }
+        .detail-row .value { font-weight: 600; }
+        .divider { border-top: 1px solid #e9ecef; margin: 15px 0; }
+        .divider-thick { border-top: 2px solid #2c3e50; margin: 15px 0; }
+        .total-row { display: flex; justify-content: space-between; padding: 8px 0; }
+        .total-row .label { font-size: 18px; font-weight: bold; color: #2c3e50; }
+        .total-row .value { font-size: 18px; font-weight: bold; color: #2c3e50; }
+        .late-notice { background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; padding: 10px; text-align: center; font-size: 12px; color: #856404; margin-bottom: 15px; }
+        .ontime-notice { background: #d4edda; border: 1px solid #28a745; border-radius: 4px; padding: 10px; text-align: center; font-size: 12px; color: #155724; margin-bottom: 15px; }
+        .footer { text-align: center; margin-top: 20px; padding-top: 15px; border-top: 2px dashed #ccc; font-size: 11px; color: #95a5a6; }
+        .footer p { margin-bottom: 4px; }
+        .barcode { text-align: center; margin-top: 12px; font-family: monospace; font-size: 14px; letter-spacing: 3px; color: #2c3e50; }
+        @@media print {
+            .no-print { display: none; }
+            body { padding: 10px; }
+            .receipt { border: 1px solid #333; }
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <button class="btn btn-print" onclick="window.print()">🖨️ Print Receipt</button>
+        <a class="btn btn-back" href="@Url.Action("Index", "Rentals")">← Back to Rentals</a>
+    </div>
+
+    <div class="receipt">
+        <div class="header">
+            <h1>VIDLY</h1>
+            <div class="subtitle">Your Neighborhood Video Rental</div>
+            <div class="subtitle">123 Main Street • Anytown, USA 12345</div>
+            <div class="receipt-num">@Model.ReceiptNumber</div>
+            <div class="receipt-date">@Model.GeneratedAt.ToString("MMMM dd, yyyy h:mm tt")</div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Customer</div>
+            <div class="detail-row">
+                <span class="label">Name</span>
+                <span class="value">@Model.CustomerName</span>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Rental Details</div>
+            <div class="detail-row">
+                <span class="label">Movie</span>
+                <span class="value">@Model.MovieName</span>
+            </div>
+            <div class="detail-row">
+                <span class="label">Rented On</span>
+                <span class="value">@Model.RentalDate.ToString("MMM dd, yyyy")</span>
+            </div>
+            <div class="detail-row">
+                <span class="label">Due Date</span>
+                <span class="value">@Model.DueDate.ToString("MMM dd, yyyy")</span>
+            </div>
+            <div class="detail-row">
+                <span class="label">Returned On</span>
+                <span class="value">@Model.ReturnDate.ToString("MMM dd, yyyy")</span>
+            </div>
+            <div class="detail-row">
+                <span class="label">Rental Period</span>
+                <span class="value">@Model.RentalDays day@(Model.RentalDays != 1 ? "s" : "")</span>
+            </div>
+        </div>
+
+        @if (Model.WasLate)
+        {
+            <div class="late-notice">
+                ⚠️ Returned @Model.DaysLate day@(Model.DaysLate != 1 ? "s" : "") late
+            </div>
+        }
+        else
+        {
+            <div class="ontime-notice">
+                ✅ Returned on time — thank you!
+            </div>
+        }
+
+        <div class="section">
+            <div class="section-title">Charges</div>
+            <div class="detail-row">
+                <span class="label">Daily Rate</span>
+                <span class="value">$@Model.DailyRate.ToString("F2")</span>
+            </div>
+            <div class="detail-row">
+                <span class="label">Rental (@Model.RentalDays day@(Model.RentalDays != 1 ? "s" : "") × $@Model.DailyRate.ToString("F2"))</span>
+                <span class="value">$@Model.RentalCost.ToString("F2")</span>
+            </div>
+            @if (Model.LateFee > 0)
+            {
+                <div class="detail-row" style="color: #c0392b;">
+                    <span class="label">Late Fee (@Model.DaysLate day@(Model.DaysLate != 1 ? "s" : ""))</span>
+                    <span class="value">$@Model.LateFee.ToString("F2")</span>
+                </div>
+            }
+        </div>
+
+        <div class="divider-thick"></div>
+        <div class="total-row">
+            <span class="label">TOTAL</span>
+            <span class="value">$@Model.TotalCharge.ToString("F2")</span>
+        </div>
+
+        <div class="footer">
+            <p>Thank you for choosing Vidly! 🎬</p>
+            <p>Questions? Call (555) 123-4567 or email support@vidly.example.com</p>
+            <div class="barcode">||||| @Model.ReceiptNumber |||||</div>
+        </div>
+    </div>
+</body>
+</html>
