@@ -1,0 +1,216 @@
+@model Vidly.ViewModels.LateFeeViewModel
+@{
+    ViewBag.Title = "Late Fee Calculator";
+}
+
+<h2><span class="glyphicon glyphicon-time"></span> Late Fee Calculator &amp; Policy Manager</h2>
+<p class="lead">Configure late fee policies and estimate charges for overdue rentals.</p>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible">
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+        @TempData["Success"]
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible">
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+        @TempData["Error"]
+    </div>
+}
+
+<!-- Fee Calculator -->
+<div class="panel panel-primary">
+    <div class="panel-heading">
+        <h3 class="panel-title"><span class="glyphicon glyphicon-calculator"></span> Calculate Late Fee</h3>
+    </div>
+    <div class="panel-body">
+        <form method="get" action="@Url.Action("Index")" class="form-inline">
+            <div class="form-group" style="margin-right: 15px;">
+                <label for="policyId">Policy: </label>
+                <select name="policyId" id="policyId" class="form-control" style="margin-left: 8px;">
+                    @foreach (var p in Model.Policies.Where(x => x.IsActive))
+                    {
+                        <option value="@p.Id" @(Model.SelectedPolicyId == p.Id ? "selected" : "")>
+                            @p.Name (@p.Strategy.ToString())
+                        </option>
+                    }
+                </select>
+            </div>
+            <div class="form-group" style="margin-right: 15px;">
+                <label for="days">Days Overdue: </label>
+                <input type="number" name="days" id="days" class="form-control" style="margin-left: 8px; width: 100px;"
+                       min="0" max="365" value="@(Model.CalculateDays ?? 0)" />
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <span class="glyphicon glyphicon-flash"></span> Calculate
+            </button>
+        </form>
+
+        @if (Model.Estimate != null)
+        {
+            var est = Model.Estimate;
+            <hr />
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="panel panel-@(est.Fee > 0 ? "danger" : "success")">
+                        <div class="panel-heading"><strong>Estimated Fee</strong></div>
+                        <div class="panel-body text-center">
+                            <h1 style="margin: 0;">$@est.Fee.ToString("F2")</h1>
+                            @if (est.WasCapped)
+                            {
+                                <span class="label label-info">Capped at $@est.MaxCap.ToString("F2")</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-8">
+                    <table class="table table-condensed">
+                        <tr><td><strong>Policy</strong></td><td>@est.PolicyName</td></tr>
+                        <tr><td><strong>Strategy</strong></td><td>@est.Strategy</td></tr>
+                        <tr><td><strong>Days Overdue</strong></td><td>@est.DaysOverdue</td></tr>
+                        <tr><td><strong>Grace Period</strong></td><td>@est.GracePeriodDays day(s)</td></tr>
+                        <tr><td><strong>Chargeable Days</strong></td><td>@est.ChargeableDays</td></tr>
+                    </table>
+
+                    @if (est.TierBreakdowns.Any())
+                    {
+                        <h5><strong>Tier Breakdown</strong></h5>
+                        <table class="table table-striped table-condensed">
+                            <thead>
+                                <tr>
+                                    <th>Tier</th>
+                                    <th>Days</th>
+                                    <th>Rate/Day</th>
+                                    <th>Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var t in est.TierBreakdowns)
+                                {
+                                    <tr>
+                                        <td>@t.TierLabel</td>
+                                        <td>@t.Days</td>
+                                        <td>$@t.Rate.ToString("F2")</td>
+                                        <td>$@t.Subtotal.ToString("F2")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Fee Schedule -->
+@if (Model.Schedule != null && Model.Schedule.Any())
+{
+    <div class="panel panel-info">
+        <div class="panel-heading">
+            <h3 class="panel-title"><span class="glyphicon glyphicon-list-alt"></span> 30-Day Fee Schedule — @Model.SelectedPolicy?.Name</h3>
+        </div>
+        <div class="panel-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover table-condensed">
+                    <thead>
+                        <tr>
+                            <th>Days Late</th>
+                            <th>Grace</th>
+                            <th>Chargeable</th>
+                            <th>Fee</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in Model.Schedule)
+                        {
+                            var rowClass = row.Fee == 0 ? "" : row.Fee > 10 ? "danger" : "warning";
+                            <tr class="@rowClass">
+                                <td>@row.DaysOverdue</td>
+                                <td>@row.GracePeriodDays</td>
+                                <td>@row.ChargeableDays</td>
+                                <td><strong>$@row.Fee.ToString("F2")</strong></td>
+                                <td>
+                                    @if (row.WasCapped) { <span class="label label-info">capped</span> }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Policies List -->
+<div class="panel panel-default">
+    <div class="panel-heading">
+        <h3 class="panel-title pull-left"><span class="glyphicon glyphicon-cog"></span> Fee Policies</h3>
+        <a href="@Url.Action("Edit")" class="btn btn-success btn-sm pull-right">
+            <span class="glyphicon glyphicon-plus"></span> New Policy
+        </a>
+        <div class="clearfix"></div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Strategy</th>
+                    <th>Rate</th>
+                    <th>Grace</th>
+                    <th>Max Cap</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var p in Model.Policies)
+                {
+                    <tr class="@(!p.IsActive ? "text-muted" : "")">
+                        <td><strong>@p.Name</strong></td>
+                        <td><span class="label label-default">@p.Strategy</span></td>
+                        <td>
+                            @switch (p.Strategy)
+                            {
+                                case Vidly.Models.LateFeeStrategy.FlatFee:
+                                    @:$@p.FlatFeeAmount.ToString("F2") flat
+                                    break;
+                                case Vidly.Models.LateFeeStrategy.PerDay:
+                                    @:$@p.PerDayRate.ToString("F2")/day
+                                    break;
+                                case Vidly.Models.LateFeeStrategy.Tiered:
+                                    @:@p.Tiers.Count tier(s)
+                                    break;
+                            }
+                        </td>
+                        <td>@p.GracePeriodDays day(s)</td>
+                        <td>@(p.MaxFeeCap > 0 ? "$" + p.MaxFeeCap.ToString("F2") : "No cap")</td>
+                        <td>
+                            <span class="label label-@(p.IsActive ? "success" : "default")">
+                                @(p.IsActive ? "Active" : "Inactive")
+                            </span>
+                        </td>
+                        <td>
+                            <a href="@Url.Action("Edit", new { id = p.Id })" class="btn btn-xs btn-default">
+                                <span class="glyphicon glyphicon-pencil"></span>
+                            </a>
+                            @using (Html.BeginForm("Delete", "LateFees", new { id = p.Id }, FormMethod.Post, new { style = "display:inline" }))
+                            {
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-xs btn-danger"
+                                        onclick="return confirm('Delete this policy?');">
+                                    <span class="glyphicon glyphicon-trash"></span>
+                                </button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

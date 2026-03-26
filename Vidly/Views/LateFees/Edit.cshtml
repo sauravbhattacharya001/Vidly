@@ -1,0 +1,89 @@
+@model Vidly.Models.LateFeePolicy
+@{
+    ViewBag.Title = Model.Id == 0 ? "New Late Fee Policy" : "Edit Policy: " + Model.Name;
+}
+
+<h2>
+    <span class="glyphicon glyphicon-@(Model.Id == 0 ? "plus" : "pencil")"></span>
+    @(Model.Id == 0 ? "New Late Fee Policy" : "Edit Policy")
+</h2>
+
+@using (Html.BeginForm("Save", "LateFees", FormMethod.Post, new { @class = "form-horizontal", role = "form" }))
+{
+    @Html.AntiForgeryToken()
+    @Html.HiddenFor(m => m.Id)
+
+    <div class="panel panel-default">
+        <div class="panel-heading"><h3 class="panel-title">Policy Details</h3></div>
+        <div class="panel-body">
+
+            <div class="form-group">
+                <label class="col-md-3 control-label">Policy Name</label>
+                <div class="col-md-6">
+                    @Html.TextBoxFor(m => m.Name, new { @class = "form-control", placeholder = "e.g. Standard, Premium, Student" })
+                    @Html.ValidationMessageFor(m => m.Name, "", new { @class = "text-danger" })
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="col-md-3 control-label">Strategy</label>
+                <div class="col-md-6">
+                    @Html.DropDownListFor(m => m.Strategy,
+                        new SelectList(Enum.GetValues(typeof(Vidly.Models.LateFeeStrategy))),
+                        new { @class = "form-control" })
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="col-md-3 control-label">Flat Fee ($)</label>
+                <div class="col-md-4">
+                    @Html.TextBoxFor(m => m.FlatFeeAmount, new { @class = "form-control", type = "number", step = "0.01", min = "0" })
+                    <p class="help-block">Used when strategy is Flat Fee.</p>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="col-md-3 control-label">Per-Day Rate ($)</label>
+                <div class="col-md-4">
+                    @Html.TextBoxFor(m => m.PerDayRate, new { @class = "form-control", type = "number", step = "0.01", min = "0" })
+                    <p class="help-block">Used for Per Day and as fallback for Tiered.</p>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="col-md-3 control-label">Grace Period (days)</label>
+                <div class="col-md-3">
+                    @Html.TextBoxFor(m => m.GracePeriodDays, new { @class = "form-control", type = "number", min = "0", max = "30" })
+                    <p class="help-block">Days after due date before fees begin.</p>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="col-md-3 control-label">Max Fee Cap ($)</label>
+                <div class="col-md-4">
+                    @Html.TextBoxFor(m => m.MaxFeeCap, new { @class = "form-control", type = "number", step = "0.01", min = "0" })
+                    <p class="help-block">0 = no cap. Maximum total fee regardless of days.</p>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="col-md-3 control-label">Active</label>
+                <div class="col-md-6">
+                    <div class="checkbox">
+                        <label>@Html.CheckBoxFor(m => m.IsActive) Available for fee calculation</label>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="form-group">
+        <div class="col-md-offset-3 col-md-6">
+            <button type="submit" class="btn btn-primary">
+                <span class="glyphicon glyphicon-floppy-disk"></span> Save Policy
+            </button>
+            <a href="@Url.Action("Index")" class="btn btn-default">Cancel</a>
+        </div>
+    </div>
+}
