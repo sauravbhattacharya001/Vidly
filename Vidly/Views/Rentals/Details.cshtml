@@ -80,6 +80,10 @@
                     @Html.ActionLink("Swap Movie", "Index", "Swap", new { rentalId = Model.Id }, new { @class = "btn btn-primary" })
                 }
                 @Html.ActionLink("Print Receipt", "Receipt", new { id = Model.Id }, new { @class = "btn btn-info" })
+                @if (Model.Status == Vidly.Models.RentalStatus.Returned)
+                {
+                    @Html.ActionLink("🧾 Return Receipt", "Return", "Receipt", new { id = Model.Id }, new { @class = "btn btn-success", target = "_blank" })
+                }
                 @Html.ActionLink("Back to List", "Index", null, new { @class = "btn btn-default" })
             </div>
         </div>
