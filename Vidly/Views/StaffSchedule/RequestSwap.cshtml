@@ -1,0 +1,47 @@
+@model Vidly.ViewModels.SwapRequestViewModel
+
+@{
+    ViewBag.Title = "Request Shift Swap";
+}
+
+<h2><i class="fa fa-exchange"></i> Request Shift Swap</h2>
+
+<div class="panel panel-info">
+    <div class="panel-heading">Your Shift</div>
+    <div class="panel-body">
+        <strong>@Model.CurrentShift.StaffName</strong> —
+        @Model.CurrentShift.Date.ToString("ddd MMM d") ·
+        @Model.CurrentShift.TimeRange
+        <span class="label label-default">@Model.CurrentShift.Type</span>
+    </div>
+</div>
+
+@using (Html.BeginForm())
+{
+    @Html.AntiForgeryToken()
+    @Html.Hidden("ShiftId", Model.ShiftId)
+
+    <div class="form-group">
+        <label>Swap with which shift?</label>
+        <select name="TargetShiftId" class="form-control" required>
+            <option value="">— Select a shift —</option>
+            @foreach (var s in Model.AvailableShifts)
+            {
+                <option value="@s.Id">
+                    @s.StaffName — @s.Date.ToString("ddd MMM d") · @s.TimeRange
+                </option>
+            }
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label>Reason (optional)</label>
+        <textarea name="Reason" class="form-control" rows="2"
+                  placeholder="Why do you need to swap?"></textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary">
+        <i class="fa fa-paper-plane"></i> Submit Swap Request
+    </button>
+    <a href="@Url.Action("Index")" class="btn btn-default">Cancel</a>
+}

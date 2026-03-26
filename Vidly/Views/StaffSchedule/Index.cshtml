@@ -1,0 +1,208 @@
+@model Vidly.ViewModels.ScheduleWeekViewModel
+
+@{
+    ViewBag.Title = "Staff Schedule";
+}
+
+<h2><i class="fa fa-calendar"></i> Staff Schedule — @Model.WeekLabel</h2>
+
+@if (TempData["Message"] != null)
+{
+    <div class="alert alert-success">@TempData["Message"]</div>
+}
+@if (TempData["Warning"] != null)
+{
+    <div class="alert alert-warning">@TempData["Warning"]</div>
+}
+
+<!-- Week Navigation -->
+<div class="row" style="margin-bottom: 20px;">
+    <div class="col-md-6">
+        <a href="@Url.Action("Index", new { week = Model.WeekStart.AddDays(-7).ToString("yyyy-MM-dd") })"
+           class="btn btn-default">&laquo; Previous Week</a>
+        <a href="@Url.Action("Index")" class="btn btn-default">This Week</a>
+        <a href="@Url.Action("Index", new { week = Model.WeekStart.AddDays(7).ToString("yyyy-MM-dd") })"
+           class="btn btn-default">Next Week &raquo;</a>
+    </div>
+    <div class="col-md-6 text-right">
+        <a href="@Url.Action("Create")" class="btn btn-primary">
+            <i class="fa fa-plus"></i> Add Shift
+        </a>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row" style="margin-bottom: 20px;">
+    <div class="col-md-3">
+        <div class="panel panel-info">
+            <div class="panel-body text-center">
+                <h3>@Model.TotalShifts</h3>
+                <p>Total Shifts</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="panel panel-info">
+            <div class="panel-body text-center">
+                <h3>@Model.TotalHours.ToString("F1")h</h3>
+                <p>Total Hours</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="panel panel-info">
+            <div class="panel-body text-center">
+                <h3>@Model.Staff.Count</h3>
+                <p>Active Staff</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="panel panel-@(Model.PendingSwaps.Any() ? "warning" : "default")">
+            <div class="panel-body text-center">
+                <h3>@Model.PendingSwaps.Count</h3>
+                <p>Pending Swaps</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Weekly Grid -->
+<div class="table-responsive">
+    <table class="table table-bordered">
+        <thead>
+            <tr class="active">
+                @foreach (var kvp in Model.ShiftsByDate)
+                {
+                    var isToday = kvp.Key.Date == DateTime.Today;
+                    <th style="width: 14%; @(isToday ? "background-color: #dff0d8;" : "")">
+                        @kvp.Key.ToString("ddd") <br />
+                        <small>@kvp.Key.ToString("MMM d")</small>
+                        @if (isToday) { <span class="label label-success">Today</span> }
+                    </th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                @foreach (var kvp in Model.ShiftsByDate)
+                {
+                    <td style="vertical-align: top;">
+                        @if (kvp.Value.Any())
+                        {
+                            foreach (var shift in kvp.Value)
+                            {
+                                var color = shift.Type == Vidly.Models.ShiftType.Opening ? "success"
+                                          : shift.Type == Vidly.Models.ShiftType.Closing ? "primary"
+                                          : shift.Type == Vidly.Models.ShiftType.Cover ? "warning"
+                                          : shift.Type == Vidly.Models.ShiftType.Training ? "info"
+                                          : "default";
+                                <div class="label label-@color" style="display:block; margin-bottom:4px; padding:6px; text-align:left; white-space:normal;">
+                                    <strong>@shift.StaffName</strong><br />
+                                    <small>@shift.TimeRange · @shift.StaffRole</small>
+                                    <div style="margin-top:3px;">
+                                        <a href="@Url.Action("RequestSwap", new { id = shift.Id })"
+                                           class="btn btn-xs btn-default" title="Request swap">↔</a>
+                                        @using (Html.BeginForm("DeleteShift", "StaffSchedule", new { id = shift.Id, returnWeek = Model.WeekStart.ToString("yyyy-MM-dd") }, FormMethod.Post, new { style = "display:inline" }))
+                                        {
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-xs btn-danger"
+                                                    onclick="return confirm('Remove this shift?')" title="Remove">×</button>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <em class="text-muted">No shifts</em>
+                        }
+                        <a href="@Url.Action("Create", new { date = kvp.Key.ToString("yyyy-MM-dd") })"
+                           class="btn btn-xs btn-default" style="margin-top:5px;">+ Add</a>
+                    </td>
+                }
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Staff Summaries -->
+<h3>Staff Hours This Week</h3>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Staff</th>
+            <th>Role</th>
+            <th>Shifts</th>
+            <th>Hours</th>
+            <th>Max</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var s in Model.Summaries.OrderByDescending(x => x.TotalHours))
+        {
+            <tr class="@(s.IsOverScheduled ? "danger" : "")">
+                <td><a href="@Url.Action("Staff", new { id = s.StaffId })">@s.StaffName</a></td>
+                <td>@s.Role</td>
+                <td>@s.ShiftCount</td>
+                <td>@s.TotalHours.ToString("F1")</td>
+                <td>@s.MaxHoursPerWeek</td>
+                <td>
+                    @if (s.IsOverScheduled)
+                    {
+                        <span class="label label-danger">Over Limit!</span>
+                    }
+                    else if (s.TotalHours == 0)
+                    {
+                        <span class="label label-default">No Shifts</span>
+                    }
+                    else
+                    {
+                        <span class="label label-success">OK</span>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<!-- Pending Swap Requests -->
+@if (Model.PendingSwaps.Any())
+{
+    <h3><i class="fa fa-exchange"></i> Pending Swap Requests</h3>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Requesting</th>
+                <th>Swap With</th>
+                <th>Reason</th>
+                <th>Requested</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var swap in Model.PendingSwaps)
+            {
+                <tr>
+                    <td>@swap.RequestingStaffName</td>
+                    <td>@swap.TargetStaffName</td>
+                    <td>@(swap.Reason ?? "—")</td>
+                    <td>@swap.RequestedAt.ToString("MMM d, h:mm tt")</td>
+                    <td>
+                        @using (Html.BeginForm("ApproveSwap", "StaffSchedule", new { id = swap.Id }, FormMethod.Post, new { style = "display:inline" }))
+                        {
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-xs btn-success">Approve</button>
+                        }
+                        @using (Html.BeginForm("DenySwap", "StaffSchedule", new { id = swap.Id }, FormMethod.Post, new { style = "display:inline" }))
+                        {
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-xs btn-danger">Deny</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
