@@ -1,0 +1,63 @@
+@model System.Collections.Generic.IReadOnlyList<Vidly.Models.Shift>
+
+@{
+    var staff = ViewBag.Staff as Vidly.Models.StaffMember;
+    ViewBag.Title = staff.Name + " — Schedule";
+}
+
+<h2><i class="fa fa-user"></i> @staff.Name <small>@staff.Role</small></h2>
+
+<div class="row" style="margin-bottom: 15px;">
+    <div class="col-md-4">
+        <div class="panel panel-info">
+            <div class="panel-body text-center">
+                <h3>@Model.Count</h3>
+                <p>Total Shifts</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="panel panel-info">
+            <div class="panel-body text-center">
+                <h3>@(((double)ViewBag.TotalHours).ToString("F1"))h</h3>
+                <p>Total Hours</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="panel panel-default">
+            <div class="panel-body text-center">
+                <h3>@staff.MaxHoursPerWeek h/wk</h3>
+                <p>Max Hours</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Type</th>
+            <th>Hours</th>
+            <th>Notes</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var shift in Model)
+        {
+            <tr>
+                <td>@shift.Date.ToString("ddd MMM d, yyyy")</td>
+                <td>@shift.TimeRange</td>
+                <td><span class="label label-default">@shift.Type</span></td>
+                <td>@shift.Hours.ToString("F1")</td>
+                <td>@(shift.Notes ?? "—")</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<a href="@Url.Action("Index")" class="btn btn-default">
+    <i class="fa fa-arrow-left"></i> Back to Schedule
+</a>
