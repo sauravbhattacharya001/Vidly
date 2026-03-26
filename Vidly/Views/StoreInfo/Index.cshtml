@@ -1,0 +1,137 @@
+@model Vidly.ViewModels.StoreInfoViewModel
+@{
+    ViewBag.Title = "Store Hours & Locations";
+}
+
+<h2><i class="glyphicon glyphicon-map-marker"></i> Store Hours & Locations</h2>
+<p class="lead">Find a Vidly store near you and check our operating hours.</p>
+
+<div class="row">
+    @foreach (var store in Model.Stores)
+    {
+        <div class="col-md-6">
+            <div class="panel @(store.IsCurrentlyOpen ? "panel-success" : "panel-default")">
+                <div class="panel-heading">
+                    <h3 class="panel-title">
+                        @store.Name
+                        @if (store.IsCurrentlyOpen)
+                        {
+                            <span class="label label-success pull-right">Open Now</span>
+                        }
+                        else
+                        {
+                            <span class="label label-default pull-right">Closed</span>
+                        }
+                    </h3>
+                </div>
+                <div class="panel-body">
+                    <address>
+                        <strong><i class="glyphicon glyphicon-home"></i> @store.Address</strong><br />
+                        @store.City, @store.State @store.ZipCode<br />
+                        <i class="glyphicon glyphicon-phone"></i> @store.Phone<br />
+                        <i class="glyphicon glyphicon-envelope"></i>
+                        <a href="mailto:@store.Email">@store.Email</a>
+                    </address>
+
+                    <h4>Regular Hours</h4>
+                    <table class="table table-condensed table-striped">
+                        <thead>
+                            <tr>
+                                <th>Day</th>
+                                <th>Hours</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                var daysOrder = new[] {
+                                    System.DayOfWeek.Monday,
+                                    System.DayOfWeek.Tuesday,
+                                    System.DayOfWeek.Wednesday,
+                                    System.DayOfWeek.Thursday,
+                                    System.DayOfWeek.Friday,
+                                    System.DayOfWeek.Saturday,
+                                    System.DayOfWeek.Sunday
+                                };
+                            }
+                            @foreach (var day in daysOrder)
+                            {
+                                var hours = store.Hours.FirstOrDefault(h => h.DayOfWeek == day);
+                                var isToday = DateTime.Now.DayOfWeek == day;
+                                <tr class="@(isToday ? "info" : "")">
+                                    <td>
+                                        <strong>@day</strong>
+                                        @if (isToday) { <span class="label label-info">Today</span> }
+                                    </td>
+                                    <td>
+                                        @if (hours == null || hours.IsClosed)
+                                        {
+                                            <span class="text-muted">Closed</span>
+                                        }
+                                        else
+                                        {
+                                            @hours.FormattedOpen @: &ndash; @hours.FormattedClose
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+
+                    @if (store.SpecialDays != null && store.SpecialDays.Any())
+                    {
+                        <h4>Holiday Hours</h4>
+                        <table class="table table-condensed">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Holiday</th>
+                                    <th>Hours</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var special in store.SpecialDays.OrderBy(s => s.Date))
+                                {
+                                    <tr>
+                                        <td>@special.Date.ToString("MMM d")</td>
+                                        <td>@special.Label</td>
+                                        <td>
+                                            @if (special.IsClosed)
+                                            {
+                                                <span class="text-danger"><strong>Closed</strong></span>
+                                            }
+                                            else
+                                            {
+                                                var openStr = DateTime.Today.Add(special.OpenTime).ToString("h:mm tt");
+                                                var closeStr = DateTime.Today.Add(special.CloseTime).ToString("h:mm tt");
+                                                @openStr @: &ndash; @closeStr
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+
+                    @if (store.Latitude.HasValue && store.Longitude.HasValue)
+                    {
+                        <a href="https://www.google.com/maps?q=@store.Latitude,@store.Longitude"
+                           target="_blank" class="btn btn-default btn-sm">
+                            <i class="glyphicon glyphicon-map-marker"></i> View on Google Maps
+                        </a>
+                    }
+                    <a href="@Url.Action("Details", new { id = store.Id })" class="btn btn-primary btn-sm">
+                        <i class="glyphicon glyphicon-info-sign"></i> Store Details
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<div class="well">
+    <h4><i class="glyphicon glyphicon-question-sign"></i> Need Help?</h4>
+    <p>
+        Can't find a store near you? Call us at <strong>(217) 555-0000</strong> or
+        email <a href="mailto:info@vidly.com">info@vidly.com</a> for assistance.
+    </p>
+</div>

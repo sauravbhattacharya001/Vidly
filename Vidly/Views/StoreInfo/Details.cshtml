@@ -1,0 +1,151 @@
+@model Vidly.ViewModels.StoreInfoViewModel
+@{
+    ViewBag.Title = Model.SelectedStore.Name + " - Store Details";
+}
+
+<h2><i class="glyphicon glyphicon-map-marker"></i> @Model.SelectedStore.Name</h2>
+
+<ol class="breadcrumb">
+    <li><a href="@Url.Action("Index")">All Stores</a></li>
+    <li class="active">@Model.SelectedStore.Name</li>
+</ol>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="panel @(Model.SelectedStore.IsCurrentlyOpen ? "panel-success" : "panel-default")">
+            <div class="panel-heading">
+                <h3 class="panel-title">
+                    Store Information
+                    @if (Model.SelectedStore.IsCurrentlyOpen)
+                    {
+                        <span class="label label-success pull-right">Open Now</span>
+                    }
+                    else
+                    {
+                        <span class="label label-default pull-right">Closed</span>
+                    }
+                </h3>
+            </div>
+            <div class="panel-body">
+                <div class="row">
+                    <div class="col-sm-6">
+                        <h4>Contact</h4>
+                        <address>
+                            <strong>@Model.SelectedStore.Address</strong><br />
+                            @Model.SelectedStore.City, @Model.SelectedStore.State @Model.SelectedStore.ZipCode<br /><br />
+                            <i class="glyphicon glyphicon-phone"></i> @Model.SelectedStore.Phone<br />
+                            <i class="glyphicon glyphicon-envelope"></i>
+                            <a href="mailto:@Model.SelectedStore.Email">@Model.SelectedStore.Email</a>
+                        </address>
+                        @if (Model.SelectedStore.Latitude.HasValue && Model.SelectedStore.Longitude.HasValue)
+                        {
+                            <a href="https://www.google.com/maps?q=@Model.SelectedStore.Latitude,@Model.SelectedStore.Longitude"
+                               target="_blank" class="btn btn-info">
+                                <i class="glyphicon glyphicon-map-marker"></i> Get Directions
+                            </a>
+                        }
+                    </div>
+                    <div class="col-sm-6">
+                        <h4>Regular Hours</h4>
+                        <table class="table table-condensed table-striped">
+                            @{
+                                var daysOrder = new[] {
+                                    System.DayOfWeek.Monday,
+                                    System.DayOfWeek.Tuesday,
+                                    System.DayOfWeek.Wednesday,
+                                    System.DayOfWeek.Thursday,
+                                    System.DayOfWeek.Friday,
+                                    System.DayOfWeek.Saturday,
+                                    System.DayOfWeek.Sunday
+                                };
+                            }
+                            @foreach (var day in daysOrder)
+                            {
+                                var hours = Model.SelectedStore.Hours.FirstOrDefault(h => h.DayOfWeek == day);
+                                var isToday = DateTime.Now.DayOfWeek == day;
+                                <tr class="@(isToday ? "info" : "")">
+                                    <td>
+                                        <strong>@day</strong>
+                                        @if (isToday) { <span class="label label-info">Today</span> }
+                                    </td>
+                                    <td>
+                                        @if (hours == null || hours.IsClosed)
+                                        {
+                                            <span class="text-muted">Closed</span>
+                                        }
+                                        else
+                                        {
+                                            @hours.FormattedOpen @: &ndash; @hours.FormattedClose
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (Model.SelectedStore.SpecialDays != null && Model.SelectedStore.SpecialDays.Any())
+        {
+            <div class="panel panel-warning">
+                <div class="panel-heading">
+                    <h3 class="panel-title"><i class="glyphicon glyphicon-calendar"></i> Holiday & Special Hours</h3>
+                </div>
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Holiday</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var special in Model.SelectedStore.SpecialDays.OrderBy(s => s.Date))
+                        {
+                            <tr>
+                                <td>@special.Date.ToString("dddd, MMMM d")</td>
+                                <td>@special.Label</td>
+                                <td>
+                                    @if (special.IsClosed)
+                                    {
+                                        <span class="label label-danger">Closed</span>
+                                    }
+                                    else
+                                    {
+                                        var openStr = DateTime.Today.Add(special.OpenTime).ToString("h:mm tt");
+                                        var closeStr = DateTime.Today.Add(special.CloseTime).ToString("h:mm tt");
+                                        <span class="label label-warning">@openStr &ndash; @closeStr</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    <div class="col-md-4">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title"><i class="glyphicon glyphicon-th-list"></i> Other Locations</h3>
+            </div>
+            <div class="list-group">
+                @foreach (var store in Model.Stores)
+                {
+                    var active = store.Id == Model.SelectedStore.Id ? "active" : "";
+                    <a href="@Url.Action("Details", new { id = store.Id })"
+                       class="list-group-item @active">
+                        <strong>@store.Name</strong>
+                        <br /><small>@store.City, @store.State</small>
+                        @if (store.IsCurrentlyOpen)
+                        {
+                            <span class="badge" style="background-color: #5cb85c;">Open</span>
+                        }
+                    </a>
+                }
+            </div>
+        </div>
+    </div>
+</div>
