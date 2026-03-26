@@ -143,18 +143,33 @@ namespace Vidly.Services
         public SegmentSummary GetSummary(DateTime asOfDate)
         {
             var profiles = AnalyzeAll(asOfDate);
-            var distribution = new Dictionary<CustomerSegment, SegmentStats>();
 
+            // Initialize all segments with empty stats so every enum value is represented
+            var distribution = new Dictionary<CustomerSegment, SegmentStats>();
             foreach (CustomerSegment seg in Enum.GetValues(typeof(CustomerSegment)))
             {
-                var members = profiles.Where(p => p.Segment == seg).ToList();
-                distribution[seg] = new SegmentStats
+                distribution[seg] = new SegmentStats();
+            }
+
+            // Single pass: accumulate totals per segment instead of O(S×N) repeated Where() scans
+            foreach (var p in profiles)
+            {
+                var stats = distribution[p.Segment];
+                stats.Count++;
+                stats.AverageSpend += p.TotalSpend;           // running sum, averaged below
+                stats.AverageFrequency += p.RentalCount;
+                stats.AverageRecencyDays += p.DaysSinceLastRental;
+            }
+
+            // Convert sums to averages
+            foreach (var stats in distribution.Values)
+            {
+                if (stats.Count > 0)
                 {
-                    Count = members.Count,
-                    AverageSpend = members.Count > 0 ? members.Average(p => p.TotalSpend) : 0,
-                    AverageFrequency = members.Count > 0 ? members.Average(p => p.RentalCount) : 0,
-                    AverageRecencyDays = members.Count > 0 ? members.Average(p => p.DaysSinceLastRental) : 0
-                };
+                    stats.AverageSpend /= stats.Count;
+                    stats.AverageFrequency /= stats.Count;
+                    stats.AverageRecencyDays /= stats.Count;
+                }
             }
 
             return new SegmentSummary
