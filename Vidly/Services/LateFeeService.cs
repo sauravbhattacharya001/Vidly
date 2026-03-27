@@ -17,9 +17,9 @@ namespace Vidly.Services
                 Id = 1,
                 Name = "Standard",
                 Strategy = LateFeeStrategy.PerDay,
-                PerDayRate = 1.50m,
-                GracePeriodDays = 1,
-                MaxFeeCap = 25.00m,
+                PerDayRate = RentalPolicyConstants.LateFeePerDay,
+                GracePeriodDays = RentalPolicyConstants.BaseReturnGracePeriodDays,
+                MaxFeeCap = RentalPolicyConstants.MaxLateFeeCap,
                 IsActive = true
             },
             new LateFeePolicy
