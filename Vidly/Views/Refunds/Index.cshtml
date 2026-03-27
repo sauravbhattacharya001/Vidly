@@ -1,0 +1,134 @@
+@model Vidly.ViewModels.RefundViewModel
+@{
+    ViewBag.Title = "Refund Requests";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-arrow-counterclockwise"></i> Refund Requests</h2>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.Message))
+    {
+        <div class="alert alert-@(Model.IsError ? "danger" : "success") alert-dismissible fade show">
+            @Model.Message
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center bg-light">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">Total</h5>
+                    <h2>@Model.TotalRequests</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center border-warning">
+                <div class="card-body">
+                    <h5 class="card-title text-warning">Pending</h5>
+                    <h2 class="text-warning">@Model.PendingCount</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center border-success">
+                <div class="card-body">
+                    <h5 class="card-title text-success">Approved</h5>
+                    <h2 class="text-success">@Model.ApprovedCount</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center border-info">
+                <div class="card-body">
+                    <h5 class="card-title text-info">Total Refunded</h5>
+                    <h2 class="text-info">$@Model.TotalRefunded.ToString("F2")</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter -->
+    <div class="btn-group mb-3">
+        <a href="@Url.Action("Index")" class="btn btn-outline-secondary btn-sm">All</a>
+        <a href="@Url.Action("Index", new { status = "Pending" })" class="btn btn-outline-warning btn-sm">Pending</a>
+        <a href="@Url.Action("Index", new { status = "Approved" })" class="btn btn-outline-success btn-sm">Approved</a>
+        <a href="@Url.Action("Index", new { status = "Denied" })" class="btn btn-outline-danger btn-sm">Denied</a>
+        <a href="@Url.Action("Index", new { status = "Processed" })" class="btn btn-outline-info btn-sm">Processed</a>
+    </div>
+
+    @if (Model.Requests.Count == 0)
+    {
+        <div class="alert alert-info">No refund requests found.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>#</th>
+                        <th>Customer</th>
+                        <th>Movie</th>
+                        <th>Reason</th>
+                        <th>Type</th>
+                        <th>Original</th>
+                        <th>Refund</th>
+                        <th>Status</th>
+                        <th>Requested</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var req in Model.Requests)
+                    {
+                        var badgeClass = req.Status == Vidly.Models.RefundStatus.Pending ? "bg-warning text-dark"
+                            : req.Status == Vidly.Models.RefundStatus.Approved ? "bg-success"
+                            : req.Status == Vidly.Models.RefundStatus.Denied ? "bg-danger"
+                            : "bg-info";
+                        <tr>
+                            <td>@req.Id</td>
+                            <td>@req.CustomerName</td>
+                            <td>@req.MovieName</td>
+                            <td>@req.Reason</td>
+                            <td>@req.Type</td>
+                            <td>$@req.OriginalAmount.ToString("F2")</td>
+                            <td><strong>$@req.RefundAmount.ToString("F2")</strong></td>
+                            <td><span class="badge @badgeClass">@req.Status</span></td>
+                            <td>@req.RequestedDate.ToString("MMM dd, yyyy")</td>
+                            <td>
+                                <a href="@Url.Action("Details", new { id = req.Id })" class="btn btn-sm btn-outline-primary">View</a>
+                                @if (req.Status == Vidly.Models.RefundStatus.Pending)
+                                {
+                                    using (Html.BeginForm("Approve", "Refunds", new { requestId = req.Id, staffNotes = "Approved" }, FormMethod.Post, new { style = "display:inline" }))
+                                    {
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                                    }
+                                    using (Html.BeginForm("Deny", "Refunds", new { requestId = req.Id, staffNotes = "Denied" }, FormMethod.Post, new { style = "display:inline" }))
+                                    {
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm btn-danger">Deny</button>
+                                    }
+                                }
+                                @if (req.Status == Vidly.Models.RefundStatus.Approved)
+                                {
+                                    using (Html.BeginForm("Process", "Refunds", new { requestId = req.Id }, FormMethod.Post, new { style = "display:inline" }))
+                                    {
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm btn-info">Process</button>
+                                    }
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
