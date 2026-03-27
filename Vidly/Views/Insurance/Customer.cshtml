@@ -1,0 +1,80 @@
+@model Vidly.ViewModels.InsuranceViewModel
+@{
+    ViewBag.Title = "Customer Insurance — " + Model.CustomerName;
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="@Url.Action("Index")">Insurance</a></li>
+            <li class="breadcrumb-item active">@Model.CustomerName</li>
+        </ol>
+    </nav>
+
+    <h2><i class="bi bi-person-badge"></i> @Model.CustomerName's Insurance</h2>
+
+    <!-- Policies -->
+    <div class="card mb-4">
+        <div class="card-header"><i class="bi bi-shield"></i> Policies (@Model.Policies.Count)</div>
+        <div class="card-body">
+            @if (Model.Policies.Count == 0)
+            {
+                <p class="text-muted mb-0">No insurance policies.</p>
+            }
+            else
+            {
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr><th>#</th><th>Tier</th><th>Premium</th><th>Coverage</th><th>Claimed</th><th>Status</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in Model.Policies)
+                        {
+                            <tr>
+                                <td>@p.Id</td>
+                                <td><span class="badge bg-@(p.Tier == Vidly.Models.InsuranceTier.Premium ? "warning" : p.Tier == Vidly.Models.InsuranceTier.Standard ? "info" : "secondary")">@p.Tier</span></td>
+                                <td>$@p.Premium.ToString("F2")</td>
+                                <td>$@p.CoverageLimit.ToString("F2")</td>
+                                <td>$@p.TotalClaimed.ToString("F2")</td>
+                                <td><span class="badge bg-@(p.Status == Vidly.Models.InsurancePolicyStatus.Active ? "success" : "secondary")">@p.Status</span></td>
+                                <td><a href="@Url.Action("Policy", new { id = p.Id })" class="btn btn-sm btn-outline-primary">View</a></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+
+    <!-- Claims -->
+    <div class="card">
+        <div class="card-header"><i class="bi bi-file-earmark-text"></i> Claims (@Model.Claims.Count)</div>
+        <div class="card-body">
+            @if (Model.Claims.Count == 0)
+            {
+                <p class="text-muted mb-0">No claims filed.</p>
+            }
+            else
+            {
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr><th>#</th><th>Type</th><th>Amount</th><th>Filed</th><th>Status</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in Model.Claims)
+                        {
+                            <tr>
+                                <td>@c.Id</td>
+                                <td>@c.ClaimType</td>
+                                <td>$@c.Amount.ToString("F2")</td>
+                                <td>@c.FiledAt.ToString("MMM d, yyyy")</td>
+                                <td><span class="badge bg-@(c.Status == Vidly.Models.ClaimStatus.Approved ? "success" : c.Status == Vidly.Models.ClaimStatus.Denied ? "danger" : "warning")">@c.Status</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+</div>

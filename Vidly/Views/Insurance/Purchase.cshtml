@@ -1,0 +1,72 @@
+@model Vidly.ViewModels.InsuranceViewModel
+@{
+    ViewBag.Title = "Purchase Insurance";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="@Url.Action("Index")">Insurance</a></li>
+            <li class="breadcrumb-item active">Purchase</li>
+        </ol>
+    </nav>
+
+    <h2><i class="bi bi-shield-plus"></i> Purchase Insurance</h2>
+    <p class="text-muted">Protect your rental of <strong>@Model.MovieName</strong> with optional insurance.</p>
+
+    @if (!string.IsNullOrEmpty(Model.Message))
+    {
+        <div class="alert alert-@(Model.IsError ? "danger" : "success") alert-dismissible fade show">
+            @Model.Message
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (Model.Quotes != null)
+    {
+        <div class="row">
+            @foreach (var quote in Model.Quotes)
+            {
+                var tierName = quote.Key.ToString();
+                var color = quote.Key == Vidly.Models.InsuranceTier.Premium ? "warning"
+                    : quote.Key == Vidly.Models.InsuranceTier.Standard ? "info" : "secondary";
+                var coverageLimit = Vidly.Services.RentalInsuranceService.CoverageLimits[quote.Key];
+                var coveredTypes = Vidly.Services.RentalInsuranceService.TierCoverage[quote.Key];
+
+                <div class="col-md-4 mb-3">
+                    <div class="card border-@color h-100">
+                        <div class="card-header bg-@color text-@(color == "warning" ? "dark" : "white") text-center">
+                            <h4 class="mb-0">@tierName</h4>
+                        </div>
+                        <div class="card-body text-center">
+                            <h2 class="my-3">$@quote.Value.ToString("F2")</h2>
+                            <p class="text-muted">one-time premium</p>
+                            <hr />
+                            <p><strong>Coverage:</strong> up to $@coverageLimit.ToString("F2")</p>
+                            <p><strong>Covers:</strong></p>
+                            <ul class="list-unstyled">
+                                @foreach (var ct in coveredTypes)
+                                {
+                                    <li><i class="bi bi-check-circle text-success"></i> @ct</li>
+                                }
+                            </ul>
+                        </div>
+                        <div class="card-footer text-center">
+                            @using (Html.BeginForm("Buy", "Insurance", FormMethod.Post))
+                            {
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="rentalId" value="@Model.RentalId" />
+                                <input type="hidden" name="customerId" value="@Model.CustomerId" />
+                                <input type="hidden" name="tier" value="@((int)quote.Key)" />
+                                <button type="submit" class="btn btn-@color btn-lg w-100">
+                                    Select @tierName
+                                </button>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

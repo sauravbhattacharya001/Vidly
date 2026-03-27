@@ -1,0 +1,132 @@
+@model Vidly.ViewModels.InsuranceViewModel
+@{
+    ViewBag.Title = "Policy #" + Model.CurrentPolicy?.Id;
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="@Url.Action("Index")">Insurance</a></li>
+            <li class="breadcrumb-item active">Policy #@Model.CurrentPolicy.Id</li>
+        </ol>
+    </nav>
+
+    @if (!string.IsNullOrEmpty(Model.Message))
+    {
+        <div class="alert alert-@(Model.IsError ? "danger" : "success") alert-dismissible fade show">
+            @Model.Message
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h4 class="mb-0"><i class="bi bi-shield-check"></i> Policy #@Model.CurrentPolicy.Id</h4>
+            <span class="badge bg-@(Model.CurrentPolicy.Status == Vidly.Models.InsurancePolicyStatus.Active ? "success" : Model.CurrentPolicy.Status == Vidly.Models.InsurancePolicyStatus.Expired ? "secondary" : Model.CurrentPolicy.Status == Vidly.Models.InsurancePolicyStatus.Claimed ? "warning" : "danger")">
+                @Model.CurrentPolicy.Status
+            </span>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <dl>
+                        <dt>Tier</dt>
+                        <dd><span class="badge bg-@(Model.CurrentPolicy.Tier == Vidly.Models.InsuranceTier.Premium ? "warning" : Model.CurrentPolicy.Tier == Vidly.Models.InsuranceTier.Standard ? "info" : "secondary")">@Model.CurrentPolicy.Tier</span></dd>
+                        <dt>Premium Paid</dt>
+                        <dd>$@Model.CurrentPolicy.Premium.ToString("F2")</dd>
+                        <dt>Purchased</dt>
+                        <dd>@Model.CurrentPolicy.PurchasedAt.ToString("MMM d, yyyy h:mm tt")</dd>
+                    </dl>
+                </div>
+                <div class="col-md-6">
+                    <dl>
+                        <dt>Coverage Limit</dt>
+                        <dd>$@Model.CurrentPolicy.CoverageLimit.ToString("F2")</dd>
+                        <dt>Amount Claimed</dt>
+                        <dd>$@Model.CurrentPolicy.TotalClaimed.ToString("F2")</dd>
+                        <dt>Remaining Coverage</dt>
+                        <dd>$@((Model.CurrentPolicy.CoverageLimit - Model.CurrentPolicy.TotalClaimed).ToString("F2"))</dd>
+                    </dl>
+                </div>
+            </div>
+
+            @if (Model.CurrentPolicy.Status == Vidly.Models.InsurancePolicyStatus.Active)
+            {
+                <div class="mt-3">
+                    <a href="@Url.Action("Claim", new { policyId = Model.CurrentPolicy.Id })" class="btn btn-warning me-2">
+                        <i class="bi bi-file-earmark-plus"></i> File a Claim
+                    </a>
+                    @using (Html.BeginForm("Cancel", "Insurance", FormMethod.Post, new { @class = "d-inline" }))
+                    {
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="policyId" value="@Model.CurrentPolicy.Id" />
+                        <button type="submit" class="btn btn-outline-danger"
+                                onclick="return confirm('Cancel this policy? This cannot be undone.')">
+                            <i class="bi bi-x-circle"></i> Cancel Policy
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Claims History -->
+    <div class="card">
+        <div class="card-header"><i class="bi bi-list-ul"></i> Claims History</div>
+        <div class="card-body">
+            @if (Model.Claims.Count == 0)
+            {
+                <p class="text-muted mb-0">No claims filed against this policy.</p>
+            }
+            else
+            {
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Type</th>
+                            <th>Amount</th>
+                            <th>Filed</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var claim in Model.Claims)
+                        {
+                            <tr>
+                                <td>@claim.Id</td>
+                                <td>@claim.ClaimType</td>
+                                <td>$@claim.Amount.ToString("F2")</td>
+                                <td>@claim.FiledAt.ToString("MMM d, yyyy")</td>
+                                <td>
+                                    <span class="badge bg-@(claim.Status == Vidly.Models.ClaimStatus.Approved ? "success" : claim.Status == Vidly.Models.ClaimStatus.Denied ? "danger" : claim.Status == Vidly.Models.ClaimStatus.Paid ? "primary" : "warning")">
+                                        @claim.Status
+                                    </span>
+                                </td>
+                                <td>
+                                    @if (claim.Status == Vidly.Models.ClaimStatus.Approved)
+                                    {
+                                        @using (Html.BeginForm("DenyClaim", "Insurance", FormMethod.Post, new { @class = "d-inline" }))
+                                        {
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="claimId" value="@claim.Id" />
+                                            <input type="hidden" name="policyId" value="@Model.CurrentPolicy.Id" />
+                                            <input type="hidden" name="reason" value="Staff review" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">Deny</button>
+                                        }
+                                    }
+                                    @if (claim.Status == Vidly.Models.ClaimStatus.Denied && !string.IsNullOrEmpty(claim.DenialReason))
+                                    {
+                                        <small class="text-muted">@claim.DenialReason</small>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+</div>

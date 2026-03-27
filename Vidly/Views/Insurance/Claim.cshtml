@@ -1,0 +1,67 @@
+@model Vidly.ViewModels.InsuranceViewModel
+@{
+    ViewBag.Title = "File Insurance Claim";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="@Url.Action("Index")">Insurance</a></li>
+            <li class="breadcrumb-item"><a href="@Url.Action("Policy", new { id = Model.CurrentPolicy.Id })">Policy #@Model.CurrentPolicy.Id</a></li>
+            <li class="breadcrumb-item active">File Claim</li>
+        </ol>
+    </nav>
+
+    <h2><i class="bi bi-file-earmark-plus"></i> File Insurance Claim</h2>
+    <p class="text-muted">
+        Policy #@Model.CurrentPolicy.Id — <span class="badge bg-@(Model.CurrentPolicy.Tier == Vidly.Models.InsuranceTier.Premium ? "warning" : Model.CurrentPolicy.Tier == Vidly.Models.InsuranceTier.Standard ? "info" : "secondary")">@Model.CurrentPolicy.Tier</span>
+        — Remaining coverage: <strong>$@((Model.CurrentPolicy.CoverageLimit - Model.CurrentPolicy.TotalClaimed).ToString("F2"))</strong>
+    </p>
+
+    @if (!string.IsNullOrEmpty(Model.Message))
+    {
+        <div class="alert alert-@(Model.IsError ? "danger" : "success") alert-dismissible fade show">
+            @Model.Message
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @using (Html.BeginForm("FileClaim", "Insurance", FormMethod.Post))
+    {
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="policyId" value="@Model.CurrentPolicy.Id" />
+
+        <div class="card">
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="claimType" class="form-label">Claim Type</label>
+                    <select name="claimType" id="claimType" class="form-select" required>
+                        <option value="">— Select —</option>
+                        @{
+                            var covered = Vidly.Services.RentalInsuranceService.TierCoverage[Model.CurrentPolicy.Tier];
+                        }
+                        @foreach (var ct in covered)
+                        {
+                            <option value="@((int)ct)">@ct</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="amount" class="form-label">Claim Amount ($)</label>
+                    <input type="number" name="amount" id="amount" class="form-control"
+                           min="0.01" step="0.01"
+                           max="@((Model.CurrentPolicy.CoverageLimit - Model.CurrentPolicy.TotalClaimed).ToString("F2"))"
+                           required />
+                    <div class="form-text">Maximum: $@((Model.CurrentPolicy.CoverageLimit - Model.CurrentPolicy.TotalClaimed).ToString("F2"))</div>
+                </div>
+
+                <button type="submit" class="btn btn-warning">
+                    <i class="bi bi-send"></i> Submit Claim
+                </button>
+                <a href="@Url.Action("Policy", new { id = Model.CurrentPolicy.Id })" class="btn btn-outline-secondary ms-2">Cancel</a>
+            </div>
+        </div>
+    }
+</div>
