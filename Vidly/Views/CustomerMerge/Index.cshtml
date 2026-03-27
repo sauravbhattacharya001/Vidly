@@ -1,0 +1,195 @@
+@model Vidly.ViewModels.CustomerMergeViewModel
+@{
+    ViewBag.Title = "Customer Merge Tool";
+}
+
+<h2><i class="glyphicon glyphicon-transfer"></i> Customer Merge Tool</h2>
+<p class="lead">Detect duplicate customer accounts and merge them into one.</p>
+
+@if (Model.LastResult != null)
+{
+    <div class="alert @(Model.LastResult.Success ? "alert-success" : "alert-danger") alert-dismissible">
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+        <strong>@(Model.LastResult.Success ? "Merge Complete!" : "Merge Failed")</strong>
+        @Model.LastResult.Message
+    </div>
+}
+
+<!-- Detected Duplicates -->
+<div class="panel panel-warning">
+    <div class="panel-heading">
+        <h3 class="panel-title">
+            <i class="glyphicon glyphicon-exclamation-sign"></i>
+            Detected Duplicates (@Model.Duplicates.Count)
+        </h3>
+    </div>
+    @if (Model.Duplicates.Count == 0)
+    {
+        <div class="panel-body">
+            <p class="text-muted">No duplicate customers detected. All clear!</p>
+        </div>
+    }
+    else
+    {
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Customer A</th>
+                    <th>Customer B</th>
+                    <th>Confidence</th>
+                    <th>Reason</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var dup in Model.Duplicates)
+                {
+                    var barClass = dup.Confidence >= 0.7 ? "progress-bar-danger"
+                                 : dup.Confidence >= 0.4 ? "progress-bar-warning"
+                                 : "progress-bar-info";
+                    <tr>
+                        <td>
+                            <strong>@dup.CustomerA.Name</strong> (#@dup.CustomerA.Id)<br />
+                            <small class="text-muted">@dup.CustomerA.Email &bull; @dup.CustomerA.Phone</small>
+                        </td>
+                        <td>
+                            <strong>@dup.CustomerB.Name</strong> (#@dup.CustomerB.Id)<br />
+                            <small class="text-muted">@dup.CustomerB.Email &bull; @dup.CustomerB.Phone</small>
+                        </td>
+                        <td style="min-width:120px">
+                            <div class="progress" style="margin-bottom:0">
+                                <div class="progress-bar @barClass" style="width:@((int)(dup.Confidence * 100))%">
+                                    @((dup.Confidence * 100).ToString("0"))%
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="label label-default">@dup.Reason</span></td>
+                        <td>
+                            @using (Html.BeginForm("Merge", "CustomerMerge", FormMethod.Post, new { style = "display:inline" }))
+                            {
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="PrimaryId" value="@dup.CustomerA.Id" />
+                                <input type="hidden" name="SecondaryId" value="@dup.CustomerB.Id" />
+                                <input type="hidden" name="KeepMembership" value="higher" />
+                                <button type="submit" class="btn btn-warning btn-xs"
+                                        onclick="return confirm('Merge #@dup.CustomerB.Id into #@dup.CustomerA.Id? This cannot be undone.')">
+                                    <i class="glyphicon glyphicon-compressed"></i> Merge B → A
+                                </button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+<!-- Manual Merge -->
+<div class="panel panel-info">
+    <div class="panel-heading">
+        <h3 class="panel-title"><i class="glyphicon glyphicon-wrench"></i> Manual Merge</h3>
+    </div>
+    <div class="panel-body">
+        @using (Html.BeginForm("Merge", "CustomerMerge", FormMethod.Post, new { @class = "form-horizontal" }))
+        {
+            @Html.AntiForgeryToken()
+            <div class="form-group">
+                <label class="col-md-3 control-label">Keep (Primary)</label>
+                <div class="col-md-4">
+                    <select name="PrimaryId" class="form-control">
+                        <option value="">-- Select customer to keep --</option>
+                        @foreach (var c in Model.AllCustomers)
+                        {
+                            <option value="@c.Id">#@c.Id — @c.Name (@c.Email)</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-md-3 control-label">Remove (Secondary)</label>
+                <div class="col-md-4">
+                    <select name="SecondaryId" class="form-control">
+                        <option value="">-- Select customer to retire --</option>
+                        @foreach (var c in Model.AllCustomers)
+                        {
+                            <option value="@c.Id">#@c.Id — @c.Name (@c.Email)</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-md-3 control-label">Name</label>
+                <div class="col-md-4">
+                    <select name="KeepName" class="form-control">
+                        <option value="primary">Keep primary's name</option>
+                        <option value="secondary">Keep secondary's name</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-md-3 control-label">Email</label>
+                <div class="col-md-4">
+                    <select name="KeepEmail" class="form-control">
+                        <option value="primary">Keep primary's email</option>
+                        <option value="secondary">Keep secondary's email</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-md-3 control-label">Membership</label>
+                <div class="col-md-4">
+                    <select name="KeepMembership" class="form-control">
+                        <option value="higher">Keep higher tier</option>
+                        <option value="primary">Keep primary's tier</option>
+                        <option value="secondary">Keep secondary's tier</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-md-offset-3 col-md-4">
+                    <button type="submit" class="btn btn-primary"
+                            onclick="return confirm('Are you sure? This merge cannot be undone.')">
+                        <i class="glyphicon glyphicon-compressed"></i> Merge Customers
+                    </button>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Audit Log -->
+<div class="panel panel-default">
+    <div class="panel-heading">
+        <h3 class="panel-title"><i class="glyphicon glyphicon-list-alt"></i> Merge History</h3>
+    </div>
+    @if (Model.AuditLog.Count == 0)
+    {
+        <div class="panel-body">
+            <p class="text-muted">No merges performed yet.</p>
+        </div>
+    }
+    else
+    {
+        <table class="table table-condensed table-striped">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Primary</th>
+                    <th>Retired</th>
+                    <th>Rentals Moved</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var entry in Model.AuditLog)
+                {
+                    <tr>
+                        <td>@entry.MergedAt.ToString("MMM d, yyyy h:mm tt")</td>
+                        <td>@entry.PrimaryName (#@entry.PrimaryId)</td>
+                        <td><del>@entry.SecondaryName (#@entry.SecondaryId)</del></td>
+                        <td><span class="badge">@entry.RentalsTransferred</span></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
