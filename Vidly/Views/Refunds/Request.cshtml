@@ -1,0 +1,57 @@
+@model Vidly.ViewModels.RefundViewModel
+@{
+    ViewBag.Title = "Request Refund";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container mt-4">
+    <h2><i class="bi bi-arrow-counterclockwise"></i> Request Refund</h2>
+
+    @if (Model.CurrentRequest != null)
+    {
+        <div class="card mb-4">
+            <div class="card-header bg-secondary text-white">Rental Details</div>
+            <div class="card-body">
+                <p><strong>Customer:</strong> @Model.CurrentRequest.CustomerName</p>
+                <p><strong>Movie:</strong> @Model.CurrentRequest.MovieName</p>
+                <p><strong>Total Charged:</strong> $@Model.CurrentRequest.OriginalAmount.ToString("F2")</p>
+            </div>
+        </div>
+
+        using (Html.BeginForm("Submit", "Refunds", FormMethod.Post))
+        {
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="rentalId" value="@Model.RentalId" />
+
+            <div class="mb-3">
+                <label for="reason" class="form-label">Reason for Refund</label>
+                <select name="reason" id="reason" class="form-select" required>
+                    <option value="">-- Select Reason --</option>
+                    <option value="DefectiveDisc">Defective Disc</option>
+                    <option value="WrongMovie">Wrong Movie</option>
+                    <option value="BillingError">Billing Error</option>
+                    <option value="PoorQuality">Poor Quality</option>
+                    <option value="ServiceIssue">Service Issue</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label for="type" class="form-label">Refund Type</label>
+                <select name="type" id="type" class="form-select" required>
+                    <option value="Full">Full Refund ($@Model.CurrentRequest.OriginalAmount.ToString("F2"))</option>
+                    <option value="Partial">Partial Refund (50% — $@(Model.CurrentRequest.OriginalAmount * 0.5m).ToString("F2"))</option>
+                    <option value="StoreCredit">Store Credit</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label for="details" class="form-label">Additional Details</label>
+                <textarea name="details" id="details" class="form-control" rows="3" maxlength="500" placeholder="Describe the issue..."></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Submit Refund Request</button>
+            <a href="@Url.Action("Index", "Rentals")" class="btn btn-secondary">Cancel</a>
+        }
+    }
+</div>

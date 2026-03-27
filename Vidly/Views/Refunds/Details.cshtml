@@ -1,0 +1,90 @@
+@model Vidly.ViewModels.RefundViewModel
+@{
+    ViewBag.Title = "Refund Details";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container mt-4">
+    <h2><i class="bi bi-arrow-counterclockwise"></i> Refund Request #@Model.CurrentRequest.Id</h2>
+
+    @{
+        var req = Model.CurrentRequest;
+        var badgeClass = req.Status == Vidly.Models.RefundStatus.Pending ? "bg-warning text-dark"
+            : req.Status == Vidly.Models.RefundStatus.Approved ? "bg-success"
+            : req.Status == Vidly.Models.RefundStatus.Denied ? "bg-danger"
+            : "bg-info";
+    }
+
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between">
+            <span>Request Details</span>
+            <span class="badge @badgeClass">@req.Status</span>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Customer:</strong> @req.CustomerName</p>
+                    <p><strong>Movie:</strong> @req.MovieName</p>
+                    <p><strong>Rental ID:</strong> @req.RentalId</p>
+                    <p><strong>Reason:</strong> @req.Reason</p>
+                    <p><strong>Details:</strong> @(string.IsNullOrEmpty(req.Details) ? "—" : req.Details)</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Refund Type:</strong> @req.Type</p>
+                    <p><strong>Original Amount:</strong> $@req.OriginalAmount.ToString("F2")</p>
+                    <p><strong>Refund Amount:</strong> <span class="text-success fw-bold">$@req.RefundAmount.ToString("F2")</span></p>
+                    <p><strong>Requested:</strong> @req.RequestedDate.ToString("MMM dd, yyyy h:mm tt")</p>
+                    @if (req.ResolvedDate.HasValue)
+                    {
+                        <p><strong>Resolved:</strong> @req.ResolvedDate.Value.ToString("MMM dd, yyyy h:mm tt")</p>
+                    }
+                    @if (!string.IsNullOrEmpty(req.StaffNotes))
+                    {
+                        <p><strong>Staff Notes:</strong> @req.StaffNotes</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (req.Status == Vidly.Models.RefundStatus.Pending)
+    {
+        <div class="card mb-4">
+            <div class="card-header">Review This Request</div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        @using (Html.BeginForm("Approve", "Refunds", FormMethod.Post))
+                        {
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="requestId" value="@req.Id" />
+                            <div class="mb-2">
+                                <label class="form-label">Adjusted Amount (optional)</label>
+                                <input type="number" name="adjustedAmount" class="form-control" step="0.01" min="0" max="@req.OriginalAmount" placeholder="$@req.RefundAmount.ToString("F2")" />
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label">Staff Notes</label>
+                                <textarea name="staffNotes" class="form-control" rows="2"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-success">Approve</button>
+                        }
+                    </div>
+                    <div class="col-md-6">
+                        @using (Html.BeginForm("Deny", "Refunds", FormMethod.Post))
+                        {
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="requestId" value="@req.Id" />
+                            <div class="mb-2">
+                                <label class="form-label">Denial Reason</label>
+                                <textarea name="staffNotes" class="form-control" rows="2" required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-danger">Deny</button>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <a href="@Url.Action("Index")" class="btn btn-secondary">Back to All Requests</a>
+</div>
