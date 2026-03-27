@@ -1,0 +1,186 @@
+@model Vidly.ViewModels.InsuranceViewModel
+@{
+    ViewBag.Title = "Rental Insurance";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-shield-check"></i> Rental Insurance</h2>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.Message))
+    {
+        <div class="alert alert-@(Model.IsError ? "danger" : "success") alert-dismissible fade show">
+            @Model.Message
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Analytics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center bg-light">
+                <div class="card-body">
+                    <h6 class="card-title text-muted">Total Policies</h6>
+                    <h2>@Model.Analytics.TotalPolicies</h2>
+                    <small class="text-muted">@Model.Analytics.ActivePolicies active</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center border-success">
+                <div class="card-body">
+                    <h6 class="card-title text-success">Premiums Collected</h6>
+                    <h2 class="text-success">$@Model.Analytics.TotalPremiums.ToString("F2")</h2>
+                    <small class="text-muted">@Model.UptakeRate% uptake</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center border-warning">
+                <div class="card-body">
+                    <h6 class="card-title text-warning">Claims Paid</h6>
+                    <h2 class="text-warning">$@Model.Analytics.TotalPayouts.ToString("F2")</h2>
+                    <small class="text-muted">@Model.Analytics.TotalClaims total claims</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center border-@(Model.Analytics.LossRatio > 80 ? "danger" : "primary")">
+                <div class="card-body">
+                    <h6 class="card-title text-@(Model.Analytics.LossRatio > 80 ? "danger" : "primary")">Loss Ratio</h6>
+                    <h2 class="text-@(Model.Analytics.LossRatio > 80 ? "danger" : "primary")">@Model.Analytics.LossRatio%</h2>
+                    <small class="text-muted">@Model.Analytics.ProfitMargin% profit margin</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tier Breakdown & Claim Types -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header"><i class="bi bi-layers"></i> Policies by Tier</div>
+                <div class="card-body">
+                    @if (Model.Analytics.PoliciesByTier != null)
+                    {
+                        <table class="table table-sm mb-0">
+                            <thead><tr><th>Tier</th><th class="text-end">Count</th></tr></thead>
+                            <tbody>
+                                @foreach (var kv in Model.Analytics.PoliciesByTier)
+                                {
+                                    <tr>
+                                        <td>
+                                            <span class="badge bg-@(kv.Key == Vidly.Models.InsuranceTier.Premium ? "warning" : kv.Key == Vidly.Models.InsuranceTier.Standard ? "info" : "secondary")">
+                                                @kv.Key
+                                            </span>
+                                        </td>
+                                        <td class="text-end">@kv.Value</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    else
+                    {
+                        <p class="text-muted mb-0">No policies yet.</p>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header"><i class="bi bi-file-earmark-text"></i> Claims by Type</div>
+                <div class="card-body">
+                    @if (Model.Analytics.ClaimsByType != null)
+                    {
+                        <table class="table table-sm mb-0">
+                            <thead><tr><th>Type</th><th class="text-end">Count</th></tr></thead>
+                            <tbody>
+                                @foreach (var kv in Model.Analytics.ClaimsByType)
+                                {
+                                    <tr>
+                                        <td>@kv.Key</td>
+                                        <td class="text-end">@kv.Value</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    else
+                    {
+                        <p class="text-muted mb-0">No claims yet.</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Claim Stats -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h6 class="text-muted">Approval Rate</h6>
+                    <h3>@Model.Analytics.ApprovalRate%</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h6 class="text-muted">Avg Claim Amount</h6>
+                    <h3>$@Model.Analytics.AverageClaimAmount.ToString("F2")</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h6 class="text-muted">Denied Claims</h6>
+                    <h3>@Model.Analytics.DeniedClaims</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tier Info -->
+    <div class="card">
+        <div class="card-header"><i class="bi bi-info-circle"></i> Insurance Tiers</div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card border-secondary mb-2">
+                        <div class="card-body text-center">
+                            <h5><span class="badge bg-secondary">Basic</span></h5>
+                            <p>15% of daily rate</p>
+                            <p>Coverage up to <strong>$10.00</strong></p>
+                            <p class="text-muted">Covers: Late Fees</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-info mb-2">
+                        <div class="card-body text-center">
+                            <h5><span class="badge bg-info">Standard</span></h5>
+                            <p>30% of daily rate</p>
+                            <p>Coverage up to <strong>$25.00</strong></p>
+                            <p class="text-muted">Covers: Late Fees, Damage</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-warning mb-2">
+                        <div class="card-body text-center">
+                            <h5><span class="badge bg-warning text-dark">Premium</span></h5>
+                            <p>50% of daily rate</p>
+                            <p>Coverage up to <strong>$50.00</strong></p>
+                            <p class="text-muted">Covers: Late Fees, Damage, Lost Disc</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

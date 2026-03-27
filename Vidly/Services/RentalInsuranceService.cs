@@ -21,7 +21,6 @@ namespace Vidly.Services
         // In-memory stores (production would use a DB)
         private readonly List<InsurancePolicy> _policies = new List<InsurancePolicy>();
         private readonly List<InsuranceClaim> _claims = new List<InsuranceClaim>();
-        private readonly IClock _clock;
         private int _nextPolicyId = 1;
         private int _nextClaimId = 1;
 
@@ -60,7 +59,6 @@ namespace Vidly.Services
             IClock clock = null)
         {
             _rentalRepo = rentalRepo ?? throw new ArgumentNullException(nameof(rentalRepo));
-            _clock = clock ?? new SystemClock();
             _customerRepo = customerRepo ?? throw new ArgumentNullException(nameof(customerRepo));
             _clock = clock ?? new SystemClock();
         }
