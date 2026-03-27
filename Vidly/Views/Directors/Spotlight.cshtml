@@ -1,0 +1,124 @@
+@model Vidly.ViewModels.DirectorSpotlightViewModel
+@{
+    ViewBag.Title = Model.Director.Name + " — Spotlight";
+}
+
+<div class="container" style="margin-top: 20px;">
+    <ol class="breadcrumb">
+        <li><a href="@Url.Action("Index")">Directors</a></li>
+        <li class="active">@Model.Director.Name</li>
+    </ol>
+
+    <div class="row">
+        <!-- Director Info -->
+        <div class="col-md-4">
+            <div class="panel panel-primary">
+                <div class="panel-heading">
+                    <h3 class="panel-title"><span class="glyphicon glyphicon-star"></span> Director Spotlight</h3>
+                </div>
+                <div class="panel-body text-center">
+                    <div style="font-size: 64px; color: #337ab7; margin-bottom: 10px;">
+                        <span class="glyphicon glyphicon-user"></span>
+                    </div>
+                    <h2>@Model.Director.Name</h2>
+
+                    @if (!string.IsNullOrEmpty(Model.Director.Nationality))
+                    {
+                        <p><span class="label label-info">@Model.Director.Nationality</span></p>
+                    }
+
+                    @if (Model.Director.BirthDate.HasValue)
+                    {
+                        <p><strong>Born:</strong> @Model.Director.BirthDate.Value.ToString("MMMM d, yyyy")</p>
+                    }
+
+                    @if (!string.IsNullOrEmpty(Model.Director.Bio))
+                    {
+                        <hr />
+                        <p class="text-muted">@Model.Director.Bio</p>
+                    }
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title"><span class="glyphicon glyphicon-stats"></span> Store Stats</h4>
+                </div>
+                <ul class="list-group">
+                    <li class="list-group-item">
+                        <span class="badge">@Model.TotalMoviesInStore</span>
+                        Movies in Store
+                    </li>
+                    <li class="list-group-item">
+                        <span class="badge">@(Model.AverageRating.HasValue ? Model.AverageRating.Value.ToString("0.0") : "N/A")</span>
+                        Average Rating
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Filmography -->
+        <div class="col-md-8">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h3 class="panel-title"><span class="glyphicon glyphicon-list"></span> Filmography in Store</h3>
+                </div>
+                @if (!Model.Filmography.Any())
+                {
+                    <div class="panel-body">
+                        <div class="alert alert-info">No movies by this director are currently in the store.</div>
+                    </div>
+                }
+                else
+                {
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Movie</th>
+                                <th>Release Date</th>
+                                <th>Genre</th>
+                                <th>Rating</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var movie in Model.Filmography)
+                            {
+                                <tr>
+                                    <td><strong>@movie.Name</strong></td>
+                                    <td>@(movie.ReleaseDate.HasValue ? movie.ReleaseDate.Value.ToString("yyyy") : "—")</td>
+                                    <td>@(movie.Genre.HasValue ? movie.Genre.ToString() : "—")</td>
+                                    <td>
+                                        @if (movie.Rating.HasValue)
+                                        {
+                                            for (int i = 0; i < movie.Rating.Value; i++)
+                                            {
+                                                <span class="glyphicon glyphicon-star" style="color: #f0ad4e;"></span>
+                                            }
+                                            for (int i = movie.Rating.Value; i < 5; i++)
+                                            {
+                                                <span class="glyphicon glyphicon-star-empty" style="color: #ccc;"></span>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">Not rated</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+
+            @if (!string.IsNullOrEmpty(Model.Director.KnownFor))
+            {
+                <div class="well">
+                    <h4><span class="glyphicon glyphicon-certificate"></span> Also Known For</h4>
+                    <p>@Model.Director.KnownFor</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
