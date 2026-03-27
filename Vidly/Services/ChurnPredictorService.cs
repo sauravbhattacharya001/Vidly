@@ -85,6 +85,9 @@ namespace Vidly.Services
 
         /// <summary>
         /// Analyze churn risk for all customers with rental history.
+        /// Builds the movie lookup once and shares it across all per-customer
+        /// BuildProfile calls, eliminating redundant O(M) GetAll + ToDictionary
+        /// per customer (was O(N × M), now O(M + N × R_avg)).
         /// </summary>
         public IReadOnlyList<ChurnProfile> AnalyzeAll(DateTime asOfDate)
         {
@@ -94,12 +97,15 @@ namespace Vidly.Services
                 .GroupBy(r => r.CustomerId)
                 .ToDictionary(g => g.Key, g => g.OrderBy(r => r.RentalDate).ToList());
 
+            // Build movie lookup once — shared across all customers
+            var movieLookup = _movieRepo.GetAll().ToDictionary(m => m.Id);
+
             var profiles = new List<ChurnProfile>();
             foreach (var c in customers)
             {
                 if (!rentalsByCustomer.TryGetValue(c.Id, out var rentals) || rentals.Count == 0)
                     continue;
-                profiles.Add(BuildProfile(c, rentals, asOfDate));
+                profiles.Add(BuildProfile(c, rentals, asOfDate, movieLookup));
             }
 
             return profiles.OrderByDescending(p => p.RiskScore).ToList();
@@ -234,9 +240,10 @@ namespace Vidly.Services
 
         // ── Private Helpers ─────────────────────────────────────────
 
-        private ChurnProfile BuildProfile(Customer customer, List<Rental> rentals, DateTime asOfDate)
+        private ChurnProfile BuildProfile(Customer customer, List<Rental> rentals, DateTime asOfDate,
+            Dictionary<int, Movie> movieLookup = null)
         {
-            var movies = _movieRepo.GetAll().ToDictionary(m => m.Id);
+            var movies = movieLookup ?? _movieRepo.GetAll().ToDictionary(m => m.Id);
 
             // Basic metrics
             var lastRental = rentals.Max(r => r.RentalDate);
