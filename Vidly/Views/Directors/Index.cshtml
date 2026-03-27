@@ -1,0 +1,75 @@
+@model Vidly.ViewModels.DirectorListViewModel
+@{
+    ViewBag.Title = "Directors";
+}
+
+<div class="container" style="margin-top: 20px;">
+    <div class="page-header">
+        <h1><span class="glyphicon glyphicon-film"></span> Director Spotlight</h1>
+        <p class="lead text-muted">Discover the filmmakers behind your favorite movies</p>
+    </div>
+
+    <!-- Search -->
+    <div class="row" style="margin-bottom: 20px;">
+        <div class="col-md-6">
+            <form method="get" action="@Url.Action("Index")">
+                <div class="input-group">
+                    <input type="text" name="q" class="form-control" placeholder="Search directors by name, nationality, or filmography..." value="@Model.SearchQuery" />
+                    <span class="input-group-btn">
+                        <button class="btn btn-primary" type="submit">
+                            <span class="glyphicon glyphicon-search"></span> Search
+                        </button>
+                    </span>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    @if (!Model.Directors.Any())
+    {
+        <div class="alert alert-info">
+            <span class="glyphicon glyphicon-info-sign"></span>
+            No directors found@(string.IsNullOrEmpty(Model.SearchQuery) ? "." : " matching \"" + Model.SearchQuery + "\".")
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var director in Model.Directors)
+            {
+                <div class="col-md-4" style="margin-bottom: 20px;">
+                    <div class="panel panel-default">
+                        <div class="panel-heading">
+                            <h3 class="panel-title">
+                                <span class="glyphicon glyphicon-user"></span>
+                                @director.Name
+                            </h3>
+                        </div>
+                        <div class="panel-body">
+                            @if (!string.IsNullOrEmpty(director.Nationality))
+                            {
+                                <p><strong>Nationality:</strong> @director.Nationality</p>
+                            }
+                            @if (director.BirthDate.HasValue)
+                            {
+                                <p><strong>Born:</strong> @director.BirthDate.Value.ToString("MMMM d, yyyy")</p>
+                            }
+                            @if (!string.IsNullOrEmpty(director.KnownFor))
+                            {
+                                <p><strong>Known for:</strong> <em>@director.KnownFor</em></p>
+                            }
+                            <p class="text-muted" style="font-size: 0.9em;">
+                                @(director.Bio != null && director.Bio.Length > 120 ? director.Bio.Substring(0, 120) + "..." : director.Bio)
+                            </p>
+                        </div>
+                        <div class="panel-footer text-right">
+                            <a href="@Url.Action("Spotlight", new { id = director.Id })" class="btn btn-primary btn-sm">
+                                <span class="glyphicon glyphicon-star"></span> View Spotlight
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
