@@ -53,8 +53,7 @@ namespace Vidly.Services
                 throw new ArgumentOutOfRangeException(nameof(maxRecommendations),
                     "Must request at least 1 recommendation.");
 
-            var allRentals = _rentalRepository.GetAll();
-            var customerRentals = allRentals.Where(r => r.CustomerId == customerId).ToList();
+            var customerRentals = _rentalRepository.GetByCustomer(customerId);
 
             // Build the set of movie IDs this customer has already rented
             var rentedMovieIds = new HashSet<int>(customerRentals.Select(r => r.MovieId));
@@ -147,7 +146,7 @@ namespace Vidly.Services
         /// </summary>
         internal static List<GenrePreference> BuildGenrePreferenceList(
             Dictionary<Genre, double> genrePreferences,
-            IList<Rental> customerRentals,
+            IReadOnlyList<Rental> customerRentals,
             Dictionary<int, Movie> movieLookup)
         {
             // Single pass: count rentals per genre using O(1) dictionary lookups
@@ -182,7 +181,7 @@ namespace Vidly.Services
         /// Accepts pre-built movieLookup to avoid redundant dictionary creation.
         /// </summary>
         internal static Dictionary<Genre, double> AnalyzeGenrePreferences(
-            IList<Rental> customerRentals,
+            IReadOnlyList<Rental> customerRentals,
             Dictionary<int, Movie> movieLookup)
         {
             var preferences = new Dictionary<Genre, double>();
@@ -225,7 +224,7 @@ namespace Vidly.Services
         /// now uses O(1) dictionary lookups per rental.
         /// </summary>
         internal static Dictionary<int, TagAffinity> AnalyzeTagAffinities(
-            IList<Rental> customerRentals,
+            IReadOnlyList<Rental> customerRentals,
             Dictionary<int, List<MovieTagAssignment>> tagsByMovie)
         {
             var affinities = new Dictionary<int, TagAffinity>();
