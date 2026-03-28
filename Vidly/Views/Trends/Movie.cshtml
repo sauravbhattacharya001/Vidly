@@ -1,0 +1,31 @@
+@model Vidly.Models.MovieTrend
+@{ ViewBag.Title = Model.MovieName + " - Trend"; }
+
+<h2><i class="glyphicon glyphicon-film"></i> @Model.MovieName</h2>
+<div class="row">
+    <div class="col-md-6">
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong>Trend Details (@ViewBag.WindowDays-day window)</strong></div>
+            <table class="table">
+                <tr><td><strong>Genre</strong></td><td>@(Model.Genre.HasValue ? Model.Genre.Value.ToString() : "—")</td></tr>
+                <tr><td><strong>Current Period</strong></td><td>@Model.RentalCount rentals</td></tr>
+                <tr><td><strong>Previous Period</strong></td><td>@Model.PreviousPeriodCount rentals</td></tr>
+                <tr><td><strong>Change</strong></td><td>
+                    @if (Model.ChangePercent > 0) { <span class="text-success">+@Model.ChangePercent%</span> }
+                    else if (Model.ChangePercent < 0) { <span class="text-danger">@Model.ChangePercent%</span> }
+                    else { <span class="text-muted">0%</span> }
+                </td></tr>
+                <tr><td><strong>Direction</strong></td><td>
+                    @switch (Model.Direction) {
+                        case Vidly.Models.TrendDirection.Rising: <span class="label label-success">Rising</span> break;
+                        case Vidly.Models.TrendDirection.Cooling: <span class="label label-warning">Cooling</span> break;
+                        case Vidly.Models.TrendDirection.NewEntry: <span class="label label-info">New Entry</span> break;
+                        default: <span class="label label-default">Stable</span> break;
+                    }
+                </td></tr>
+                <tr><td><strong>Velocity</strong></td><td>@Model.VelocityScore</td></tr>
+            </table>
+        </div>
+    </div>
+</div>
+<p><a href="@Url.Action("Index", "Trends", new { days = ViewBag.WindowDays })" class="btn btn-default"><i class="glyphicon glyphicon-arrow-left"></i> Back</a></p>

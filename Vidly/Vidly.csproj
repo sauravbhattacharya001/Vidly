@@ -161,6 +161,10 @@
     <Compile Include="Services\AvailabilityService.cs" />
     <Compile Include="Controllers\AvailabilityController.cs" />
     <Compile Include="ViewModels\AvailabilityViewModel.cs" />
+    <Compile Include="Models\TrendModels.cs" />
+    <Compile Include="Services\RentalTrendsService.cs" />
+    <Compile Include="Controllers\TrendsController.cs" />
+    <Compile Include="ViewModels\TrendsViewModel.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Content\bootstrap-lumen.css" />
@@ -219,6 +223,9 @@
     <Content Include="Views\Availability\Index.cshtml" />
     <Content Include="Views\Availability\Movie.cshtml" />
     <Content Include="Views\Availability\ComingSoon.cshtml" />
+    <Content Include="Views\Trends\Index.cshtml" />
+    <Content Include="Views\Trends\Movie.cshtml" />
+    <Content Include="Views\Trends\Trending.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
