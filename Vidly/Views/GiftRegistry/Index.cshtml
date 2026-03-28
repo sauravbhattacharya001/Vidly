@@ -1,0 +1,96 @@
+@model Vidly.ViewModels.GiftRegistryIndexViewModel
+
+@{
+    ViewBag.Title = "Gift Registries";
+}
+
+<h2><i class="glyphicon glyphicon-gift"></i> Gift Registries</h2>
+<p class="lead">Browse movie gift registries or look one up by share code.</p>
+
+<div class="row" style="margin-bottom: 20px;">
+    <div class="col-md-6">
+        @using (Html.BeginForm("Index", "GiftRegistry", FormMethod.Get, new { @class = "form-inline" }))
+        {
+            <div class="input-group">
+                <input type="text" name="q" class="form-control" placeholder="Search registries..."
+                       value="@Model.SearchQuery" />
+                <span class="input-group-btn">
+                    <button class="btn btn-default" type="submit">
+                        <i class="glyphicon glyphicon-search"></i>
+                    </button>
+                </span>
+            </div>
+        }
+    </div>
+    <div class="col-md-4">
+        @using (Html.BeginForm("Lookup", "GiftRegistry", FormMethod.Get, new { @class = "form-inline" }))
+        {
+            <div class="input-group">
+                <input type="text" name="code" class="form-control" placeholder="Enter share code..." />
+                <span class="input-group-btn">
+                    <button class="btn btn-info" type="submit">
+                        <i class="glyphicon glyphicon-link"></i> Look Up
+                    </button>
+                </span>
+            </div>
+        }
+    </div>
+    <div class="col-md-2 text-right">
+        @Html.ActionLink("Create Registry", "Create", null, new { @class = "btn btn-success" })
+    </div>
+</div>
+
+@if (TempData["Message"] != null)
+{
+    <div class="alert alert-success">@TempData["Message"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+@if (!Model.Registries.Any())
+{
+    <div class="alert alert-info">No gift registries found. Be the first to create one!</div>
+}
+else
+{
+    <div class="row">
+        @foreach (var registry in Model.Registries)
+        {
+            var fulfilled = registry.Items.Count(i => i.Status == Vidly.Models.GiftRegistryItemStatus.Fulfilled);
+            var total = registry.Items.Count(i => i.Status != Vidly.Models.GiftRegistryItemStatus.Removed);
+            var pct = total > 0 ? (fulfilled * 100) / total : 0;
+
+            <div class="col-md-4" style="margin-bottom: 20px;">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">
+                            <i class="glyphicon glyphicon-gift"></i> @registry.Name
+                        </h3>
+                    </div>
+                    <div class="panel-body">
+                        @if (!string.IsNullOrEmpty(registry.Description))
+                        {
+                            <p>@registry.Description</p>
+                        }
+                        <p>
+                            <span class="label label-primary">@registry.Occasion</span>
+                            @if (registry.EventDate.HasValue)
+                            {
+                                <span class="label label-info">@registry.EventDate.Value.ToString("MMM d, yyyy")</span>
+                            }
+                        </p>
+                        <div class="progress" style="margin-bottom: 10px;">
+                            <div class="progress-bar progress-bar-success" style="width: @(pct)%;">
+                                @fulfilled / @total fulfilled
+                            </div>
+                        </div>
+                        <p><small class="text-muted">Code: <strong>@registry.ShareCode</strong></small></p>
+                        @Html.ActionLink("View Registry →", "Details", new { id = registry.Id }, new { @class = "btn btn-primary btn-sm" })
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
