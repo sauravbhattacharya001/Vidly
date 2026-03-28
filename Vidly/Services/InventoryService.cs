@@ -189,7 +189,7 @@ namespace Vidly.Services
                 {
                     var daysOverdue = (int)Math.Ceiling(
                         (_clock.Today - r.DueDate).TotalDays);
-                    summary.OverdueRevenue += daysOverdue * 1.50m;
+                    summary.OverdueRevenue += daysOverdue * RentalPolicyConstants.LateFeePerDay;
                 }
             }
 

@@ -209,13 +209,13 @@ namespace Vidly.Services
             // Estimate late fee
             if (prediction.DaysRemaining < 0)
             {
-                prediction.EstimatedLateFee = Math.Abs(prediction.DaysRemaining) * 1.50m;
+                prediction.EstimatedLateFee = Math.Abs(prediction.DaysRemaining) * RentalPolicyConstants.LateFeePerDay;
             }
             else if (prediction.RiskScore >= 45)
             {
                 // Estimate 2-3 days late based on risk
                 int estimatedLateDays = prediction.RiskScore >= 70 ? 3 : 2;
-                prediction.EstimatedLateFee = estimatedLateDays * 1.50m;
+                prediction.EstimatedLateFee = estimatedLateDays * RentalPolicyConstants.LateFeePerDay;
             }
 
             // Generate suggested actions
