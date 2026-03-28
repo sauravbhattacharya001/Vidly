@@ -1,5 +1,6 @@
 using System;
 using System.Web.Mvc;
+using Vidly.Filters;
 using Vidly.Models;
 using Vidly.Repositories;
 using Vidly.Services;
@@ -61,6 +62,8 @@ namespace Vidly.Controllers
         // POST: Referrals/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [RateLimit(MaxRequests = 5, WindowSeconds = 60,
+            Message = "Too many referral requests. Please try again later.")]
         public ActionResult Create(int referrerId, string referredName, string referredEmail)
         {
             try
@@ -85,6 +88,8 @@ namespace Vidly.Controllers
         // POST: Referrals/Convert
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [RateLimit(MaxRequests = 5, WindowSeconds = 60,
+            Message = "Too many conversion attempts. Please try again later.")]
         public ActionResult Convert(string referralCode, int newCustomerId)
         {
             try

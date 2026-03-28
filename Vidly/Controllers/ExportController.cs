@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Web.Mvc;
+using Vidly.Filters;
 using Vidly.Models;
 using Vidly.Repositories;
 using Vidly.Utilities;
@@ -12,7 +13,12 @@ namespace Vidly.Controllers
     /// <summary>
     /// Provides data export functionality for movies, customers, and rentals
     /// in CSV and JSON formats.
+    /// Rate-limited to prevent automated mass data exfiltration — export
+    /// endpoints return full datasets in a single response, so even a
+    /// modest request rate can extract the entire database.
     /// </summary>
+    [RateLimit(MaxRequests = 5, WindowSeconds = 300,
+        Message = "Export rate limit reached. Please wait before exporting again.")]
     public class ExportController : Controller
     {
         private readonly IMovieRepository _movieRepository;
