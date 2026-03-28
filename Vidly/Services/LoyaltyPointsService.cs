@@ -227,10 +227,10 @@ namespace Vidly.Services
         /// <summary>
         /// Get a leaderboard of top loyalty members by points balance.
         /// </summary>
-        public List<LeaderboardEntry> GetLeaderboard(int top = 10)
+        public List<LoyaltyLeaderboardEntry> GetLeaderboard(int top = 10)
         {
             var customerIds = _ledger.Select(t => t.CustomerId).Distinct();
-            var entries = new List<LeaderboardEntry>();
+            var entries = new List<LoyaltyLeaderboardEntry>();
 
             foreach (var id in customerIds)
             {
@@ -242,7 +242,7 @@ namespace Vidly.Services
                     .Where(t => t.CustomerId == id && t.Points > 0)
                     .Sum(t => t.Points);
 
-                entries.Add(new LeaderboardEntry
+                entries.Add(new LoyaltyLeaderboardEntry
                 {
                     CustomerId = id,
                     CustomerName = customer.Name,
@@ -340,7 +340,7 @@ namespace Vidly.Services
         public int PointsNeeded { get; set; }
     }
 
-    public class LeaderboardEntry
+    public class LoyaltyLeaderboardEntry
     {
         public int Rank { get; set; }
         public int CustomerId { get; set; }

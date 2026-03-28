@@ -84,6 +84,8 @@ namespace Vidly.Tests
             public IReadOnlyList<Rental> GetActiveByCustomer(int customerId) =>
                 _rentals.Where(r => r.CustomerId == customerId && r.Status != RentalStatus.Returned)
                     .ToList().AsReadOnly();
+            public IReadOnlyList<Rental> GetByCustomer(int customerId) =>
+                _rentals.Where(r => r.CustomerId == customerId).ToList().AsReadOnly();
 
             public IReadOnlyList<Rental> GetByMovie(int movieId) =>
                 _rentals.Where(r => r.MovieId == movieId).ToList().AsReadOnly();
