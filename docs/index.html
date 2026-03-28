@@ -208,6 +208,21 @@
             font-size: 1.2rem;
         }
 
+        /* Dark mode */
+        html.dark {
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --text: #e2e8f0;
+            --muted: #94a3b8;
+            --border: #334155;
+            --code-bg: #1e293b;
+            --accent-light: #312e81;
+        }
+        html.dark .main { background: var(--bg); }
+        html.dark pre { background: #0f172a; }
+        html.dark .card { background: var(--surface); border-color: var(--border); }
+        html.dark .diagram { background: #1e293b; border-color: var(--border); }
+
         @media (max-width: 768px) {
             .sidebar { transform: translateX(-100%); transition: transform 0.3s; }
             .sidebar.open { transform: translateX(0); }
@@ -222,6 +237,13 @@
     <aside class="sidebar">
         <h1>🎬 Vidly</h1>
         <div class="version">ASP.NET MVC 5</div>
+
+        <div style="margin-bottom:1rem">
+            <input id="doc-search" type="text" placeholder="Search docs…" style="width:100%;padding:0.4rem 0.7rem;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.08);color:#fff;font-size:0.85rem;outline:none" oninput="searchDocs(this.value)" />
+            <div id="search-results" style="margin-top:0.3rem;max-height:200px;overflow-y:auto"></div>
+        </div>
+
+        <button id="theme-toggle" onclick="toggleTheme()" style="width:100%;padding:0.4rem;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.08);color:#fff;cursor:pointer;font-size:0.85rem;margin-bottom:1rem">🌙 Dark Mode</button>
 
         <nav>
             <a href="#overview" class="active" onclick="showSection('overview', this)">Overview</a>
@@ -789,6 +811,45 @@ dotnet test Vidly.Tests/Vidly.Tests.csproj --collect:"XPlat Code Coverage"</code
         const section = document.getElementById(id);
         const link = document.querySelector(`a[href="#${id}"]`);
         if (section) showSection(id, link);
+    }
+
+    // Dark mode
+    function toggleTheme() {
+        const isDark = document.documentElement.classList.toggle('dark');
+        localStorage.setItem('vidly-theme', isDark ? 'dark' : 'light');
+        document.getElementById('theme-toggle').textContent = isDark ? '☀️ Light Mode' : '🌙 Dark Mode';
+    }
+    if (localStorage.getItem('vidly-theme') === 'dark') {
+        document.documentElement.classList.add('dark');
+        document.getElementById('theme-toggle').textContent = '☀️ Light Mode';
+    }
+
+    // Client-side search
+    function searchDocs(query) {
+        const results = document.getElementById('search-results');
+        if (!query || query.length < 2) { results.innerHTML = ''; return; }
+        const q = query.toLowerCase();
+        const sections = document.querySelectorAll('.section');
+        const matches = [];
+        sections.forEach(s => {
+            const text = s.textContent.toLowerCase();
+            if (text.includes(q)) {
+                const id = s.id;
+                const h2 = s.querySelector('h2');
+                const title = h2 ? h2.textContent : id;
+                // Extract snippet
+                const idx = text.indexOf(q);
+                const snippet = s.textContent.substring(Math.max(0, idx - 30), idx + q.length + 40).trim();
+                matches.push({id, title, snippet});
+            }
+        });
+        if (matches.length === 0) {
+            results.innerHTML = '<div style="color:#94a3b8;font-size:0.8rem;padding:0.3rem 0.5rem">No results</div>';
+        } else {
+            results.innerHTML = matches.slice(0, 8).map(m =>
+                `<a href="#${m.id}" onclick="showSection('${m.id}', document.querySelector('a[href=\\'#${m.id}\\']'));document.getElementById('search-results').innerHTML='';document.getElementById('doc-search').value=''" style="display:block;color:#cbd5e1;font-size:0.8rem;padding:0.3rem 0.5rem;border-radius:4px;text-decoration:none;cursor:pointer" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none'"><strong>${m.title}</strong><br><span style="color:#64748b;font-size:0.75rem">…${m.snippet}…</span></a>`
+            ).join('');
+        }
     }
     </script>
 </body>
