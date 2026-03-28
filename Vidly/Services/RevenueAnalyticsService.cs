@@ -246,26 +246,29 @@ namespace Vidly.Services
             double slope = denom != 0 ? (sumXY - n * meanX * meanY) / denom : 0;
             double intercept = meanY - slope * meanX;
 
-            // Project forward: estimate monthly revenue for the forecast period
+            // Project forward: estimate monthly revenue for the forecast period.
+            // We accumulate full months at the regression rate, then pro-rate
+            // any remaining partial month.
             double forecastMonths = forecastDays / 30.0;
             double nextMonthIndex = n;
             double totalProjected = 0;
 
-            for (int i = 0; i < Math.Max(1, (int)Math.Ceiling(forecastMonths)); i++)
+            int fullMonthCount = (int)Math.Floor(forecastMonths);
+            double partialFraction = forecastMonths - fullMonthCount;
+
+            for (int i = 0; i < fullMonthCount; i++)
             {
                 double monthRevenue = intercept + slope * (nextMonthIndex + i);
                 if (monthRevenue < 0) monthRevenue = 0;
                 totalProjected += monthRevenue;
             }
 
-            // Adjust for partial month
-            double fullMonths = Math.Floor(forecastMonths);
-            double partialFraction = forecastMonths - fullMonths;
-            if (partialFraction > 0 && fullMonths >= 1)
+            // Pro-rate the remaining partial month
+            if (partialFraction > 0)
             {
-                // Already included in the ceiling loop
-                double lastMonth = intercept + slope * (nextMonthIndex + fullMonths);
-                totalProjected -= lastMonth * (1 - partialFraction);
+                double partialMonthRevenue = intercept + slope * (nextMonthIndex + fullMonthCount);
+                if (partialMonthRevenue < 0) partialMonthRevenue = 0;
+                totalProjected += partialMonthRevenue * partialFraction;
             }
 
             // Compute residual standard error for confidence interval
