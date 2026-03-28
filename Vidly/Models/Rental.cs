@@ -51,6 +51,13 @@ namespace Vidly.Models
         public decimal LateFee { get; set; }
 
         /// <summary>
+        /// Damage charge assessed on return (separate from late fees).
+        /// </summary>
+        [Display(Name = "Damage Charge")]
+        [DataType(DataType.Currency)]
+        public decimal DamageCharge { get; set; }
+
+        /// <summary>
         /// Current status of the rental.
         /// </summary>
         [Display(Name = "Status")]
@@ -66,7 +73,7 @@ namespace Vidly.Models
             {
                 var endDate = ReturnDate ?? DateTime.Today;
                 var days = Math.Max(1, (int)Math.Ceiling((endDate - RentalDate).TotalDays));
-                return (days * DailyRate) + LateFee;
+                return (days * DailyRate) + LateFee + DamageCharge;
             }
         }
 
