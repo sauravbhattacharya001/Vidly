@@ -37,6 +37,8 @@ namespace Vidly.Tests
             public void Update(Rental rental) { }
             public void Remove(int id) { }
             public IReadOnlyList<Rental> GetActiveByCustomer(int customerId) => new List<Rental>().AsReadOnly();
+            public IReadOnlyList<Rental> GetByCustomer(int customerId) =>
+                _rentals.Where(r => r.CustomerId == customerId).ToList().AsReadOnly();
             public IReadOnlyList<Rental> GetByMovie(int movieId) => _rentals.Where(r => r.MovieId == movieId).ToList().AsReadOnly();
             public IReadOnlyList<Rental> GetOverdue() => new List<Rental>().AsReadOnly();
             public IReadOnlyList<Rental> Search(string query, RentalStatus? status) => new List<Rental>().AsReadOnly();

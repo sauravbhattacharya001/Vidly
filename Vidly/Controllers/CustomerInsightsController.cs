@@ -58,11 +58,11 @@ namespace Vidly.Controllers
             return new GenreBreakdown { GenreCounts = counts, FavoriteGenre = fav, TotalRentals = history.Count, UniqueGenres = counts.Count };
         }
 
-        internal static SpendingSummary BuildSpendingSummary(IReadOnlyList<RentalHistoryEntry> history)
+        internal static ViewModels.SpendingSummary BuildSpendingSummary(IReadOnlyList<RentalHistoryEntry> history)
         {
             decimal total = 0, late = 0;
             foreach (var e in history) { total += e.TotalCost; late += e.LateFee; }
-            return new SpendingSummary { TotalSpent = total, AveragePerRental = history.Count > 0 ? Math.Round(total / history.Count, 2) : 0,
+            return new ViewModels.SpendingSummary { TotalSpent = total, AveragePerRental = history.Count > 0 ? Math.Round(total / history.Count, 2) : 0,
                 TotalLateFees = late, LateFeePct = total > 0 ? Math.Round(late / total * 100, 1) : 0, TotalRentals = history.Count };
         }
 

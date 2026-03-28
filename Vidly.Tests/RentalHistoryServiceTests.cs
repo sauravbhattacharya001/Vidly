@@ -49,6 +49,8 @@ namespace Vidly.Tests
             public void Update(Rental rental) { var i = _rentals.FindIndex(r => r.Id == rental.Id); if (i >= 0) _rentals[i] = rental; }
             public void Remove(int id) { _rentals.RemoveAll(r => r.Id == id); }
             public IReadOnlyList<Rental> GetActiveByCustomer(int customerId) => _rentals.Where(r => r.CustomerId == customerId && r.Status != RentalStatus.Returned).ToList().AsReadOnly();
+            public IReadOnlyList<Rental> GetByCustomer(int customerId) =>
+                _rentals.Where(r => r.CustomerId == customerId).ToList().AsReadOnly();
             public IReadOnlyList<Rental> GetByMovie(int movieId) => _rentals.Where(r => r.MovieId == movieId).ToList().AsReadOnly();
             public IReadOnlyList<Rental> GetOverdue() => _rentals.Where(r => r.Status == RentalStatus.Overdue).ToList().AsReadOnly();
             public IReadOnlyList<Rental> Search(string query, RentalStatus? status) => _rentals.ToList().AsReadOnly();

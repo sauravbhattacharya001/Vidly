@@ -60,7 +60,6 @@ namespace Vidly.Services
         {
             _rentalRepo = rentalRepo ?? throw new ArgumentNullException(nameof(rentalRepo));
             _customerRepo = customerRepo ?? throw new ArgumentNullException(nameof(customerRepo));
-            _clock = clock ?? new SystemClock();
         }
 
         // ── Purchase ─────────────────────────────────────────────────
