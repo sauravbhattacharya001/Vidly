@@ -232,6 +232,7 @@
                                 {
                                     using (Html.BeginForm("Vote", "MovieClub", FormMethod.Post, new { @class = "form-inline", style = "display:inline;" }))
                                     {
+                                        @Html.AntiForgeryToken()
                                         <input type="hidden" name="clubId" value="@Model.Club.Id" />
                                         <input type="hidden" name="pollId" value="@poll.Id" />
                                         <input type="hidden" name="optionId" value="@option.OptionId" />

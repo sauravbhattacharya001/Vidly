@@ -255,6 +255,7 @@ namespace Vidly.Controllers
         /// POST /MovieClub/Vote — vote on a poll option.
         /// </summary>
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public ActionResult Vote(int clubId, int pollId, int optionId, int customerId)
         {
             _clubRepository.Vote(pollId, optionId, customerId);
