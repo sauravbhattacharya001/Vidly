@@ -139,7 +139,8 @@ namespace Vidly.Services
 
             // 5. Mark returned in repository
             rental.ReturnDate = actualReturnDate;
-            rental.LateFee = ReturnLateFeeBreakdown.LateFee + damageCharge;
+            rental.LateFee = ReturnLateFeeBreakdown.LateFee;
+            rental.DamageCharge = damageCharge;
             rental.Status = RentalStatus.Returned;
             _rentalRepository.Update(rental);
 
