@@ -125,6 +125,7 @@ namespace Vidly.Controllers
 
         // POST: ParentalControl/Switch
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public ActionResult Switch(int profileId, string pin)
         {
             if (_service.SwitchProfile(profileId, pin))
