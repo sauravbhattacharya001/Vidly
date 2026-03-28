@@ -1,0 +1,180 @@
+@model List<Vidly.Models.InventoryItem>
+@{
+    ViewBag.Title = "Inventory Dashboard";
+}
+
+<style>
+    .inv-container { margin-top: 10px; }
+    .kpi-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+    .kpi-card {
+        flex: 1; min-width: 140px; max-width: 200px;
+        background: #fff; border: 1px solid #ddd; border-radius: 6px;
+        padding: 16px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .kpi-card .kpi-value { font-size: 28px; font-weight: 700; color: #333; margin-bottom: 4px; }
+    .kpi-card .kpi-label { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+    .kpi-card.ok .kpi-value { color: #2e7d32; }
+    .kpi-card.warn .kpi-value { color: #e65100; }
+    .kpi-card.danger .kpi-value { color: #c62828; }
+    .kpi-card.info .kpi-value { color: #1565c0; }
+
+    .inv-toolbar {
+        display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+        margin-bottom: 16px; padding: 12px; background: #fafafa;
+        border: 1px solid #eee; border-radius: 6px;
+    }
+    .inv-toolbar input[type="text"] {
+        padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;
+    }
+    .inv-toolbar .btn-sm { padding: 6px 12px; font-size: 13px; }
+
+    .filter-pills { display: flex; gap: 6px; }
+    .filter-pills a {
+        padding: 5px 14px; border-radius: 20px; font-size: 13px;
+        text-decoration: none; border: 1px solid #ccc; color: #555;
+    }
+    .filter-pills a.active { background: #1565c0; color: #fff; border-color: #1565c0; }
+
+    .inv-table { width: 100%; border-collapse: collapse; }
+    .inv-table th, .inv-table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; }
+    .inv-table th { background: #f5f5f5; font-size: 12px; text-transform: uppercase; color: #666; cursor: pointer; }
+    .inv-table th a { color: #666; text-decoration: none; }
+    .inv-table th a:hover { color: #333; }
+    .inv-table tr:hover { background: #fafafa; }
+
+    .stock-bar {
+        width: 80px; height: 8px; background: #e0e0e0; border-radius: 4px;
+        display: inline-block; vertical-align: middle; margin-left: 8px;
+    }
+    .stock-bar-fill { height: 100%; border-radius: 4px; }
+    .stock-bar-fill.green { background: #4caf50; }
+    .stock-bar-fill.orange { background: #ff9800; }
+    .stock-bar-fill.red { background: #f44336; }
+
+    .badge-low { background: #fff3e0; color: #e65100; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+    .badge-out { background: #ffebee; color: #c62828; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+    .badge-ok { background: #e8f5e9; color: #2e7d32; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+
+    .inline-form { display: inline-flex; align-items: center; gap: 4px; }
+    .inline-form input[type="number"] { width: 50px; padding: 3px 6px; border: 1px solid #ccc; border-radius: 3px; font-size: 13px; }
+    .inline-form button { padding: 3px 8px; font-size: 12px; }
+</style>
+
+<div class="inv-container">
+    <h2>📦 Inventory Dashboard</h2>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success" style="padding:8px 14px; background:#e8f5e9; border:1px solid #c8e6c9; border-radius:4px; margin-bottom:14px; color:#2e7d32;">
+            @TempData["Success"]
+        </div>
+    }
+
+    <!-- KPI Cards -->
+    <div class="kpi-row">
+        <div class="kpi-card info">
+            <div class="kpi-value">@ViewBag.TotalMovies</div>
+            <div class="kpi-label">Total Titles</div>
+        </div>
+        <div class="kpi-card warn">
+            <div class="kpi-value">@ViewBag.LowStockCount</div>
+            <div class="kpi-label">Low Stock</div>
+        </div>
+        <div class="kpi-card danger">
+            <div class="kpi-value">@ViewBag.OutOfStockCount</div>
+            <div class="kpi-label">Out of Stock</div>
+        </div>
+        <div class="kpi-card ok">
+            <div class="kpi-value">@ViewBag.AvgUtilization%</div>
+            <div class="kpi-label">Avg Utilization</div>
+        </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="inv-toolbar">
+        <form method="get" action="@Url.Action("Index")" style="display:flex; gap:8px; align-items:center;">
+            <input type="text" name="search" value="@ViewBag.CurrentSearch" placeholder="Search movies..." />
+            <input type="hidden" name="sort" value="@ViewBag.CurrentSort" />
+            <input type="hidden" name="filter" value="@ViewBag.CurrentFilter" />
+            <button type="submit" class="btn btn-sm btn-default">🔍 Search</button>
+        </form>
+
+        <div class="filter-pills">
+            <a href="@Url.Action("Index", new { sort = ViewBag.CurrentSort, filter = "all", search = ViewBag.CurrentSearch })"
+               class="@(ViewBag.CurrentFilter == "all" || ViewBag.CurrentFilter == null ? "active" : "")">All</a>
+            <a href="@Url.Action("Index", new { sort = ViewBag.CurrentSort, filter = "low", search = ViewBag.CurrentSearch })"
+               class="@(ViewBag.CurrentFilter == "low" ? "active" : "")">⚠️ Low Stock</a>
+            <a href="@Url.Action("Index", new { sort = ViewBag.CurrentSort, filter = "out", search = ViewBag.CurrentSearch })"
+               class="@(ViewBag.CurrentFilter == "out" ? "active" : "")">🚫 Out of Stock</a>
+        </div>
+    </div>
+
+    <!-- Inventory Table -->
+    <table class="inv-table">
+        <thead>
+            <tr>
+                <th><a href="@Url.Action("Index", new { sort = "name", filter = ViewBag.CurrentFilter, search = ViewBag.CurrentSearch })">Movie</a></th>
+                <th>Genre</th>
+                <th><a href="@Url.Action("Index", new { sort = "available", filter = ViewBag.CurrentFilter, search = ViewBag.CurrentSearch })">Stock</a></th>
+                <th><a href="@Url.Action("Index", new { sort = "rented", filter = ViewBag.CurrentFilter, search = ViewBag.CurrentSearch })">Rented</a></th>
+                <th><a href="@Url.Action("Index", new { sort = "utilization", filter = ViewBag.CurrentFilter, search = ViewBag.CurrentSearch })">Utilization</a></th>
+                <th>Status</th>
+                <th>Threshold</th>
+                <th>Copies</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                var barColor = item.Utilization > 80 ? "red" : item.Utilization > 50 ? "orange" : "green";
+                <tr>
+                    <td><strong>@item.MovieName</strong></td>
+                    <td>@item.Genre</td>
+                    <td>
+                        @item.Available / @item.TotalCopies
+                        <div class="stock-bar">
+                            <div class="stock-bar-fill @barColor" style="width: @(100 - item.Utilization)%"></div>
+                        </div>
+                    </td>
+                    <td>@item.RentedOut</td>
+                    <td>@item.Utilization%</td>
+                    <td>
+                        @if (item.Available == 0)
+                        {
+                            <span class="badge-out">OUT</span>
+                        }
+                        else if (item.IsLowStock)
+                        {
+                            <span class="badge-low">LOW</span>
+                        }
+                        else
+                        {
+                            <span class="badge-ok">OK</span>
+                        }
+                    </td>
+                    <td>
+                        <form class="inline-form" method="post" action="@Url.Action("UpdateThreshold")">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="movieId" value="@item.MovieId" />
+                            <input type="number" name="threshold" value="@item.Threshold" min="0" max="99" />
+                            <button type="submit" class="btn btn-xs btn-default" title="Update threshold">✓</button>
+                        </form>
+                    </td>
+                    <td>
+                        <form class="inline-form" method="post" action="@Url.Action("UpdateStock")">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="movieId" value="@item.MovieId" />
+                            <input type="number" name="totalCopies" value="@item.TotalCopies" min="1" max="999" />
+                            <button type="submit" class="btn btn-xs btn-default" title="Update copies">✓</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @if (!Model.Any())
+    {
+        <p style="text-align:center; color:#999; padding:30px;">No movies match the current filter.</p>
+    }
+</div>
