@@ -1,0 +1,52 @@
+@model Vidly.ViewModels.GiftRegistryCreateViewModel
+
+@{
+    ViewBag.Title = "Create Gift Registry";
+}
+
+<h2><i class="glyphicon glyphicon-gift"></i> Create Gift Registry</h2>
+<p>Create a movie wishlist and share it with friends and family!</p>
+
+@using (Html.BeginForm("Create", "GiftRegistry", FormMethod.Post))
+{
+    @Html.AntiForgeryToken()
+
+    <div class="form-group">
+        <label for="Name">Registry Name *</label>
+        <input type="text" id="Name" name="Name" class="form-control"
+               placeholder="e.g. My Birthday Movie Marathon" value="@Model.Name" maxlength="100" />
+        @Html.ValidationMessage("Name", new { @class = "text-danger" })
+    </div>
+
+    <div class="form-group">
+        <label for="Description">Description</label>
+        <textarea id="Description" name="Description" class="form-control" rows="3"
+                  placeholder="Tell people what this registry is about...">@Model.Description</textarea>
+    </div>
+
+    <div class="form-group">
+        <label for="Occasion">Occasion</label>
+        @Html.DropDownList("Occasion",
+            Enum.GetValues(typeof(Vidly.Models.GiftRegistryOccasion))
+                .Cast<Vidly.Models.GiftRegistryOccasion>()
+                .Select(o => new SelectListItem { Text = o.ToString(), Value = o.ToString() }),
+            new { @class = "form-control" })
+    </div>
+
+    <div class="form-group">
+        <label for="EventDate">Event Date (optional)</label>
+        <input type="date" id="EventDate" name="EventDate" class="form-control" value="@Model.EventDate" />
+    </div>
+
+    <div class="checkbox">
+        <label>
+            <input type="checkbox" name="IsPublic" value="true" @(Model.IsPublic ? "checked" : "") />
+            Make this registry public (visible to everyone)
+        </label>
+    </div>
+
+    <button type="submit" class="btn btn-success">
+        <i class="glyphicon glyphicon-plus"></i> Create Registry
+    </button>
+    @Html.ActionLink("Cancel", "Index", null, new { @class = "btn btn-default" })
+}

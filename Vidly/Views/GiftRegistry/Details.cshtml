@@ -1,0 +1,114 @@
+@model Vidly.ViewModels.GiftRegistryDetailViewModel
+
+@{
+    ViewBag.Title = Model.Registry.Name + " - Gift Registry";
+}
+
+<h2><i class="glyphicon glyphicon-gift"></i> @Model.Registry.Name</h2>
+
+@if (!string.IsNullOrEmpty(Model.Registry.Description))
+{
+    <p class="lead">@Model.Registry.Description</p>
+}
+
+<div class="row" style="margin-bottom: 20px;">
+    <div class="col-md-8">
+        <p>
+            <span class="label label-primary">@Model.Registry.Occasion</span>
+            @if (Model.Registry.EventDate.HasValue)
+            {
+                <span class="label label-info">Event: @Model.Registry.EventDate.Value.ToString("MMM d, yyyy")</span>
+            }
+            <span class="label label-default">Share Code: <strong>@Model.Registry.ShareCode</strong></span>
+        </p>
+        <div class="progress">
+            <div class="progress-bar progress-bar-success" style="width: @(Model.ProgressPercent)%;">
+                @Model.FulfilledCount / @(Model.FulfilledCount + Model.WantedCount) fulfilled (@Model.ProgressPercent%)
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 text-right">
+        @Html.ActionLink("Add Movie", "AddItem", new { registryId = Model.Registry.Id }, new { @class = "btn btn-success" })
+        @Html.ActionLink("← All Registries", "Index", null, new { @class = "btn btn-default" })
+    </div>
+</div>
+
+@if (TempData["Message"] != null)
+{
+    <div class="alert alert-success">@TempData["Message"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Movie</th>
+            <th>Note</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model.Registry.Items.Where(i => i.Status != Vidly.Models.GiftRegistryItemStatus.Removed))
+        {
+            <tr class="@(item.Status == Vidly.Models.GiftRegistryItemStatus.Fulfilled ? "success" : "")">
+                <td><strong>@item.MovieName</strong></td>
+                <td>@(item.Note ?? "—")</td>
+                <td>
+                    @if (item.Status == Vidly.Models.GiftRegistryItemStatus.Fulfilled)
+                    {
+                        <span class="label label-success">
+                            🎁 Gifted by @item.FulfilledBy
+                            @if (item.FulfilledAt.HasValue)
+                            {
+                                <text> on @item.FulfilledAt.Value.ToString("MMM d")</text>
+                            }
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="label label-warning">Wanted</span>
+                    }
+                </td>
+                <td>
+                    @if (item.Status == Vidly.Models.GiftRegistryItemStatus.Wanted)
+                    {
+                        using (Html.BeginForm("Fulfill", "GiftRegistry", FormMethod.Post, new { @class = "form-inline", style = "display:inline" }))
+                        {
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="RegistryId" value="@Model.Registry.Id" />
+                            <input type="hidden" name="ItemId" value="@item.Id" />
+                            <input type="text" name="YourName" class="form-control input-sm" placeholder="Your name" style="width: 120px;" />
+                            <button type="submit" class="btn btn-primary btn-sm">Gift This 🎁</button>
+                        }
+                    }
+                    using (Html.BeginForm("RemoveItem", "GiftRegistry", FormMethod.Post, new { style = "display:inline; margin-left: 5px;" }))
+                    {
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="registryId" value="@Model.Registry.Id" />
+                        <input type="hidden" name="itemId" value="@item.Id" />
+                        <button type="submit" class="btn btn-danger btn-xs"
+                                onclick="return confirm('Remove this item?');">
+                            <i class="glyphicon glyphicon-trash"></i>
+                        </button>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<hr />
+<div class="text-right">
+    @using (Html.BeginForm("Delete", "GiftRegistry", new { id = Model.Registry.Id }, FormMethod.Post))
+    {
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-danger"
+                onclick="return confirm('Delete this entire registry?');">
+            <i class="glyphicon glyphicon-trash"></i> Delete Registry
+        </button>
+    }
+</div>

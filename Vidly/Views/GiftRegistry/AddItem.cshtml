@@ -1,0 +1,39 @@
+@model Vidly.ViewModels.GiftRegistryAddItemViewModel
+
+@{
+    ViewBag.Title = "Add Movie to Registry";
+}
+
+<h2><i class="glyphicon glyphicon-plus"></i> Add Movie to Registry</h2>
+
+@using (Html.BeginForm("AddItem", "GiftRegistry", FormMethod.Post))
+{
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="RegistryId" value="@Model.RegistryId" />
+
+    <div class="form-group">
+        <label for="MovieId">Select Movie *</label>
+        <select id="MovieId" name="MovieId" class="form-control">
+            <option value="">-- Choose a movie --</option>
+            @if (Model.AvailableMovies != null)
+            {
+                foreach (var movie in Model.AvailableMovies.OrderBy(m => m.Name))
+                {
+                    <option value="@movie.Id">@movie.Name</option>
+                }
+            }
+        </select>
+        @Html.ValidationMessage("MovieId", new { @class = "text-danger" })
+    </div>
+
+    <div class="form-group">
+        <label for="Note">Note (optional)</label>
+        <input type="text" id="Note" name="Note" class="form-control"
+               placeholder="e.g. My all-time favorite!" value="@Model.Note" maxlength="200" />
+    </div>
+
+    <button type="submit" class="btn btn-success">
+        <i class="glyphicon glyphicon-plus"></i> Add to Registry
+    </button>
+    @Html.ActionLink("Back to Registry", "Details", new { id = Model.RegistryId }, new { @class = "btn btn-default" })
+}
