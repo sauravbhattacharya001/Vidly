@@ -54,6 +54,7 @@ namespace Vidly.Filters
             var windowSpan = TimeSpan.FromSeconds(WindowSeconds);
 
             var window = _windows.GetOrAdd(windowKey, _ => new ClientWindow(now));
+            int remaining;
 
             lock (window)
             {
@@ -81,12 +82,14 @@ namespace Vidly.Filters
                 }
 
                 window.Timestamps.Enqueue(now);
+                // Compute remaining inside the lock to avoid racing with
+                // concurrent requests that may enqueue between unlock and read.
+                remaining = Math.Max(0, MaxRequests - window.Timestamps.Count);
             }
 
             // Set rate limit headers on successful requests
-            var remaining = MaxRequests - _windows.GetOrAdd(windowKey, _ => new ClientWindow(now)).Timestamps.Count;
             filterContext.HttpContext.Response.Headers["X-RateLimit-Limit"] = MaxRequests.ToString();
-            filterContext.HttpContext.Response.Headers["X-RateLimit-Remaining"] = Math.Max(0, remaining).ToString();
+            filterContext.HttpContext.Response.Headers["X-RateLimit-Remaining"] = remaining.ToString();
 
             // Periodic cleanup of expired entries to prevent memory leaks
             var count = System.Threading.Interlocked.Increment(ref _requestCounter);
