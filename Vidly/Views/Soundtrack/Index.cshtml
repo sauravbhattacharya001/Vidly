@@ -1,0 +1,227 @@
+@model Vidly.ViewModels.SoundtrackViewModel
+@{
+    ViewBag.Title = "Movie Soundtracks";
+}
+
+<div class="container" style="margin-top: 20px;">
+    <div class="page-header">
+        <h1><span class="glyphicon glyphicon-music"></span> Movie Soundtracks</h1>
+        <p class="lead text-muted">Browse, search, and rate movie soundtrack tracks</p>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible">
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+            @TempData["Success"]
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible">
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+            @TempData["Error"]
+        </div>
+    }
+
+    <div class="row">
+        @* Left column: Search, Filter, Add *@
+        <div class="col-md-4">
+            @* Search *@
+            <div class="panel panel-default">
+                <div class="panel-heading"><strong><span class="glyphicon glyphicon-search"></span> Search</strong></div>
+                <div class="panel-body">
+                    <form method="get" action="@Url.Action("Index")">
+                        <div class="input-group">
+                            <input type="text" name="q" class="form-control" placeholder="Song, artist, or movie..."
+                                   value="@Model.SearchQuery" />
+                            <span class="input-group-btn">
+                                <button class="btn btn-primary" type="submit">Go</button>
+                            </span>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            @* Filter by Movie *@
+            <div class="panel panel-default">
+                <div class="panel-heading"><strong><span class="glyphicon glyphicon-film"></span> Filter by Movie</strong></div>
+                <div class="panel-body">
+                    <a href="@Url.Action("Index")" class="btn btn-xs @(Model.FilterMovieId == null && string.IsNullOrEmpty(Model.SearchQuery) ? "btn-primary" : "btn-default")" style="margin: 2px;">
+                        All Movies
+                    </a>
+                    @foreach (var movie in Model.Movies)
+                    {
+                        <a href="@Url.Action("Index", new { movieId = movie.Id })"
+                           class="btn btn-xs @(Model.FilterMovieId == movie.Id ? "btn-primary" : "btn-default")"
+                           style="margin: 2px;">
+                            @movie.Name
+                        </a>
+                    }
+                </div>
+            </div>
+
+            @* Top Rated *@
+            <div class="panel panel-warning">
+                <div class="panel-heading"><strong><span class="glyphicon glyphicon-star"></span> Top Rated Tracks</strong></div>
+                <ul class="list-group">
+                    @foreach (var track in Model.TopRated)
+                    {
+                        <li class="list-group-item">
+                            <strong>@track.Title</strong> <small class="text-muted">by @track.Artist</small>
+                            <br />
+                            <small class="text-muted">@track.MovieName</small>
+                            <span class="badge">@track.AverageRating &#9733; (@track.RatingCount)</span>
+                        </li>
+                    }
+                </ul>
+            </div>
+
+            @* Add Track *@
+            <div class="panel panel-success">
+                <div class="panel-heading"><strong><span class="glyphicon glyphicon-plus"></span> Add Track</strong></div>
+                <div class="panel-body">
+                    <form method="post" action="@Url.Action("Add")">
+                        @Html.AntiForgeryToken()
+                        <div class="form-group">
+                            <label>Movie</label>
+                            <select name="movieId" class="form-control" required>
+                                <option value="">-- Select Movie --</option>
+                                @foreach (var movie in Model.Movies)
+                                {
+                                    <option value="@movie.Id">@movie.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Song Title</label>
+                            <input type="text" name="title" class="form-control" required maxlength="200" />
+                        </div>
+                        <div class="form-group">
+                            <label>Artist</label>
+                            <input type="text" name="artist" class="form-control" required maxlength="200" />
+                        </div>
+                        <div class="form-group">
+                            <label>Duration</label>
+                            <div class="row">
+                                <div class="col-xs-6">
+                                    <input type="number" name="durationMinutes" class="form-control"
+                                           placeholder="Min" min="0" max="99" value="3" />
+                                </div>
+                                <div class="col-xs-6">
+                                    <input type="number" name="durationSeconds" class="form-control"
+                                           placeholder="Sec" min="0" max="59" value="30" />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Track #</label>
+                            <input type="number" name="trackNumber" class="form-control" min="1" value="1" />
+                        </div>
+                        <div class="form-group">
+                            <label>Genre</label>
+                            <input type="text" name="genre" class="form-control" maxlength="100"
+                                   placeholder="e.g., Pop, Rock, Classical" />
+                        </div>
+                        <button type="submit" class="btn btn-success btn-block">
+                            <span class="glyphicon glyphicon-plus"></span> Add Track
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        @* Right column: Track listing *@
+        <div class="col-md-8">
+            @if (!Model.Tracks.Any())
+            {
+                <div class="alert alert-info">
+                    <span class="glyphicon glyphicon-info-sign"></span>
+                    No tracks found. Try a different filter or add some tracks!
+                </div>
+            }
+            else
+            {
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Title</th>
+                            <th>Artist</th>
+                            <th>Movie</th>
+                            <th>Duration</th>
+                            <th>Genre</th>
+                            <th>Rating</th>
+                            <th>Rate</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var track in Model.Tracks)
+                        {
+                            <tr>
+                                <td>@track.TrackNumber</td>
+                                <td><strong>@track.Title</strong></td>
+                                <td>@track.Artist</td>
+                                <td>
+                                    <a href="@Url.Action("Index", new { movieId = track.MovieId })">
+                                        @track.MovieName
+                                    </a>
+                                </td>
+                                <td>@track.FormattedDuration</td>
+                                <td><span class="label label-default">@(track.Genre ?? "—")</span></td>
+                                <td>
+                                    @if (track.RatingCount > 0)
+                                    {
+                                        <span class="text-warning">
+                                            @for (int i = 1; i <= 5; i++)
+                                            {
+                                                if (i <= Math.Round(track.AverageRating))
+                                                {
+                                                    <span class="glyphicon glyphicon-star"></span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="glyphicon glyphicon-star-empty"></span>
+                                                }
+                                            }
+                                        </span>
+                                        <br />
+                                        <small class="text-muted">@track.AverageRating (@track.RatingCount)</small>
+                                    }
+                                    else
+                                    {
+                                        <small class="text-muted">No ratings</small>
+                                    }
+                                </td>
+                                <td>
+                                    <form method="post" action="@Url.Action("Rate")" style="display:inline;">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@track.Id" />
+                                        @for (int s = 1; s <= 5; s++)
+                                        {
+                                            <button type="submit" name="stars" value="@s"
+                                                    class="btn btn-xs btn-default" title="@s star@(s > 1 ? "s" : "")">
+                                                @s
+                                            </button>
+                                        }
+                                    </form>
+                                </td>
+                                <td>
+                                    <form method="post" action="@Url.Action("Delete")" style="display:inline;">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@track.Id" />
+                                        <button type="submit" class="btn btn-xs btn-danger"
+                                                onclick="return confirm('Remove this track?');">
+                                            <span class="glyphicon glyphicon-trash"></span>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+</div>
