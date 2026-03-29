@@ -1,0 +1,171 @@
+@{
+    ViewBag.Title = "Movie Challenges";
+    var challenges = (List<Vidly.Models.ChallengeSummary>)ViewBag.Challenges;
+    var leaderboard = (Dictionary<string, int>)ViewBag.Leaderboard;
+    var filtered = ViewBag.FilteredDifficulty as string;
+}
+
+<style>
+    .challenges-header {
+        text-align: center;
+        padding: 40px 0 30px;
+        background: linear-gradient(135deg, #e65100 0%, #ff6d00 50%, #ffab00 100%);
+        color: #fff;
+        margin: -20px -15px 30px;
+        border-radius: 0 0 20px 20px;
+    }
+    .challenges-header h1 { font-size: 38px; font-weight: 700; margin-bottom: 5px; }
+    .challenges-header .hero-icon { font-size: 64px; display: block; margin-bottom: 10px; }
+    .challenges-header .tagline { font-size: 16px; opacity: 0.85; }
+
+    .difficulty-filter { text-align: center; margin-bottom: 25px; }
+    .difficulty-filter a {
+        display: inline-block; padding: 6px 18px; margin: 0 4px;
+        border-radius: 20px; text-decoration: none; font-weight: 600;
+        border: 2px solid #e65100; color: #e65100; transition: all .2s;
+    }
+    .difficulty-filter a:hover, .difficulty-filter a.active {
+        background: #e65100; color: #fff;
+    }
+
+    .challenge-card {
+        border: none; border-radius: 12px; padding: 20px;
+        margin-bottom: 20px; background: #fff;
+        box-shadow: 0 2px 12px rgba(0,0,0,.08); transition: transform .2s;
+    }
+    .challenge-card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,.12); }
+    .challenge-icon { font-size: 36px; margin-right: 12px; float: left; }
+    .challenge-title { font-size: 20px; font-weight: 700; margin: 0; }
+    .challenge-desc { color: #666; margin: 6px 0 12px; }
+    .challenge-meta span { margin-right: 16px; font-size: 13px; color: #888; }
+
+    .progress-bar-outer {
+        background: #eee; border-radius: 10px; height: 10px; margin: 10px 0;
+        overflow: hidden;
+    }
+    .progress-bar-inner {
+        height: 100%; border-radius: 10px;
+        background: linear-gradient(90deg, #e65100, #ff6d00);
+        transition: width .5s ease;
+    }
+
+    .badge-easy { background: #e8f5e9; color: #2e7d32; }
+    .badge-medium { background: #fff3e0; color: #e65100; }
+    .badge-hard { background: #fce4ec; color: #c62828; }
+    .badge-epic { background: #ede7f6; color: #4a148c; }
+    .diff-badge {
+        display: inline-block; padding: 3px 12px; border-radius: 12px;
+        font-size: 12px; font-weight: 700; text-transform: uppercase;
+    }
+
+    .status-active { color: #2e7d32; font-weight: 600; }
+    .status-expired { color: #999; }
+
+    .leaderboard-section { margin-top: 30px; }
+    .leaderboard-item {
+        display: flex; align-items: center; padding: 10px 16px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    .leaderboard-rank {
+        width: 32px; height: 32px; border-radius: 50%;
+        background: #e65100; color: #fff; text-align: center;
+        line-height: 32px; font-weight: 700; margin-right: 14px; font-size: 14px;
+    }
+    .leaderboard-rank.gold { background: #ffd600; color: #333; }
+    .leaderboard-rank.silver { background: #bdbdbd; color: #333; }
+    .leaderboard-rank.bronze { background: #a1887f; color: #fff; }
+</style>
+
+<div class="challenges-header">
+    <span class="hero-icon">🏆</span>
+    <h1>Movie Challenges</h1>
+    <p class="tagline">Complete challenges, earn points, and climb the leaderboard!</p>
+</div>
+
+<div class="difficulty-filter">
+    <a href="@Url.Action("Index")" class="@(filtered == null ? "active" : "")">All</a>
+    <a href="@Url.Action("Index", new { difficulty = "Easy" })" class="@(filtered == "Easy" ? "active" : "")">Easy</a>
+    <a href="@Url.Action("Index", new { difficulty = "Medium" })" class="@(filtered == "Medium" ? "active" : "")">Medium</a>
+    <a href="@Url.Action("Index", new { difficulty = "Hard" })" class="@(filtered == "Hard" ? "active" : "")">Hard</a>
+    <a href="@Url.Action("Index", new { difficulty = "Epic" })" class="@(filtered == "Epic" ? "active" : "")">Epic</a>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <h3 style="margin-bottom:20px">
+            @(filtered != null ? filtered + " Challenges" : "Active Challenges")
+            <span class="badge" style="background:#e65100;color:#fff;font-size:14px">@challenges.Count</span>
+        </h3>
+        @foreach (var summary in challenges)
+        {
+            var c = summary.Challenge;
+            var diffClass = "badge-" + c.Difficulty.ToString().ToLower();
+            <div class="challenge-card">
+                <span class="challenge-icon">@c.Icon</span>
+                <h4 class="challenge-title">
+                    @c.Title
+                    <span class="diff-badge @diffClass">@c.Difficulty</span>
+                </h4>
+                <p class="challenge-desc">@c.Description</p>
+                <div class="challenge-meta">
+                    <span>🎯 Target: @c.Target</span>
+                    <span>⭐ @c.RewardPoints pts</span>
+                    <span>👥 @summary.TotalParticipants joined</span>
+                    <span>✅ @summary.TotalCompleted completed</span>
+                    @if (c.IsActive)
+                    {
+                        <span class="status-active">● Active</span>
+                        <span>Ends @c.EndDate.ToString("MMM d")</span>
+                    }
+                    else
+                    {
+                        <span class="status-expired">● Expired</span>
+                    }
+                </div>
+                <div class="progress-bar-outer">
+                    @{
+                        var pct = summary.TotalParticipants > 0
+                            ? (int)((double)summary.TotalCompleted / summary.TotalParticipants * 100)
+                            : 0;
+                    }
+                    <div class="progress-bar-inner" style="width:@(pct)%"></div>
+                </div>
+                <small style="color:#999">@pct% completion rate</small>
+                <div style="margin-top:12px">
+                    <a href="@Url.Action("Details", new { id = c.Id })" class="btn btn-sm btn-default">View Details</a>
+                    @if (c.IsActive)
+                    {
+                        using (Html.BeginForm("Join", "Challenges", new { id = c.Id }, FormMethod.Post, new { style = "display:inline" }))
+                        {
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-sm btn-warning">Join Challenge</button>
+                        }
+                    }
+                </div>
+            </div>
+        }
+    </div>
+    <div class="col-md-4">
+        <div class="leaderboard-section">
+            <h3>🏅 Challenge Leaderboard</h3>
+            <p style="color:#888;font-size:13px">Most challenges completed</p>
+            @{ int rank = 0; }
+            @foreach (var entry in leaderboard)
+            {
+                rank++;
+                var rankClass = rank == 1 ? "gold" : rank == 2 ? "silver" : rank == 3 ? "bronze" : "";
+                <div class="leaderboard-item">
+                    <div class="leaderboard-rank @rankClass">@rank</div>
+                    <div style="flex:1">
+                        <strong>@entry.Key</strong>
+                        <br/><small style="color:#888">@entry.Value challenge(s) completed</small>
+                    </div>
+                </div>
+            }
+            @if (!leaderboard.Any())
+            {
+                <p style="color:#999;text-align:center;padding:20px">No completions yet!</p>
+            }
+        </div>
+    </div>
+</div>
