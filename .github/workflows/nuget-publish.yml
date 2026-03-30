@@ -41,7 +41,7 @@ jobs:
           Write-Host "Package version: $ver"
 
       - name: Setup NuGet
-        uses: nuget/setup-nuget@v2
+        uses: nuget/setup-nuget@v3
         with:
           nuget-version: "latest"
 

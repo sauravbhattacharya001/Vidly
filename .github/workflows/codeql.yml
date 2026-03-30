@@ -40,7 +40,7 @@ jobs:
           queries: security-and-quality
 
       - name: Setup NuGet
-        uses: nuget/setup-nuget@v2
+        uses: nuget/setup-nuget@v3
 
       - name: Restore NuGet packages
         run: nuget restore Vidly.sln
