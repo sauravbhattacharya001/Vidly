@@ -117,11 +117,43 @@ namespace Vidly.Services
 
         /// <summary>
         /// Gets availability for a single movie with detailed info.
+        /// Directly looks up the movie and its active rental instead of
+        /// computing availability for the entire catalog — O(1) vs O(M).
         /// </summary>
         public MovieAvailability GetMovieAvailability(int movieId)
         {
-            var result = GetAllAvailability();
-            return result.FirstOrDefault(a => a.MovieId == movieId);
+            var movie = _movieRepository.GetById(movieId);
+            if (movie == null) return null;
+
+            var activeRental = _rentalRepository.GetAll()
+                .FirstOrDefault(r => r.MovieId == movieId && r.Status != RentalStatus.Returned);
+
+            var isAvailable = activeRental == null;
+            var isOverdue = activeRental != null && activeRental.IsOverdue;
+            var daysUntil = 0;
+            if (activeRental != null)
+            {
+                daysUntil = (int)Math.Ceiling(
+                    (activeRental.DueDate - _clock.Today).TotalDays);
+            }
+
+            int queueLen = 0;
+            if (_reservationRepository != null)
+                queueLen = _reservationRepository.GetActiveByMovie(movieId).Count;
+
+            return new MovieAvailability
+            {
+                MovieId = movie.Id,
+                MovieName = movie.Name,
+                Genre = movie.Genre,
+                Rating = movie.Rating,
+                IsAvailable = isAvailable,
+                ExpectedReturnDate = activeRental?.DueDate,
+                RentedByCustomer = activeRental?.CustomerName,
+                IsOverdue = isOverdue,
+                DaysUntilAvailable = isAvailable ? 0 : daysUntil,
+                ReservationQueueLength = queueLen
+            };
         }
 
         /// <summary>
@@ -193,13 +225,24 @@ namespace Vidly.Services
         {
             var all = GetAllAvailability();
 
+            // Single pass to count categories instead of 4 separate .Count() enumerations
+            int available = 0, rentedOut = 0, overdue = 0, comingSoon = 0;
+            foreach (var a in all)
+            {
+                if (a.IsAvailable) available++;
+                else if (a.IsOverdue) overdue++;
+                else rentedOut++;
+
+                if (a.Category == AvailabilityCategory.ComingSoon) comingSoon++;
+            }
+
             var summary = new AvailabilitySummary
             {
                 TotalMovies = all.Count,
-                AvailableNow = all.Count(a => a.IsAvailable),
-                RentedOut = all.Count(a => !a.IsAvailable && !a.IsOverdue),
-                Overdue = all.Count(a => a.IsOverdue),
-                ComingSoonCount = all.Count(a => a.Category == AvailabilityCategory.ComingSoon)
+                AvailableNow = available,
+                RentedOut = rentedOut,
+                Overdue = overdue,
+                ComingSoonCount = comingSoon
             };
 
             // Find best/worst genre availability
