@@ -1,0 +1,20 @@
+name: Auto Label Issues
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  issues: write
+
+jobs:
+  label-issues:
+    name: Label issues by content
+    runs-on: ubuntu-latest
+    steps:
+      - name: Label by keywords
+        uses: github/issue-labeler@v3
+        with:
+          configuration-path: .github/issue-labeler.yml
+          enable-versioned-regex: 0
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
