@@ -1,0 +1,65 @@
+@model System.Collections.Generic.IReadOnlyList<Vidly.Services.DecadeSummary>
+@{
+    ViewBag.Title = "Decade Explorer";
+}
+
+<h2><span class="glyphicon glyphicon-time"></span> Decade Explorer</h2>
+<p class="lead">Browse our movie catalog by decade. Discover the films that defined each era.</p>
+
+<div class="row" style="margin-top: 25px;">
+    @foreach (var decade in Model)
+    {
+        <div class="col-md-4 col-sm-6" style="margin-bottom: 20px;">
+            <a href="@Url.Action("Browse", "Decade", new { id = decade.Decade })"
+               class="panel panel-default decade-card"
+               style="display: block; text-decoration: none; transition: transform 0.2s, box-shadow 0.2s;">
+                <div class="panel-heading" style="background: linear-gradient(135deg, #2c3e50, #3498db); color: #fff;">
+                    <h3 class="panel-title" style="font-size: 24px; font-weight: bold;">@decade.Label</h3>
+                </div>
+                <div class="panel-body">
+                    <div class="row">
+                        <div class="col-xs-6">
+                            <strong style="font-size: 28px; color: #2c3e50;">@decade.MovieCount</strong>
+                            <br /><span style="color: #777;">movies</span>
+                        </div>
+                        <div class="col-xs-6 text-right">
+                            <strong style="font-size: 28px; color: #f39c12;">@decade.AverageRating</strong>
+                            <br /><span style="color: #777;">avg rating</span>
+                        </div>
+                    </div>
+                    <hr style="margin: 12px 0;" />
+                    @if (!string.IsNullOrEmpty(decade.TopRatedMovie))
+                    {
+                        <p style="margin: 4px 0; color: #555;">
+                            <span class="glyphicon glyphicon-star" style="color: #f39c12;"></span>
+                            <strong>Top:</strong> @decade.TopRatedMovie
+                        </p>
+                    }
+                    @if (decade.DominantGenre.HasValue)
+                    {
+                        <p style="margin: 4px 0; color: #555;">
+                            <span class="glyphicon glyphicon-tag" style="color: #3498db;"></span>
+                            <strong>Top genre:</strong> @decade.DominantGenre
+                            <span style="color: #999;">(@decade.GenreCount genres total)</span>
+                        </p>
+                    }
+                </div>
+            </a>
+        </div>
+    }
+</div>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">
+        <span class="glyphicon glyphicon-info-sign"></span>
+        No movies with release dates found in the catalog.
+    </div>
+}
+
+<style>
+    .decade-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    }
+</style>

@@ -1,0 +1,147 @@
+@model Vidly.Services.DecadeDetail
+@{
+    ViewBag.Title = Model.Label + " Movies";
+}
+
+<h2>
+    <span class="glyphicon glyphicon-film"></span> The @Model.Label
+    <small>@Model.TotalCount movies</small>
+</h2>
+
+<p>
+    <a href="@Url.Action("Index", "Decade")" class="btn btn-default btn-sm">
+        <span class="glyphicon glyphicon-arrow-left"></span> All Decades
+    </a>
+</p>
+
+<div class="row" style="margin-top: 20px;">
+    @* Stats panel *@
+    <div class="col-md-4">
+        <div class="panel panel-primary">
+            <div class="panel-heading"><h3 class="panel-title">Decade Stats</h3></div>
+            <div class="panel-body">
+                <table class="table table-condensed" style="margin-bottom: 0;">
+                    <tr>
+                        <td><strong>Total Movies</strong></td>
+                        <td class="text-right">@Model.TotalCount</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Average Rating</strong></td>
+                        <td class="text-right">
+                            @for (int i = 1; i <= 5; i++)
+                            {
+                                <span class="glyphicon glyphicon-star" style="color: @(i <= Math.Round(Model.AverageRating) ? "#f39c12" : "#ddd");"></span>
+                            }
+                            <br /><small>(@Model.AverageRating.ToString("F1"))</small>
+                        </td>
+                    </tr>
+                    @if (Model.TopRated != null)
+                    {
+                        <tr>
+                            <td><strong>Top Rated</strong></td>
+                            <td class="text-right">@Model.TopRated.Name (@Model.TopRated.Rating/5)</td>
+                        </tr>
+                    }
+                    @if (Model.DominantGenre.HasValue)
+                    {
+                        <tr>
+                            <td><strong>Dominant Genre</strong></td>
+                            <td class="text-right">@Model.DominantGenre</td>
+                        </tr>
+                    }
+                </table>
+            </div>
+        </div>
+
+        @* Genre breakdown *@
+        <div class="panel panel-info">
+            <div class="panel-heading"><h3 class="panel-title">Genre Breakdown</h3></div>
+            <div class="panel-body">
+                @foreach (var gc in Model.GenreBreakdown)
+                {
+                    var pct = Model.TotalCount > 0 ? (int)Math.Round(100.0 * gc.Count / Model.TotalCount) : 0;
+                    <div style="margin-bottom: 8px;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>@gc.Genre</span>
+                            <span class="text-muted">@gc.Count (@pct%)</span>
+                        </div>
+                        <div class="progress" style="margin-bottom: 0; height: 8px;">
+                            <div class="progress-bar progress-bar-info" style="width: @pct%;"></div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @* Year breakdown *@
+        <div class="panel panel-default">
+            <div class="panel-heading"><h3 class="panel-title">Movies by Year</h3></div>
+            <div class="panel-body">
+                @foreach (var yc in Model.YearBreakdown)
+                {
+                    var maxCount = Model.YearBreakdown.Max(y => y.Count);
+                    var pct = maxCount > 0 ? (int)Math.Round(100.0 * yc.Count / maxCount) : 0;
+                    <div style="margin-bottom: 4px; display: flex; align-items: center;">
+                        <span style="width: 40px; font-weight: bold;">@yc.Year</span>
+                        <div class="progress" style="flex: 1; margin-bottom: 0; height: 16px;">
+                            <div class="progress-bar progress-bar-success" style="width: @pct%; min-width: 20px; line-height: 16px; font-size: 11px;">
+                                @yc.Count
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* Movie list *@
+    <div class="col-md-8">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title">All @Model.Label Movies</h3>
+            </div>
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Year</th>
+                        <th>Genre</th>
+                        <th>Rating</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var movie in Model.Movies)
+                    {
+                        <tr>
+                            <td>
+                                <a href="@Url.Action("Details", "Movies", new { id = movie.Id })">
+                                    @movie.Name
+                                </a>
+                            </td>
+                            <td>@(movie.ReleaseDate.HasValue ? movie.ReleaseDate.Value.Year.ToString() : "—")</td>
+                            <td>
+                                @if (movie.Genre.HasValue)
+                                {
+                                    <span class="label label-default">@movie.Genre</span>
+                                }
+                            </td>
+                            <td>
+                                @if (movie.Rating.HasValue)
+                                {
+                                    for (int i = 1; i <= 5; i++)
+                                    {
+                                        <span class="glyphicon glyphicon-star" style="color: @(i <= movie.Rating ? "#f39c12" : "#ddd"); font-size: 12px;"></span>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Unrated</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
