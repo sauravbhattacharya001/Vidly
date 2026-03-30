@@ -1,0 +1,31 @@
+# Issue auto-labeler configuration
+# Labels issues based on title and body content
+
+bug:
+  - '(crash|error|exception|fail|broken|not working|bug|fix|issue|problem)'
+enhancement:
+  - '(feature|enhance|improve|add|request|would be nice|suggestion)'
+documentation:
+  - '(docs|documentation|readme|typo|spelling|grammar|comment)'
+question:
+  - '(how to|how do|question|help|confused|unclear|what is|explain)'
+security:
+  - '(security|vulnerability|CVE|exploit|injection|XSS|CSRF|auth)'
+performance:
+  - '(slow|performance|speed|optimize|memory|leak|latency|timeout)'
+ui:
+  - '(UI|UX|layout|CSS|style|design|display|render|visual|frontend)'
+dependencies:
+  - '(dependency|package|NuGet|update|upgrade|version|library)'
+tests:
+  - '(test|testing|unit test|integration test|coverage|assertion)'
+controllers:
+  - '(controller|API|endpoint|route|action|request|response)'
+models:
+  - '(model|entity|schema|database|migration|EF|Entity Framework)'
+views:
+  - '(view|Razor|template|partial|layout|HTML)'
+docker:
+  - '(docker|container|image|Dockerfile|compose|kubernetes|k8s)'
+ci:
+  - '(CI|CD|pipeline|workflow|GitHub Actions|build|deploy)'
