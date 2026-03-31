@@ -1,0 +1,141 @@
+@model Vidly.ViewModels.WatchPartyViewModel
+@{
+    ViewBag.Title = "Watch Party Planner";
+}
+
+<div class="container" style="max-width: 960px; margin: 0 auto; padding: 20px;">
+    <div style="text-align: center; margin-bottom: 30px;">
+        <h1 style="font-size: 2.5em; margin-bottom: 5px;">🎉 Watch Party Planner</h1>
+        <p style="color: #666; font-size: 1.1em;">Pick a theme. We'll plan the perfect movie night.</p>
+    </div>
+
+    @if (TempData["Error"] != null)
+    {
+        <div style="background: #f8d7da; color: #721c24; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px;">
+            @TempData["Error"]
+        </div>
+    }
+
+    @if (!Model.HasPlan)
+    {
+        <h3 style="text-align: center; margin-bottom: 20px;">Choose your vibe</h3>
+        <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; margin-bottom: 30px;">
+            @foreach (var theme in Model.Themes)
+            {
+                var themeKey = "";
+                foreach (var kvp in Vidly.Services.WatchPartyService.Themes)
+                {
+                    if (kvp.Value.Name == theme.Name) { themeKey = kvp.Key; break; }
+                }
+                <a href="@Url.Action("Plan", "WatchParty", new { theme = themeKey })"
+                   style="display: block; width: 200px; padding: 20px 15px; text-align: center;
+                          background: #fff; border: 2px solid #e0e0e0; border-radius: 12px;
+                          text-decoration: none; color: #333; transition: all 0.2s;"
+                   onmouseover="this.style.borderColor='#6f42c1'; this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(111,66,193,0.15)';"
+                   onmouseout="this.style.borderColor='#e0e0e0'; this.style.transform='none'; this.style.boxShadow='none';">
+                    <div style="font-size: 2.5em; margin-bottom: 8px;">@theme.Emoji</div>
+                    <div style="font-weight: bold; font-size: 1.1em;">@theme.Name</div>
+                    <div style="font-size: 0.85em; color: #888; margin-top: 4px;">@theme.Description</div>
+                    <div style="font-size: 0.75em; color: #6f42c1; margin-top: 8px;">@theme.MovieCount movie@(theme.MovieCount != 1 ? "s" : "")</div>
+                </a>
+            }
+        </div>
+
+        @if (Model.SavedParties != null && Model.SavedParties.Count > 0)
+        {
+            <div style="margin-top: 20px;">
+                <h4 style="text-align: center; color: #666;">Recent Parties</h4>
+                <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
+                    @foreach (var party in Model.SavedParties)
+                    {
+                        <a href="@Url.Action("Share", "WatchParty", new { id = party.ShareCode })"
+                           style="padding: 10px 16px; background: #f8f9fa; border-radius: 8px;
+                                  text-decoration: none; color: #333; font-size: 0.9em;">
+                            @party.Theme.Emoji @party.Theme.Name
+                            <span style="color: #999;">· @party.ShareCode</span>
+                        </a>
+                    }
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        @if (Model.Message != null)
+        {
+            <div style="text-align: center; color: #28a745; font-weight: bold; margin-bottom: 15px;">
+                @Model.Message
+            </div>
+        }
+
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff;
+                    border-radius: 16px; padding: 30px; margin-bottom: 25px;">
+            <div style="text-align: center;">
+                <span style="font-size: 3em;">@Model.Plan.Theme.Emoji</span>
+                <h2 style="margin: 10px 0 5px; color: #fff;">@Model.Plan.Theme.Name</h2>
+                <p style="opacity: 0.85;">@Model.Plan.Theme.Description</p>
+                <div style="display: flex; justify-content: center; gap: 30px; margin-top: 15px; font-size: 0.95em;">
+                    <span>🎬 @Model.Plan.Movies.Count movie@(Model.Plan.Movies.Count != 1 ? "s" : "")</span>
+                    <span>⏱️ @Model.Plan.FormattedRuntime</span>
+                    <span>👥 @Model.Plan.GuestCount guests</span>
+                </div>
+            </div>
+        </div>
+
+        <div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; margin-bottom: 25px;">
+            @foreach (var movie in Model.Plan.Movies)
+            {
+                <div style="width: 220px; background: #fff; border: 1px solid #e0e0e0; border-radius: 10px;
+                            padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                    <div style="font-size: 0.8em; color: #fff; background: #6f42c1; display: inline-block;
+                                padding: 2px 8px; border-radius: 4px; margin-bottom: 10px;">
+                        @(movie.Genre.HasValue ? movie.Genre.Value.ToString() : "Unknown")
+                    </div>
+                    <h4 style="margin: 0 0 6px;">@movie.Name</h4>
+                    @if (movie.Rating.HasValue)
+                    {
+                        <div style="color: #f5a623;">
+                            @for (int i = 0; i < movie.Rating.Value; i++) { <text>★</text> }@for (int i = movie.Rating.Value; i < 5; i++) { <text>☆</text> }
+                        </div>
+                    }
+                    @if (movie.ReleaseDate.HasValue)
+                    {
+                        <div style="font-size: 0.8em; color: #999; margin-top: 4px;">
+                            @movie.ReleaseDate.Value.Year
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <div style="background: #fff3cd; border-radius: 10px; padding: 16px; margin-bottom: 25px;">
+            <h4 style="margin: 0 0 10px;">🍿 Snack Menu</h4>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                @foreach (var snack in Model.Plan.SnackSuggestions)
+                {
+                    <span style="background: #fff; padding: 6px 12px; border-radius: 20px;
+                                 border: 1px solid #e0e0e0; font-size: 0.9em;">@snack</span>
+                }
+            </div>
+        </div>
+
+        <div style="background: #f8f9fa; border-radius: 10px; padding: 16px; margin-bottom: 25px; text-align: center;">
+            <p style="color: #666; margin: 0 0 8px;">Share this party plan with friends:</p>
+            <code style="font-size: 1.5em; letter-spacing: 3px; color: #6f42c1; font-weight: bold;">@Model.Plan.ShareCode</code>
+            <p style="color: #999; font-size: 0.8em; margin-top: 8px;">
+                Link: @Url.Action("Share", "WatchParty", new { id = Model.Plan.ShareCode }, Request.Url.Scheme)
+            </p>
+        </div>
+
+        <div style="text-align: center;">
+            <a href="@Url.Action("Index", "WatchParty")" class="btn btn-primary" style="margin-right: 10px;">
+                ← Plan Another Party
+            </a>
+            <a href="@Url.Action("Plan", "WatchParty", new { theme = "", guests = "" })"
+               onclick="this.href='@Url.Action("Plan", "WatchParty")?theme=' + '@(Model.Plan.Theme != null ? Vidly.Services.WatchPartyService.Themes.FirstOrDefault(x => x.Value.Name == Model.Plan.Theme.Name).Key : "")'; return true;"
+               class="btn btn-outline-secondary">
+                🔄 Regenerate
+            </a>
+        </div>
+    }
+</div>
