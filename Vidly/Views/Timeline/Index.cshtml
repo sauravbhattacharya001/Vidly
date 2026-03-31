@@ -1,0 +1,135 @@
+@model Vidly.Models.TimelineViewModel
+@{
+    ViewBag.Title = "Movie Timeline";
+}
+
+<style>
+    .timeline-container { position: relative; padding: 20px 0; }
+    .timeline-line { position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; background: #3498db; transform: translateX(-50%); }
+    .timeline-year { position: relative; margin-bottom: 40px; }
+    .timeline-year:nth-child(odd) .year-content { margin-left: 55%; }
+    .timeline-year:nth-child(even) .year-content { margin-right: 55%; text-align: right; }
+    .year-badge { display: inline-block; background: #3498db; color: #fff; padding: 6px 16px;
+                  border-radius: 20px; font-size: 18px; font-weight: bold; position: relative; z-index: 1; }
+    .year-dot { position: absolute; left: 50%; top: 12px; width: 16px; height: 16px;
+                background: #fff; border: 4px solid #3498db; border-radius: 50%; transform: translateX(-50%); z-index: 2; }
+    .movie-card { display: inline-block; background: #fff; border: 1px solid #ddd; border-radius: 6px;
+                  padding: 8px 12px; margin: 4px; box-shadow: 0 1px 3px rgba(0,0,0,.1); transition: transform .15s; }
+    .movie-card:hover { transform: scale(1.05); box-shadow: 0 3px 8px rgba(0,0,0,.15); }
+    .movie-name { font-weight: 600; }
+    .movie-rating { color: #f39c12; }
+    .new-release-badge { background: #e74c3c; color: #fff; font-size: 10px; padding: 1px 6px;
+                         border-radius: 8px; margin-left: 4px; }
+    .genre-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; color: #fff; margin-left: 4px; }
+
+    .genre-Action { background: #e74c3c; }     .genre-Comedy { background: #f39c12; }
+    .genre-Drama { background: #9b59b6; }      .genre-Horror { background: #2c3e50; }
+    .genre-SciFi { background: #3498db; }       .genre-Animation { background: #1abc9c; }
+    .genre-Thriller { background: #e67e22; }    .genre-Romance { background: #e91e63; }
+    .genre-Documentary { background: #607d8b; } .genre-Adventure { background: #27ae60; }
+
+    .stats-row .stat-box { display: inline-block; text-align: center; padding: 15px 25px;
+                           background: #f8f9fa; border-radius: 8px; margin: 5px; }
+    .stat-box .stat-number { font-size: 28px; font-weight: bold; color: #3498db; }
+    .stat-box .stat-label { font-size: 12px; color: #777; text-transform: uppercase; }
+
+    .filter-bar { margin-bottom: 20px; }
+    .filter-bar .btn { margin: 2px; }
+    .filter-bar .btn.active { box-shadow: inset 0 2px 4px rgba(0,0,0,.2); }
+
+    @@media (max-width: 768px) {
+        .timeline-line { left: 20px; }
+        .year-dot { left: 20px; }
+        .timeline-year:nth-child(odd) .year-content,
+        .timeline-year:nth-child(even) .year-content { margin-left: 50px; margin-right: 0; text-align: left; }
+    }
+</style>
+
+<h2><span class="glyphicon glyphicon-time"></span> Movie Timeline</h2>
+<p class="text-muted">Explore the catalog chronologically — movies plotted by release year with genre color-coding.</p>
+
+@if (Model.TotalMovies > 0)
+{
+    <div class="stats-row text-center" style="margin-bottom:25px;">
+        <div class="stat-box">
+            <div class="stat-number">@Model.TotalMovies</div>
+            <div class="stat-label">Movies</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-number">@Model.EarliestYear</div>
+            <div class="stat-label">Earliest</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-number">@Model.LatestYear</div>
+            <div class="stat-label">Latest</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-number">@Model.TotalYearsSpanned</div>
+            <div class="stat-label">Years Spanned</div>
+        </div>
+    </div>
+}
+
+<div class="filter-bar">
+    <strong>Filter by Genre:</strong>
+    <a href="@Url.Action("Index")" class="btn btn-sm @(Model.FilterGenre == null ? "btn-primary" : "btn-default")">All</a>
+    @foreach (var g in Model.GenreCounts)
+    {
+        var isActive = Model.FilterGenre.HasValue && Model.FilterGenre.Value.ToString() == g.Key;
+        <a href="@Url.Action("Index", new { genre = g.Key })"
+           class="btn btn-sm @(isActive ? "btn-primary" : "btn-default")">
+            @g.Key <span class="badge">@g.Value</span>
+        </a>
+    }
+</div>
+
+@if (Model.YearGroups.Count == 0)
+{
+    <div class="alert alert-info">
+        <span class="glyphicon glyphicon-info-sign"></span>
+        No movies found@(Model.FilterGenre.HasValue ? " for genre " + Model.FilterGenre.Value : "")
+        with release dates.
+    </div>
+}
+else
+{
+    <div class="timeline-container">
+        <div class="timeline-line"></div>
+
+        @foreach (var yearGroup in Model.YearGroups)
+        {
+            <div class="timeline-year">
+                <div class="year-dot"></div>
+                <div class="year-content">
+                    <span class="year-badge">@yearGroup.Year</span>
+                    <span class="badge" style="background:#95a5a6;">@yearGroup.Movies.Count movie@(yearGroup.Movies.Count != 1 ? "s" : "")</span>
+                    <div style="margin-top:8px;">
+                        @foreach (var movie in yearGroup.Movies)
+                        {
+                            <div class="movie-card">
+                                <span class="movie-name">
+                                    @Html.ActionLink(movie.MovieName, "Details", "Movies", new { id = movie.MovieId }, null)
+                                </span>
+                                @if (movie.Rating.HasValue)
+                                {
+                                    <span class="movie-rating">
+                                        @for (int i = 0; i < movie.Rating.Value; i++) { <span class="glyphicon glyphicon-star"></span> }
+                                        @for (int i = movie.Rating.Value; i < 5; i++) { <span class="glyphicon glyphicon-star-empty"></span> }
+                                    </span>
+                                }
+                                @if (movie.Genre.HasValue)
+                                {
+                                    <span class="genre-badge genre-@movie.Genre.Value">@movie.Genre.Value</span>
+                                }
+                                @if (movie.IsNewRelease)
+                                {
+                                    <span class="new-release-badge">NEW</span>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
