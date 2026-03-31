@@ -1,0 +1,154 @@
+@model Vidly.Models.ShowdownViewModel
+@{
+    ViewBag.Title = "Movie Showdown";
+}
+
+<div class="container">
+    <div class="page-header">
+        <h1><span class="glyphicon glyphicon-fire"></span> Movie Showdown</h1>
+        <p class="lead">Two movies enter, one wins. Pick your favorite!</p>
+    </div>
+
+    @if (TempData["VoteResult"] != null)
+    {
+        <div class="alert alert-success alert-dismissible" role="alert">
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+            @TempData["VoteResult"]
+        </div>
+    }
+
+    @if (Model.Message != null)
+    {
+        <div class="alert alert-warning">@Model.Message</div>
+    }
+    else if (Model.CurrentMatchup != null)
+    {
+        <div class="row">
+            <div class="col-md-5">
+                <div class="panel panel-primary">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">@Model.CurrentMatchup.MovieA.Name</h3>
+                    </div>
+                    <div class="panel-body text-center">
+                        @if (Model.CurrentMatchup.MovieA.Genre.HasValue)
+                        {
+                            <p><span class="label label-info">@Model.CurrentMatchup.MovieA.Genre</span></p>
+                        }
+                        @if (Model.CurrentMatchup.MovieA.ReleaseDate.HasValue)
+                        {
+                            <p><strong>Released:</strong> @Model.CurrentMatchup.MovieA.ReleaseDate.Value.ToString("MMM d, yyyy")</p>
+                        }
+                        @if (Model.CurrentMatchup.MovieA.Rating.HasValue)
+                        {
+                            <p>
+                                @for (int i = 0; i < Model.CurrentMatchup.MovieA.Rating.Value; i++)
+                                {
+                                    <span class="glyphicon glyphicon-star text-warning"></span>
+                                }
+                                @for (int i = Model.CurrentMatchup.MovieA.Rating.Value; i < 5; i++)
+                                {
+                                    <span class="glyphicon glyphicon-star-empty"></span>
+                                }
+                            </p>
+                        }
+                        @using (Html.BeginForm("Vote", "Showdown", FormMethod.Post))
+                        {
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="winnerId" value="@Model.CurrentMatchup.MovieA.Id" />
+                            <input type="hidden" name="loserId" value="@Model.CurrentMatchup.MovieB.Id" />
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <span class="glyphicon glyphicon-thumbs-up"></span> Pick This One
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-2 text-center" style="padding-top: 60px;">
+                <h1><span class="label label-default">VS</span></h1>
+                <p class="text-muted">Round @Model.CurrentMatchup.RoundNumber</p>
+            </div>
+
+            <div class="col-md-5">
+                <div class="panel panel-danger">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">@Model.CurrentMatchup.MovieB.Name</h3>
+                    </div>
+                    <div class="panel-body text-center">
+                        @if (Model.CurrentMatchup.MovieB.Genre.HasValue)
+                        {
+                            <p><span class="label label-info">@Model.CurrentMatchup.MovieB.Genre</span></p>
+                        }
+                        @if (Model.CurrentMatchup.MovieB.ReleaseDate.HasValue)
+                        {
+                            <p><strong>Released:</strong> @Model.CurrentMatchup.MovieB.ReleaseDate.Value.ToString("MMM d, yyyy")</p>
+                        }
+                        @if (Model.CurrentMatchup.MovieB.Rating.HasValue)
+                        {
+                            <p>
+                                @for (int i = 0; i < Model.CurrentMatchup.MovieB.Rating.Value; i++)
+                                {
+                                    <span class="glyphicon glyphicon-star text-warning"></span>
+                                }
+                                @for (int i = Model.CurrentMatchup.MovieB.Rating.Value; i < 5; i++)
+                                {
+                                    <span class="glyphicon glyphicon-star-empty"></span>
+                                }
+                            </p>
+                        }
+                        @using (Html.BeginForm("Vote", "Showdown", FormMethod.Post))
+                        {
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="winnerId" value="@Model.CurrentMatchup.MovieB.Id" />
+                            <input type="hidden" name="loserId" value="@Model.CurrentMatchup.MovieA.Id" />
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <span class="glyphicon glyphicon-thumbs-up"></span> Pick This One
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center" style="margin-top: 10px;">
+            <a href="@Url.Action("Index")" class="btn btn-default">
+                <span class="glyphicon glyphicon-refresh"></span> Skip (New Matchup)
+            </a>
+        </div>
+    }
+
+    @if (Model.Leaderboard != null && Model.Leaderboard.Count > 0)
+    {
+        <hr />
+        <h3><span class="glyphicon glyphicon-trophy"></span> Leaderboard</h3>
+        <p class="text-muted">@Model.TotalRounds total rounds played</p>
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Movie</th>
+                    <th>Wins</th>
+                    <th>Losses</th>
+                    <th>Win Rate</th>
+                </tr>
+            </thead>
+            <tbody>
+                @{ int rank = 1; }
+                @foreach (var score in Model.Leaderboard)
+                {
+                    <tr class="@(rank == 1 ? "success" : rank == 2 ? "info" : rank == 3 ? "warning" : "")">
+                        <td>
+                            @if (rank == 1) { <span class="glyphicon glyphicon-king text-warning"></span> }
+                            @rank
+                        </td>
+                        <td><strong>@score.MovieName</strong></td>
+                        <td><span class="text-success">@score.Wins</span></td>
+                        <td><span class="text-danger">@score.Losses</span></td>
+                        <td>@score.WinRate.ToString("F1")%</td>
+                    </tr>
+                    rank++;
+                }
+            </tbody>
+        </table>
+    }
+</div>
