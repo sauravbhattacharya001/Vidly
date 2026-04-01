@@ -1,0 +1,255 @@
+@model Vidly.ViewModels.RouletteViewModel
+@{
+    ViewBag.Title = "Movie Roulette";
+
+    var genreColors = new Dictionary<string, string>
+    {
+        {"Action", "#e74c3c"}, {"Comedy", "#f39c12"}, {"Drama", "#3498db"},
+        {"Horror", "#8e44ad"}, {"SciFi", "#1abc9c"}, {"Animation", "#2ecc71"},
+        {"Thriller", "#e67e22"}, {"Romance", "#e91e63"}, {"Documentary", "#607d8b"},
+        {"Adventure", "#ff5722"}
+    };
+}
+
+<div class="text-center" style="margin-bottom: 30px;">
+    <h2><span class="glyphicon glyphicon-random"></span> Movie Roulette</h2>
+    <p class="lead">Can't decide what to watch? Let fate choose for you!</p>
+</div>
+
+@* Filter Form *@
+<div class="row">
+    <div class="col-md-6 col-md-offset-3">
+        <div class="panel panel-default">
+            <div class="panel-body">
+                @using (Html.BeginForm("Spin", "Roulette", FormMethod.Post, new { id = "roulette-form" }))
+                {
+                    @Html.AntiForgeryToken()
+                    <div class="row">
+                        <div class="col-sm-5">
+                            <div class="form-group">
+                                <label>Genre Filter</label>
+                                <select name="genre" class="form-control" id="genre-filter">
+                                    <option value="">Any Genre</option>
+                                    @foreach (Vidly.Models.Genre g in Enum.GetValues(typeof(Vidly.Models.Genre)))
+                                    {
+                                        var selected = Model.SelectedGenre.HasValue && Model.SelectedGenre.Value == g;
+                                        <option value="@((int)g)" @(selected ? "selected" : "")>@g</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-sm-4">
+                            <div class="form-group">
+                                <label>Min Rating</label>
+                                <select name="minRating" class="form-control" id="rating-filter">
+                                    <option value="">Any</option>
+                                    @for (int i = 1; i <= 5; i++)
+                                    {
+                                        var selected = Model.SelectedMinRating.HasValue && Model.SelectedMinRating.Value == i;
+                                        <option value="@i" @(selected ? "selected" : "")>@(new string('★', i))@(new string('☆', 5 - i))</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-sm-3">
+                            <div class="form-group">
+                                <label>&nbsp;</label>
+                                <button type="submit" class="btn btn-danger btn-block" id="spin-btn">
+                                    <span class="glyphicon glyphicon-refresh"></span> SPIN!
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Wheel Display *@
+<div class="text-center" style="margin: 30px 0;">
+    <div id="wheel-container" style="position: relative; display: inline-block;">
+        @* Pointer *@
+        <div id="wheel-pointer" style="position: absolute; top: -18px; left: 50%; transform: translateX(-50%); z-index: 10; font-size: 32px; line-height: 1;">
+            ▼
+        </div>
+
+        <canvas id="roulette-wheel" width="360" height="360" style="border-radius: 50%; box-shadow: 0 4px 20px rgba(0,0,0,0.3);"></canvas>
+    </div>
+</div>
+
+@* Result Display *@
+@if (Model.HasSpun)
+{
+    <div class="row" style="margin-top: 20px;">
+        <div class="col-md-6 col-md-offset-3">
+            @if (Model.Result?.PickedMovie != null)
+            {
+                var movie = Model.Result.PickedMovie;
+                var colorKey = movie.Genre.HasValue ? movie.Genre.Value.ToString() : "Drama";
+                var color = genreColors.ContainsKey(colorKey) ? genreColors[colorKey] : "#3498db";
+
+                <div class="panel panel-default" style="border-left: 5px solid @color; animation: slideUp 0.5s ease-out;">
+                    <div class="panel-body text-center">
+                        <h3 style="margin-top: 5px;">🎬 @movie.Name</h3>
+                        <p>
+                            @if (movie.Genre.HasValue)
+                            {
+                                <span class="label label-default" style="background-color: @color; font-size: 14px;">@movie.Genre</span>
+                            }
+                            @if (movie.Rating.HasValue)
+                            {
+                                <span style="font-size: 18px; margin-left: 10px;">
+                                    @(new string('★', movie.Rating.Value))@(new string('☆', 5 - movie.Rating.Value))
+                                </span>
+                            }
+                        </p>
+                        @if (movie.ReleaseDate.HasValue)
+                        {
+                            <p style="color: #777;">Released: @movie.ReleaseDate.Value.ToString("MMMM d, yyyy")</p>
+                        }
+                        <p style="color: #999; font-size: 13px;">
+                            Picked from @Model.Result.TotalCandidates candidate@(Model.Result.TotalCandidates != 1 ? "s" : "")
+                        </p>
+                        <button type="submit" form="roulette-form" class="btn btn-danger" style="margin-top: 10px;">
+                            <span class="glyphicon glyphicon-refresh"></span> Spin Again!
+                        </button>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-warning text-center">
+                    <h4>No movies found!</h4>
+                    <p>Try broadening your filters — there are no movies matching your criteria.</p>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+<style>
+    @@keyframes slideUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    #spin-btn:active {
+        transform: scale(0.95);
+    }
+</style>
+
+<script>
+    (function () {
+        var canvas = document.getElementById('roulette-wheel');
+        if (!canvas || !canvas.getContext) return;
+
+        var ctx = canvas.getContext('2d');
+        var cx = canvas.width / 2;
+        var cy = canvas.height / 2;
+        var radius = cx - 10;
+
+        var movies = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(
+            Model.WheelMovies.Select(m => new { name = m.Name, genre = m.Genre?.ToString() ?? "Unknown" })));
+
+        var colors = {
+            'Action': '#e74c3c', 'Comedy': '#f39c12', 'Drama': '#3498db',
+            'Horror': '#8e44ad', 'SciFi': '#1abc9c', 'Animation': '#2ecc71',
+            'Thriller': '#e67e22', 'Romance': '#e91e63', 'Documentary': '#607d8b',
+            'Adventure': '#ff5722', 'Unknown': '#95a5a6'
+        };
+
+        var segments = movies.length > 0 ? movies : [{ name: 'No Movies', genre: 'Unknown' }];
+        var sliceAngle = (2 * Math.PI) / segments.length;
+
+        // Draw wheel
+        var startAngle = 0;
+        for (var i = 0; i < segments.length; i++) {
+            var endAngle = startAngle + sliceAngle;
+            var color = colors[segments[i].genre] || '#95a5a6';
+
+            // Alternate brightness
+            if (i % 2 === 1) {
+                // Slightly lighter variant
+                ctx.fillStyle = color;
+                ctx.globalAlpha = 0.75;
+            } else {
+                ctx.fillStyle = color;
+                ctx.globalAlpha = 1;
+            }
+
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.arc(cx, cy, radius, startAngle, endAngle);
+            ctx.closePath();
+            ctx.fill();
+            ctx.globalAlpha = 1;
+
+            // Label
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(startAngle + sliceAngle / 2);
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 11px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            var label = segments[i].name;
+            if (label.length > 14) label = label.substring(0, 12) + '…';
+            ctx.fillText(label, radius * 0.6, 0);
+            ctx.restore();
+
+            startAngle = endAngle;
+        }
+
+        // Center circle
+        ctx.beginPath();
+        ctx.arc(cx, cy, 22, 0, 2 * Math.PI);
+        ctx.fillStyle = '#fff';
+        ctx.fill();
+        ctx.strokeStyle = '#ddd';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.fillStyle = '#e74c3c';
+        ctx.font = 'bold 14px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('GO', cx, cy);
+
+        // Spin animation on button click
+        var spinBtn = document.getElementById('spin-btn');
+        var spinning = false;
+
+        if (spinBtn) {
+            spinBtn.addEventListener('click', function (e) {
+                if (spinning) return;
+                spinning = true;
+
+                e.preventDefault();
+                var totalRotation = 1440 + Math.random() * 720; // 4-6 full spins
+                var duration = 3000;
+                var start = null;
+
+                function animate(timestamp) {
+                    if (!start) start = timestamp;
+                    var progress = Math.min((timestamp - start) / duration, 1);
+                    // Ease-out cubic
+                    var eased = 1 - Math.pow(1 - progress, 3);
+                    var angle = totalRotation * eased;
+                    canvas.style.transform = 'rotate(' + angle + 'deg)';
+
+                    if (progress < 1) {
+                        requestAnimationFrame(animate);
+                    } else {
+                        // Submit form after animation
+                        setTimeout(function () {
+                            document.getElementById('roulette-form').submit();
+                        }, 500);
+                    }
+                }
+                requestAnimationFrame(animate);
+            });
+        }
+    })();
+</script>
