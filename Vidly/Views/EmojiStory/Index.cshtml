@@ -1,0 +1,74 @@
+@model Vidly.ViewModels.EmojiStoryViewModel
+@{
+    ViewBag.Title = "Movie Emoji Story";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container" style="max-width: 900px; margin: 2rem auto; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+    <div style="text-align: center; margin-bottom: 2rem;">
+        <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem;">🎬 Movie Emoji Story</h1>
+        <p style="color: #64748b; font-size: 1.1rem;">Can you guess the movie from its emoji plot? Test your cinema knowledge!</p>
+    </div>
+
+    @if (TempData["Error"] != null)
+    {
+        <div style="background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+            @TempData["Error"]
+        </div>
+    }
+
+    <!-- Start Game -->
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; padding: 2rem; color: white; margin-bottom: 2rem;">
+        <h2 style="text-align: center; margin-bottom: 1.5rem;">🎮 Start a New Game</h2>
+        @using (Html.BeginForm("Start", "EmojiStory", FormMethod.Post, new { style = "text-align: center;" }))
+        {
+            @Html.AntiForgeryToken()
+            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-bottom: 1.5rem;">
+                <label style="background: rgba(255,255,255,0.2); padding: 0.8rem 1.5rem; border-radius: 12px; cursor: pointer; transition: all 0.2s;">
+                    <input type="radio" name="difficulty" value="" checked="checked" style="margin-right: 0.5rem;"> All Levels
+                    <span style="display: block; font-size: 0.85rem; opacity: 0.8;">@Model.AllPuzzles.Count puzzles</span>
+                </label>
+                <label style="background: rgba(255,255,255,0.2); padding: 0.8rem 1.5rem; border-radius: 12px; cursor: pointer; transition: all 0.2s;">
+                    <input type="radio" name="difficulty" value="Easy" style="margin-right: 0.5rem;"> 🟢 Easy
+                    <span style="display: block; font-size: 0.85rem; opacity: 0.8;">@(Model.DifficultyCounts.ContainsKey("Easy") ? Model.DifficultyCounts["Easy"] : 0) puzzles</span>
+                </label>
+                <label style="background: rgba(255,255,255,0.2); padding: 0.8rem 1.5rem; border-radius: 12px; cursor: pointer; transition: all 0.2s;">
+                    <input type="radio" name="difficulty" value="Medium" style="margin-right: 0.5rem;"> 🟡 Medium
+                    <span style="display: block; font-size: 0.85rem; opacity: 0.8;">@(Model.DifficultyCounts.ContainsKey("Medium") ? Model.DifficultyCounts["Medium"] : 0) puzzles</span>
+                </label>
+                <label style="background: rgba(255,255,255,0.2); padding: 0.8rem 1.5rem; border-radius: 12px; cursor: pointer; transition: all 0.2s;">
+                    <input type="radio" name="difficulty" value="Hard" style="margin-right: 0.5rem;"> 🔴 Hard
+                    <span style="display: block; font-size: 0.85rem; opacity: 0.8;">@(Model.DifficultyCounts.ContainsKey("Hard") ? Model.DifficultyCounts["Hard"] : 0) puzzles</span>
+                </label>
+            </div>
+            <div style="margin-bottom: 1rem;">
+                <label style="font-size: 0.9rem;">Rounds: </label>
+                <select name="rounds" style="padding: 0.4rem; border-radius: 6px; border: none; font-size: 1rem;">
+                    <option value="5">5</option>
+                    <option value="10" selected="selected">10</option>
+                    <option value="15">15</option>
+                </select>
+            </div>
+            <button type="submit" style="background: white; color: #6366f1; border: none; padding: 0.8rem 2.5rem; border-radius: 12px; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: transform 0.2s;">
+                🎬 Play Now
+            </button>
+        }
+    </div>
+
+    <!-- Puzzle Browser -->
+    <h2 style="margin-bottom: 1rem;">📚 Puzzle Library</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem;">
+        @foreach (var puzzle in Model.AllPuzzles)
+        {
+            var diffColor = puzzle.Difficulty == "Easy" ? "#10b981" : puzzle.Difficulty == "Medium" ? "#f59e0b" : "#ef4444";
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.2rem; transition: transform 0.2s; cursor: default;">
+                <div style="font-size: 2rem; margin-bottom: 0.5rem; letter-spacing: 2px;">@puzzle.Emojis</div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 0.8rem; background: @diffColor; color: white; padding: 2px 8px; border-radius: 10px;">@puzzle.Difficulty</span>
+                    <span style="font-size: 0.8rem; color: #94a3b8;">@(puzzle.Genre?.ToString() ?? "N/A")</span>
+                </div>
+                <div style="font-size: 0.85rem; color: #94a3b8; margin-top: 0.5rem; font-style: italic;">💡 @puzzle.Hint</div>
+            </div>
+        }
+    </div>
+</div>

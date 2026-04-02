@@ -1,0 +1,93 @@
+@model Vidly.ViewModels.EmojiStoryViewModel
+@{
+    ViewBag.Title = "Movie Emoji Story - Results";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container" style="max-width: 700px; margin: 2rem auto; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+
+    <!-- Last round feedback -->
+    @if (Model.LastResult != null)
+    {
+        var feedbackBg = Model.LastResult.Correct ? "#f0fdf4" : "#fef2f2";
+        var feedbackBorder = Model.LastResult.Correct ? "#86efac" : "#fca5a5";
+        var feedbackColor = Model.LastResult.Correct ? "#166534" : "#991b1b";
+        <div style="background: @feedbackBg; border: 1px solid @feedbackBorder; color: @feedbackColor; padding: 1rem; border-radius: 12px; margin-bottom: 1.5rem; text-align: center;">
+            @if (Model.LastResult.Correct)
+            {
+                <strong>✅ Correct! +@Model.LastResult.PointsEarned pts</strong>
+                <span> — @Model.LastResult.Emojis = @Model.LastResult.MovieName</span>
+            }
+            else
+            {
+                <strong>❌ The answer was: @Model.LastResult.MovieName</strong>
+                <span> (@Model.LastResult.Emojis)</span>
+            }
+        </div>
+    }
+
+    <!-- Results header -->
+    @{
+        var correctCount = Model.Session.History.Count(r => r.Correct);
+        var totalCount = Model.Session.History.Count;
+        var pct = totalCount > 0 ? (int)Math.Round((double)correctCount / totalCount * 100) : 0;
+        var grade = pct >= 90 ? "🏆 Movie Master!" : pct >= 70 ? "🌟 Film Buff!" : pct >= 50 ? "🎬 Decent Viewer" : "📺 Needs More Movies";
+    }
+
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 20px; padding: 2.5rem; text-align: center; color: white; margin-bottom: 2rem;">
+        <div style="font-size: 3rem; margin-bottom: 0.5rem;">@grade</div>
+        <div style="font-size: 2.5rem; font-weight: 700; margin-bottom: 0.5rem;">@Model.Session.Score points</div>
+        <div style="opacity: 0.8; font-size: 1.1rem;">
+            @correctCount / @totalCount correct (@pct%) &nbsp;|&nbsp; 🔥 Best streak: @Model.Session.BestStreak
+        </div>
+    </div>
+
+    <!-- Round history -->
+    <h2 style="margin-bottom: 1rem;">📋 Round-by-Round</h2>
+    <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 2rem;">
+        @{ int roundNum = 1; }
+        @foreach (var r in Model.Session.History)
+        {
+            var bg = r.Correct ? "#f0fdf4" : "#fef2f2";
+            var border = r.Correct ? "#86efac" : "#fca5a5";
+            <div style="display: flex; align-items: center; gap: 1rem; background: @bg; border: 1px solid @border; padding: 0.8rem 1rem; border-radius: 10px;">
+                <span style="font-weight: 600; min-width: 30px;">#@roundNum</span>
+                <span style="font-size: 1.3rem; min-width: 120px;">@r.Emojis</span>
+                <span style="flex: 1;">
+                    <strong>@r.MovieName</strong>
+                    @if (!r.Correct)
+                    {
+                        <span style="color: #94a3b8; font-size: 0.85rem;"> (guessed: @r.PlayerGuess)</span>
+                    }
+                </span>
+                <span style="font-weight: 600;">
+                    @if (r.Correct)
+                    {
+                        <span style="color: #166534;">+@r.PointsEarned</span>
+                    }
+                    else
+                    {
+                        <span style="color: #991b1b;">+0</span>
+                    }
+                </span>
+                @if (r.HintUsed)
+                {
+                    <span style="font-size: 0.75rem; background: #fef3c7; padding: 2px 6px; border-radius: 6px;">💡</span>
+                }
+            </div>
+            roundNum++;
+        }
+    </div>
+
+    <!-- Play again -->
+    <div style="text-align: center;">
+        @using (Html.BeginForm("Start", "EmojiStory", FormMethod.Post, new { style = "display: inline;" }))
+        {
+            @Html.AntiForgeryToken()
+            <button type="submit" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; border: none; padding: 0.8rem 2rem; border-radius: 12px; font-size: 1.1rem; font-weight: 600; cursor: pointer; margin-right: 1rem;">
+                🔄 Play Again
+            </button>
+        }
+        <a href="@Url.Action("Index", "EmojiStory")" style="color: #6366f1; text-decoration: none; font-weight: 500;">← Back to Lobby</a>
+    </div>
+</div>
