@@ -1,0 +1,547 @@
+@{
+    ViewBag.Title = "Movie Crossword";
+}
+
+<div class="container" style="margin-top: 20px;">
+    <div class="page-header">
+        <h1><span class="glyphicon glyphicon-th"></span> Movie Crossword</h1>
+        <p class="lead text-muted">Solve crossword puzzles with clues about movies, actors, directors, and famous quotes</p>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h3 class="panel-title"><span class="glyphicon glyphicon-list"></span> Choose a Puzzle</h3>
+                </div>
+                <div class="panel-body" id="puzzle-selector">
+                    <div class="list-group" id="puzzle-list"></div>
+                </div>
+            </div>
+
+            <div class="panel panel-info" id="clues-panel" style="display:none;">
+                <div class="panel-heading">
+                    <h3 class="panel-title"><span class="glyphicon glyphicon-question-sign"></span> Clues</h3>
+                </div>
+                <div class="panel-body" style="max-height: 500px; overflow-y: auto;">
+                    <h4>Across</h4>
+                    <ul class="list-unstyled" id="across-clues"></ul>
+                    <hr />
+                    <h4>Down</h4>
+                    <ul class="list-unstyled" id="down-clues"></ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <div class="row">
+                        <div class="col-xs-6">
+                            <h3 class="panel-title" style="line-height:30px;" id="puzzle-title">Select a puzzle to begin</h3>
+                        </div>
+                        <div class="col-xs-6 text-right" id="controls" style="display:none;">
+                            <span class="label label-info" id="timer">00:00</span>
+                            <button class="btn btn-xs btn-warning" onclick="revealLetter()" title="Reveal current letter">
+                                <span class="glyphicon glyphicon-eye-open"></span> Hint
+                            </button>
+                            <button class="btn btn-xs btn-success" onclick="checkPuzzle()" title="Check answers">
+                                <span class="glyphicon glyphicon-ok"></span> Check
+                            </button>
+                            <button class="btn btn-xs btn-danger" onclick="resetPuzzle()" title="Clear all">
+                                <span class="glyphicon glyphicon-refresh"></span> Reset
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel-body text-center">
+                    <div id="crossword-container" style="display:inline-block; position:relative;"></div>
+                    <div id="completion-msg" style="display:none; margin-top:15px;">
+                        <div class="alert alert-success">
+                            <h3><span class="glyphicon glyphicon-star"></span> Puzzle Complete!</h3>
+                            <p id="completion-stats"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel panel-default" id="stats-panel">
+                <div class="panel-heading">
+                    <h3 class="panel-title"><span class="glyphicon glyphicon-stats"></span> Your Stats</h3>
+                </div>
+                <div class="panel-body">
+                    <div class="row text-center">
+                        <div class="col-xs-3">
+                            <h2 id="stat-solved">0</h2>
+                            <p class="text-muted">Solved</p>
+                        </div>
+                        <div class="col-xs-3">
+                            <h2 id="stat-hints">0</h2>
+                            <p class="text-muted">Hints Used</p>
+                        </div>
+                        <div class="col-xs-3">
+                            <h2 id="stat-best">--:--</h2>
+                            <p class="text-muted">Best Time</p>
+                        </div>
+                        <div class="col-xs-3">
+                            <h2 id="stat-streak">0</h2>
+                            <p class="text-muted">Streak</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .cw-cell {
+        width: 36px; height: 36px;
+        border: 2px solid #333;
+        text-align: center;
+        font-size: 18px;
+        font-weight: bold;
+        text-transform: uppercase;
+        padding: 0;
+        background: #fff;
+        position: relative;
+        outline: none;
+    }
+    .cw-cell:focus { background: #ffffcc; border-color: #f0ad4e; }
+    .cw-cell.active-word { background: #e8f4fd; }
+    .cw-cell.correct { background: #dff0d8; }
+    .cw-cell.incorrect { background: #f2dede; }
+    .cw-cell.revealed { color: #337ab7; }
+    .cw-black { width: 36px; height: 36px; background: #333; border: 2px solid #333; }
+    .cw-number {
+        position: absolute; top: 1px; left: 2px;
+        font-size: 9px; font-weight: normal; color: #666;
+        pointer-events: none;
+    }
+    .cw-cell-wrap { position: relative; display: inline-block; }
+    #crossword-container table { border-collapse: collapse; margin: 0 auto; }
+    #across-clues li, #down-clues li { padding: 3px 0; cursor: pointer; }
+    #across-clues li:hover, #down-clues li:hover { color: #337ab7; }
+    #across-clues li.active-clue, #down-clues li.active-clue { font-weight: bold; color: #337ab7; }
+    .puzzle-btn { margin-bottom: 5px; }
+    .puzzle-btn.active { background: #337ab7; color: #fff; }
+</style>
+
+<script>
+    var PUZZLES = [
+        {
+            name: "Classic Cinema",
+            difficulty: "Easy",
+            grid: [
+                [' ','T',' ',' ',' ',' ',' ',' ',' '],
+                [' ','I',' ',' ',' ',' ',' ',' ',' '],
+                ['J','T','A','W','S',' ',' ',' ',' '],
+                ['E',' ','L',' ','C',' ',' ',' ',' '],
+                ['D','R','I','D','L','E','Y',' ',' '],
+                ['I',' ','E',' ','O',' ',' ',' ',' '],
+                [' ',' ','N',' ','N',' ','N','O','L','A','N'],
+                [' ',' ',' ',' ','E',' ',' ',' ',' ',' ',' '],
+                [' ',' ','H','I','T','C','H','C','O','C','K'],
+            ],
+            clues: {
+                across: [
+                    { num: 3, row: 2, col: 0, len: 4, clue: "Spielberg's shark thriller (1975)" },
+                    { num: 5, row: 4, col: 1, len: 6, clue: "Director Scott of Blade Runner (first name)" },
+                    { num: 7, row: 6, col: 6, len: 5, clue: "Christopher ___, directed Inception & The Dark Knight" },
+                    { num: 8, row: 8, col: 2, len: 9, clue: "Master of suspense, directed Psycho & Vertigo" }
+                ],
+                down: [
+                    { num: 1, row: 0, col: 1, len: 3, clue: "Leonardo DiCaprio survived on this ship (short)" },
+                    { num: 2, row: 2, col: 2, len: 5, clue: "Sigourney Weaver fought one in space" },
+                    { num: 3, row: 2, col: 0, len: 3, clue: "Jedi are ___ Knights" },
+                    { num: 4, row: 2, col: 4, len: 7, clue: "Martin ___, directed Goodfellas (last name)" },
+                    { num: 6, row: 4, col: 3, len: 1, clue: "" }
+                ]
+            }
+        },
+        {
+            name: "Action Heroes",
+            difficulty: "Medium",
+            grid: [
+                [' ',' ','S',' ',' ',' ',' ',' ',' ',' ',' '],
+                [' ',' ','T',' ',' ',' ',' ',' ',' ',' ',' '],
+                ['M','A','A','T','R','I','X',' ',' ',' ',' '],
+                [' ',' ','L',' ','O',' ',' ',' ',' ',' ',' '],
+                [' ',' ','L',' ','C',' ','W','I','C','K',' '],
+                [' ',' ','O',' ','K',' ',' ',' ',' ',' ',' '],
+                [' ',' ','N',' ','Y',' ',' ',' ',' ',' ',' '],
+                ['B','O','E','W','U','L','F',' ',' ',' ',' '],
+                [' ',' ',' ',' ',' ',' ','U',' ',' ',' ',' '],
+                [' ',' ','B','O','N','D',' ',' ',' ',' ',' '],
+                [' ',' ',' ',' ',' ',' ','O',' ',' ',' ',' '],
+                [' ',' ',' ',' ',' ',' ','S',' ',' ',' ',' '],
+                [' ',' ',' ',' ',' ',' ','A',' ',' ',' ',' '],
+            ],
+            clues: {
+                across: [
+                    { num: 2, row: 2, col: 0, len: 6, clue: "Neo lives in the ___" },
+                    { num: 4, row: 4, col: 6, len: 4, clue: "John ___, Keanu Reeves' assassin character" },
+                    { num: 5, row: 7, col: 0, len: 7, clue: "Ancient warrior poem, also a 2007 film" },
+                    { num: 7, row: 9, col: 2, len: 4, clue: "James ___, 007 agent" }
+                ],
+                down: [
+                    { num: 1, row: 0, col: 2, len: 8, clue: "Sylvester ___ played Rocky and Rambo (last name)" },
+                    { num: 3, row: 2, col: 4, len: 6, clue: "Dwayne Johnson's wrestling name (\"The ___\")" },
+                    { num: 6, row: 7, col: 6, len: 6, clue: "Mad Max: ___ Road" }
+                ]
+            }
+        },
+        {
+            name: "Oscar Winners",
+            difficulty: "Hard",
+            grid: [
+                [' ',' ',' ',' ','P',' ',' ',' ',' ',' ',' ',' '],
+                [' ',' ',' ',' ','A',' ',' ',' ',' ',' ',' ',' '],
+                ['G','L','A','D','I','A','T','O','R',' ',' ',' '],
+                [' ',' ',' ',' ','S',' ','I',' ',' ',' ',' ',' '],
+                [' ','T','I','T','I','C','T','A','N','I','C',' '],
+                [' ',' ',' ',' ','T',' ','A',' ',' ',' ',' ',' '],
+                [' ',' ',' ',' ','E',' ','N',' ',' ',' ',' ',' '],
+                ['S','C','H','I','N','D','L','E','R',' ',' ',' '],
+                [' ',' ',' ',' ',' ',' ','I',' ',' ',' ',' ',' '],
+                [' ',' ',' ',' ',' ',' ','C',' ',' ',' ',' ',' '],
+            ],
+            clues: {
+                across: [
+                    { num: 2, row: 2, col: 0, len: 9, clue: "Russell Crowe fought in the Colosseum (2000)" },
+                    { num: 4, row: 4, col: 1, len: 11, clue: "Jack and Rose's ill-fated voyage (1997)" },
+                    { num: 5, row: 7, col: 0, len: 9, clue: "___'s List — Spielberg's Holocaust drama (1993)" }
+                ],
+                down: [
+                    { num: 1, row: 0, col: 4, len: 8, clue: "\"The ___ of the Christ\" or a deep emotion" },
+                    { num: 3, row: 2, col: 6, len: 8, clue: "The unsinkable ship, or a James Cameron blockbuster" }
+                ]
+            }
+        },
+        {
+            name: "Sci-Fi Universe",
+            difficulty: "Medium",
+            grid: [
+                [' ',' ','D',' ',' ',' ',' ',' '],
+                [' ',' ','U',' ',' ',' ',' ',' '],
+                ['B','L','N',' ',' ',' ',' ',' '],
+                ['L',' ','E',' ','A','V','A','T','A','R'],
+                [' ',' ',' ',' ',' ',' ',' ','R',' ',' '],
+                ['I','N','C','E','P','T','I','O','N',' '],
+                [' ',' ',' ',' ',' ',' ',' ','N',' ',' '],
+            ],
+            clues: {
+                across: [
+                    { num: 3, row: 3, col: 4, len: 6, clue: "James Cameron's blue aliens on Pandora" },
+                    { num: 4, row: 5, col: 0, len: 9, clue: "Dream within a dream (Nolan, 2010)" }
+                ],
+                down: [
+                    { num: 1, row: 0, col: 2, len: 4, clue: "Frank Herbert's desert planet saga" },
+                    { num: 2, row: 2, col: 0, len: 2, clue: "Blade Runner abbr. (first 2 letters)" },
+                    { num: 5, row: 3, col: 7, len: 4, clue: "Iron Man's last name (in the MCU)" }
+                ]
+            }
+        },
+        {
+            name: "Comedy Legends",
+            difficulty: "Easy",
+            grid: [
+                [' ',' ',' ',' ','C',' ',' ',' ',' ',' '],
+                [' ',' ',' ',' ','A',' ',' ',' ',' ',' '],
+                ['G','H','O','S','T','B','U','S','T','E','R','S'],
+                [' ',' ',' ',' ','E',' ',' ',' ',' ',' ',' ',' '],
+                [' ','F','E','R','R','I','S',' ',' ',' ',' ',' '],
+                [' ',' ',' ',' ','I',' ',' ',' ',' ',' ',' ',' '],
+                [' ',' ',' ',' ','N',' ',' ',' ',' ',' ',' ',' '],
+                ['B','R','I','D','E','S','M','A','I','D','S',' '],
+            ],
+            clues: {
+                across: [
+                    { num: 2, row: 2, col: 0, len: 12, clue: "Who ya gonna call? (1984)" },
+                    { num: 4, row: 4, col: 1, len: 6, clue: "___ Bueller's Day Off (1986)" },
+                    { num: 5, row: 7, col: 0, len: 11, clue: "Kristen Wiig wedding comedy (2011)" }
+                ],
+                down: [
+                    { num: 1, row: 0, col: 4, len: 4, clue: "Jim ___: The Mask, Ace Ventura (last name)" },
+                    { num: 3, row: 2, col: 4, len: 6, clue: "Will Ferrell's \"___\" brand or a comedy tool" }
+                ]
+            }
+        }
+    ];
+
+    var currentPuzzle = null;
+    var cells = {};
+    var selectedCell = null;
+    var direction = 'across';
+    var timerInterval = null;
+    var seconds = 0;
+    var hintsUsed = 0;
+    var stats = JSON.parse(localStorage.getItem('vidly-crossword-stats') || '{"solved":0,"hints":0,"bestTime":null,"streak":0}');
+
+    function init() {
+        var list = document.getElementById('puzzle-list');
+        list.innerHTML = '';
+        PUZZLES.forEach(function(p, i) {
+            var a = document.createElement('a');
+            a.href = '#';
+            a.className = 'list-group-item puzzle-btn';
+            a.innerHTML = '<strong>' + p.name + '</strong> <span class="label label-' +
+                (p.difficulty === 'Easy' ? 'success' : p.difficulty === 'Medium' ? 'warning' : 'danger') +
+                ' pull-right">' + p.difficulty + '</span>';
+            a.onclick = function(e) { e.preventDefault(); loadPuzzle(i); };
+            list.appendChild(a);
+        });
+        updateStats();
+    }
+
+    function loadPuzzle(idx) {
+        currentPuzzle = idx;
+        var p = PUZZLES[idx];
+        hintsUsed = 0;
+        seconds = 0;
+        if (timerInterval) clearInterval(timerInterval);
+
+        document.getElementById('puzzle-title').textContent = p.name;
+        document.getElementById('controls').style.display = '';
+        document.getElementById('clues-panel').style.display = '';
+        document.getElementById('completion-msg').style.display = 'none';
+
+        // highlight selected puzzle
+        var btns = document.querySelectorAll('.puzzle-btn');
+        btns.forEach(function(b, i) { b.classList.toggle('active', i === idx); });
+
+        // build grid
+        var container = document.getElementById('crossword-container');
+        var grid = p.grid;
+        cells = {};
+        var html = '<table>';
+        for (var r = 0; r < grid.length; r++) {
+            html += '<tr>';
+            for (var c = 0; c < grid[r].length; c++) {
+                if (grid[r][c] === ' ') {
+                    html += '<td><div class="cw-black"></div></td>';
+                } else {
+                    var num = getCellNumber(p, r, c);
+                    var numHtml = num ? '<span class="cw-number">' + num + '</span>' : '';
+                    html += '<td><div class="cw-cell-wrap">' + numHtml +
+                        '<input type="text" maxlength="1" class="cw-cell" data-r="' + r + '" data-c="' + c +
+                        '" id="cell-' + r + '-' + c + '" /></div></td>';
+                }
+            }
+            html += '</tr>';
+        }
+        html += '</table>';
+        container.innerHTML = html;
+
+        // attach events
+        var inputs = container.querySelectorAll('.cw-cell');
+        inputs.forEach(function(inp) {
+            var r = parseInt(inp.dataset.r), c = parseInt(inp.dataset.c);
+            cells[r + ',' + c] = inp;
+            inp.addEventListener('focus', function() { onCellFocus(r, c); });
+            inp.addEventListener('input', function() { onCellInput(r, c); });
+            inp.addEventListener('keydown', function(e) { onCellKeydown(e, r, c); });
+            inp.addEventListener('click', function() {
+                if (selectedCell && selectedCell.r === r && selectedCell.c === c) {
+                    direction = direction === 'across' ? 'down' : 'across';
+                    highlightWord(r, c);
+                }
+            });
+        });
+
+        // build clues
+        buildClueList('across-clues', p.clues.across);
+        buildClueList('down-clues', p.clues.down);
+
+        // start timer
+        timerInterval = setInterval(function() {
+            seconds++;
+            document.getElementById('timer').textContent = formatTime(seconds);
+        }, 1000);
+    }
+
+    function getCellNumber(p, r, c) {
+        var all = p.clues.across.concat(p.clues.down);
+        for (var i = 0; i < all.length; i++) {
+            if (all[i].row === r && all[i].col === c && all[i].clue) return all[i].num;
+        }
+        return null;
+    }
+
+    function buildClueList(id, clues) {
+        var ul = document.getElementById(id);
+        ul.innerHTML = '';
+        clues.forEach(function(c) {
+            if (!c.clue) return;
+            var li = document.createElement('li');
+            li.textContent = c.num + '. ' + c.clue;
+            li.dataset.num = c.num;
+            li.dataset.row = c.row;
+            li.dataset.col = c.col;
+            li.onclick = function() {
+                direction = id === 'across-clues' ? 'across' : 'down';
+                focusCell(c.row, c.col);
+            };
+            ul.appendChild(li);
+        });
+    }
+
+    function onCellFocus(r, c) {
+        selectedCell = { r: r, c: c };
+        highlightWord(r, c);
+    }
+
+    function highlightWord(r, c) {
+        // clear highlights
+        Object.values(cells).forEach(function(inp) {
+            inp.classList.remove('active-word');
+        });
+        document.querySelectorAll('#across-clues li, #down-clues li').forEach(function(li) {
+            li.classList.remove('active-clue');
+        });
+
+        var p = PUZZLES[currentPuzzle];
+        var clueList = direction === 'across' ? p.clues.across : p.clues.down;
+        var clue = findClueForCell(clueList, r, c);
+        if (!clue) {
+            direction = direction === 'across' ? 'down' : 'across';
+            clueList = direction === 'across' ? p.clues.across : p.clues.down;
+            clue = findClueForCell(clueList, r, c);
+        }
+        if (!clue) return;
+
+        // highlight cells in word
+        for (var i = 0; i < clue.len; i++) {
+            var cr = direction === 'across' ? clue.row : clue.row + i;
+            var cc = direction === 'across' ? clue.col + i : clue.col;
+            var key = cr + ',' + cc;
+            if (cells[key]) cells[key].classList.add('active-word');
+        }
+
+        // highlight clue
+        var listId = direction === 'across' ? 'across-clues' : 'down-clues';
+        var lis = document.querySelectorAll('#' + listId + ' li');
+        lis.forEach(function(li) {
+            if (parseInt(li.dataset.num) === clue.num) li.classList.add('active-clue');
+        });
+    }
+
+    function findClueForCell(clues, r, c) {
+        for (var i = 0; i < clues.length; i++) {
+            var cl = clues[i];
+            if (!cl.clue) continue;
+            for (var j = 0; j < cl.len; j++) {
+                var cr = cl.row + (clues === PUZZLES[currentPuzzle].clues.down ? j : 0);
+                var cc = cl.col + (clues === PUZZLES[currentPuzzle].clues.across ? j : 0);
+                if (cr === r && cc === c) return cl;
+            }
+        }
+        return null;
+    }
+
+    function onCellInput(r, c) {
+        var inp = cells[r + ',' + c];
+        inp.value = inp.value.toUpperCase().replace(/[^A-Z]/g, '');
+        if (inp.value) moveNext(r, c);
+    }
+
+    function onCellKeydown(e, r, c) {
+        if (e.key === 'Backspace' && !cells[r + ',' + c].value) {
+            e.preventDefault();
+            movePrev(r, c);
+        } else if (e.key === 'ArrowRight') { e.preventDefault(); direction = 'across'; moveNext(r, c); }
+        else if (e.key === 'ArrowLeft') { e.preventDefault(); direction = 'across'; movePrev(r, c); }
+        else if (e.key === 'ArrowDown') { e.preventDefault(); direction = 'down'; moveNext(r, c); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); direction = 'down'; movePrev(r, c); }
+        else if (e.key === 'Tab') {
+            e.preventDefault();
+            direction = direction === 'across' ? 'down' : 'across';
+            highlightWord(r, c);
+        }
+    }
+
+    function moveNext(r, c) {
+        var nr = direction === 'down' ? r + 1 : r;
+        var nc = direction === 'across' ? c + 1 : c;
+        focusCell(nr, nc);
+    }
+
+    function movePrev(r, c) {
+        var nr = direction === 'down' ? r - 1 : r;
+        var nc = direction === 'across' ? c - 1 : c;
+        focusCell(nr, nc);
+    }
+
+    function focusCell(r, c) {
+        var key = r + ',' + c;
+        if (cells[key]) cells[key].focus();
+    }
+
+    function revealLetter() {
+        if (!selectedCell) return;
+        var key = selectedCell.r + ',' + selectedCell.c;
+        var inp = cells[key];
+        if (!inp) return;
+        var answer = PUZZLES[currentPuzzle].grid[selectedCell.r][selectedCell.c];
+        inp.value = answer;
+        inp.classList.add('revealed');
+        hintsUsed++;
+    }
+
+    function checkPuzzle() {
+        var p = PUZZLES[currentPuzzle];
+        var allCorrect = true;
+        var allFilled = true;
+
+        for (var key in cells) {
+            var parts = key.split(',');
+            var r = parseInt(parts[0]), c = parseInt(parts[1]);
+            var inp = cells[key];
+            var answer = p.grid[r][c];
+            inp.classList.remove('correct', 'incorrect');
+
+            if (!inp.value) {
+                allFilled = false;
+                allCorrect = false;
+            } else if (inp.value.toUpperCase() === answer.toUpperCase()) {
+                inp.classList.add('correct');
+            } else {
+                inp.classList.add('incorrect');
+                allCorrect = false;
+            }
+        }
+
+        if (allCorrect && allFilled) {
+            clearInterval(timerInterval);
+            document.getElementById('completion-msg').style.display = '';
+            document.getElementById('completion-stats').textContent =
+                'Completed in ' + formatTime(seconds) + ' with ' + hintsUsed + ' hint(s) used.';
+
+            stats.solved++;
+            stats.hints += hintsUsed;
+            stats.streak++;
+            if (!stats.bestTime || seconds < stats.bestTime) stats.bestTime = seconds;
+            localStorage.setItem('vidly-crossword-stats', JSON.stringify(stats));
+            updateStats();
+        }
+    }
+
+    function resetPuzzle() {
+        if (currentPuzzle !== null) loadPuzzle(currentPuzzle);
+    }
+
+    function updateStats() {
+        document.getElementById('stat-solved').textContent = stats.solved;
+        document.getElementById('stat-hints').textContent = stats.hints;
+        document.getElementById('stat-best').textContent = stats.bestTime ? formatTime(stats.bestTime) : '--:--';
+        document.getElementById('stat-streak').textContent = stats.streak;
+    }
+
+    function formatTime(s) {
+        var m = Math.floor(s / 60);
+        var sec = s % 60;
+        return (m < 10 ? '0' : '') + m + ':' + (sec < 10 ? '0' : '') + sec;
+    }
+
+    init();
+</script>
