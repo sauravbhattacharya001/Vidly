@@ -17,7 +17,7 @@ namespace Vidly.Models
     /// <summary>
     /// Genre popularity within a time period.
     /// </summary>
-    public class GenreTrend
+    public class GenrePopularity
     {
         public Genre Genre { get; set; }
         public int RentalCount { get; set; }
@@ -77,8 +77,8 @@ namespace Vidly.Models
         public decimal TotalRevenue { get; set; }
         public List<DayOfWeekBreakdown> DayOfWeekBreakdown { get; set; }
             = new List<DayOfWeekBreakdown>();
-        public List<GenreTrend> GenreTrends { get; set; }
-            = new List<GenreTrend>();
+        public List<GenrePopularity> GenreTrends { get; set; }
+            = new List<GenrePopularity>();
         public List<MonthlyVolume> MonthlyVolumes { get; set; }
             = new List<MonthlyVolume>();
         public List<RetentionCohort> RetentionCohorts { get; set; }

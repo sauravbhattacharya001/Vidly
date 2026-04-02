@@ -115,7 +115,7 @@ namespace Vidly.Services
         /// <summary>
         /// Get genre trends for a date range.
         /// </summary>
-        public List<GenreTrend> GetGenreTrends(DateTime from, DateTime to)
+        public List<GenrePopularity> GetGenreTrends(DateTime from, DateTime to)
         {
             if (to < from)
                 throw new ArgumentException("'to' must be on or after 'from'.");
@@ -276,13 +276,13 @@ namespace Vidly.Services
             return result;
         }
 
-        private List<GenreTrend> BuildGenreTrends(
+        private List<GenrePopularity> BuildGenreTrends(
             List<Rental> rentals,
             Dictionary<int, Movie> movies,
             DateTime from, DateTime to)
         {
             if (rentals.Count == 0)
-                return new List<GenreTrend>();
+                return new List<GenrePopularity>();
 
             // Group rentals by genre
             var genreRentals = new Dictionary<Genre, List<Rental>>();
@@ -300,7 +300,7 @@ namespace Vidly.Services
             var midpoint = from.AddDays((to - from).TotalDays / 2);
             var totalWithGenre = genreRentals.Values.Sum(g => g.Count);
 
-            var result = new List<GenreTrend>();
+            var result = new List<GenrePopularity>();
             foreach (var kvp in genreRentals)
             {
                 var firstHalf = kvp.Value.Count(r => r.RentalDate < midpoint);
@@ -322,7 +322,7 @@ namespace Vidly.Services
                     direction = -1;
                 }
 
-                result.Add(new GenreTrend
+                result.Add(new GenrePopularity
                 {
                     Genre = kvp.Key,
                     RentalCount = kvp.Value.Count,
