@@ -1,0 +1,213 @@
+@model Vidly.ViewModels.ConnectionsViewModel
+@{
+    ViewBag.Title = "Movie Connections";
+    var puzzle = Model.Puzzles[Model.PuzzleIndex];
+    var difficultyColors = new Dictionary<string, string>
+    {
+        {"yellow", "#f9df6d"}, {"green", "#a0c35a"}, {"blue", "#b0c4ef"}, {"purple", "#ba81c5"}
+    };
+}
+
+<div class="text-center" style="margin-bottom: 20px;">
+    <h2><span class="glyphicon glyphicon-th"></span> Movie Connections</h2>
+    <p class="lead">Find 4 groups of 4 movies that share a hidden connection!</p>
+    <div class="btn-group" style="margin-bottom: 15px;">
+        @for (int i = 0; i < Model.Puzzles.Count; i++)
+        {
+            <a href="@Url.Action("Index", "Connections", new { puzzle = i })"
+               class="btn btn-sm @(i == Model.PuzzleIndex ? "btn-primary" : "btn-default")">
+                Puzzle #@(i + 1)
+            </a>
+        }
+    </div>
+</div>
+
+<div id="connections-game" class="row">
+    <div class="col-md-8 col-md-offset-2">
+        <!-- Solved groups appear here -->
+        <div id="solved-area"></div>
+
+        <!-- Game grid -->
+        <div id="game-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 15px;"></div>
+
+        <!-- Controls -->
+        <div class="text-center" style="margin-bottom: 10px;">
+            <span id="mistakes-display" style="font-size: 18px; margin-right: 15px;"></span>
+            <button id="btn-deselect" class="btn btn-default" onclick="deselectAll()">Deselect All</button>
+            <button id="btn-shuffle" class="btn btn-default" onclick="shuffleGrid()">
+                <span class="glyphicon glyphicon-random"></span> Shuffle
+            </button>
+            <button id="btn-submit" class="btn btn-primary" onclick="submitGuess()" disabled>Submit</button>
+        </div>
+
+        <!-- Result message -->
+        <div id="result-message" class="text-center" style="margin-top: 15px;"></div>
+    </div>
+</div>
+
+@section scripts {
+<script>
+(function () {
+    // Puzzle data from server
+    var groups = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(
+        puzzle.Groups.Select(g => new { category = g.Category, difficulty = g.Difficulty, items = g.Items })));
+
+    var allItems = [];
+    var answerMap = {}; // item -> group index
+    groups.forEach(function (g, gi) {
+        g.items.forEach(function (item) {
+            allItems.push(item);
+            answerMap[item] = gi;
+        });
+    });
+
+    var selected = [];
+    var solved = [];
+    var mistakes = 4;
+    var gameOver = false;
+
+    var diffColors = { yellow: '#f9df6d', green: '#a0c35a', blue: '#b0c4ef', purple: '#ba81c5' };
+    var diffLabels = { yellow: '🟨', green: '🟩', blue: '🟦', purple: '🟪' };
+
+    // Fisher-Yates shuffle
+    function shuffle(arr) {
+        for (var i = arr.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+        }
+        return arr;
+    }
+
+    shuffle(allItems);
+
+    function renderGrid() {
+        var grid = document.getElementById('game-grid');
+        grid.innerHTML = '';
+        var remaining = allItems.filter(function (item) {
+            return solved.indexOf(answerMap[item]) === -1;
+        });
+        remaining.forEach(function (item) {
+            var btn = document.createElement('button');
+            btn.className = 'btn connections-tile';
+            btn.textContent = item;
+            btn.setAttribute('data-item', item);
+            var isSelected = selected.indexOf(item) !== -1;
+            btn.style.cssText = 'width:100%;height:60px;font-size:13px;font-weight:bold;border:2px solid ' +
+                (isSelected ? '#333' : '#ddd') + ';background:' +
+                (isSelected ? '#555' : '#f8f8f8') + ';color:' +
+                (isSelected ? '#fff' : '#333') + ';border-radius:6px;cursor:pointer;transition:all 0.15s;';
+            btn.onclick = function () { toggleItem(item); };
+            grid.appendChild(btn);
+        });
+        // Update grid columns for remaining count
+        var cols = remaining.length >= 4 ? 4 : remaining.length;
+        grid.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
+
+        document.getElementById('btn-submit').disabled = selected.length !== 4 || gameOver;
+        renderMistakes();
+    }
+
+    function renderMistakes() {
+        var dots = '';
+        for (var i = 0; i < mistakes; i++) dots += '● ';
+        document.getElementById('mistakes-display').innerHTML =
+            'Mistakes remaining: <span style="color:#333">' + dots.trim() + '</span>';
+    }
+
+    function toggleItem(item) {
+        if (gameOver) return;
+        var idx = selected.indexOf(item);
+        if (idx !== -1) {
+            selected.splice(idx, 1);
+        } else if (selected.length < 4) {
+            selected.push(item);
+        }
+        renderGrid();
+    }
+
+    window.deselectAll = function () {
+        selected = [];
+        renderGrid();
+    };
+
+    window.shuffleGrid = function () {
+        var remaining = allItems.filter(function (item) {
+            return solved.indexOf(answerMap[item]) === -1;
+        });
+        shuffle(remaining);
+        // Rebuild allItems preserving solved items' positions
+        allItems = allItems.filter(function (item) {
+            return solved.indexOf(answerMap[item]) !== -1;
+        }).concat(remaining);
+        renderGrid();
+    };
+
+    window.submitGuess = function () {
+        if (selected.length !== 4 || gameOver) return;
+
+        // Check if all 4 belong to same group
+        var groupIdx = answerMap[selected[0]];
+        var correct = selected.every(function (item) { return answerMap[item] === groupIdx; });
+
+        if (correct) {
+            solved.push(groupIdx);
+            var g = groups[groupIdx];
+            var solvedArea = document.getElementById('solved-area');
+            var div = document.createElement('div');
+            div.style.cssText = 'background:' + diffColors[g.difficulty] +
+                ';border-radius:8px;padding:12px;margin-bottom:8px;text-align:center;';
+            div.innerHTML = '<strong style="font-size:15px">' + g.category.toUpperCase() + '</strong><br>' +
+                '<span style="font-size:13px">' + g.items.join(', ') + '</span>';
+            solvedArea.appendChild(div);
+            selected = [];
+
+            if (solved.length === 4) {
+                gameOver = true;
+                document.getElementById('result-message').innerHTML =
+                    '<div class="alert alert-success"><h4>🎉 Congratulations!</h4>You solved the puzzle' +
+                    (mistakes === 4 ? ' perfectly!' : ' with ' + (4 - mistakes) + ' mistake(s)!') + '</div>';
+            }
+        } else {
+            mistakes--;
+            // Check "one away"
+            var groupCounts = {};
+            selected.forEach(function (item) {
+                var gi = answerMap[item];
+                groupCounts[gi] = (groupCounts[gi] || 0) + 1;
+            });
+            var maxInGroup = Math.max.apply(null, Object.values(groupCounts));
+
+            var msg = maxInGroup === 3
+                ? '<div class="alert alert-warning">One away! 🤏</div>'
+                : '<div class="alert alert-danger">Incorrect!</div>';
+            document.getElementById('result-message').innerHTML = msg;
+            setTimeout(function () { document.getElementById('result-message').innerHTML = ''; }, 2000);
+
+            selected = [];
+
+            if (mistakes <= 0) {
+                gameOver = true;
+                // Reveal all
+                var solvedArea = document.getElementById('solved-area');
+                groups.forEach(function (g, gi) {
+                    if (solved.indexOf(gi) === -1) {
+                        var div = document.createElement('div');
+                        div.style.cssText = 'background:' + diffColors[g.difficulty] +
+                            ';border-radius:8px;padding:12px;margin-bottom:8px;text-align:center;opacity:0.7;';
+                        div.innerHTML = '<strong style="font-size:15px">' + g.category.toUpperCase() + '</strong><br>' +
+                            '<span style="font-size:13px">' + g.items.join(', ') + '</span>';
+                        solvedArea.appendChild(div);
+                    }
+                });
+                document.getElementById('result-message').innerHTML =
+                    '<div class="alert alert-danger"><h4>Game Over!</h4>Better luck next time! Try another puzzle.</div>';
+                document.getElementById('game-grid').innerHTML = '';
+            }
+        }
+        renderGrid();
+    };
+
+    renderGrid();
+})();
+</script>
+}
