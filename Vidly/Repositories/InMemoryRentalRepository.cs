@@ -183,79 +183,39 @@ namespace Vidly.Repositories
 
         public IReadOnlyList<Rental> GetByCustomer(int customerId)
         {
-            lock (_lock)
-            {
-                var result = new List<Rental>();
-                foreach (var r in _rentals.Values)
-                {
-                    RefreshStatus(r);
-                    if (r.CustomerId == customerId)
-                        result.Add(Clone(r));
-                }
-                result.Sort((a, b) => b.RentalDate.CompareTo(a.RentalDate));
-                return result.AsReadOnly();
-            }
+            return FilterAndSort(
+                r => r.CustomerId == customerId,
+                (a, b) => b.RentalDate.CompareTo(a.RentalDate));
         }
 
         public IReadOnlyList<Rental> GetActiveByCustomer(int customerId)
         {
-            lock (_lock)
-            {
-                var result = new List<Rental>();
-                foreach (var r in _rentals.Values)
-                {
-                    RefreshStatus(r);
-                    if (r.CustomerId == customerId && r.Status != RentalStatus.Returned)
-                        result.Add(Clone(r));
-                }
-                result.Sort((a, b) => a.DueDate.CompareTo(b.DueDate));
-                return result.AsReadOnly();
-            }
+            return FilterAndSort(
+                r => r.CustomerId == customerId && r.Status != RentalStatus.Returned,
+                (a, b) => a.DueDate.CompareTo(b.DueDate));
         }
 
         public IReadOnlyList<Rental> GetByMovie(int movieId)
         {
-            lock (_lock)
-            {
-                var result = new List<Rental>();
-                foreach (var r in _rentals.Values)
-                {
-                    RefreshStatus(r);
-                    if (r.MovieId == movieId)
-                        result.Add(Clone(r));
-                }
-                result.Sort((a, b) => b.RentalDate.CompareTo(a.RentalDate));
-                return result.AsReadOnly();
-            }
+            return FilterAndSort(
+                r => r.MovieId == movieId,
+                (a, b) => b.RentalDate.CompareTo(a.RentalDate));
         }
 
         public IReadOnlyList<Rental> GetOverdue()
         {
-            lock (_lock)
-            {
-                var result = new List<Rental>();
-                foreach (var r in _rentals.Values)
-                {
-                    RefreshStatus(r);
-                    if (r.Status == RentalStatus.Overdue)
-                        result.Add(Clone(r));
-                }
-                result.Sort((a, b) => a.DueDate.CompareTo(b.DueDate));
-                return result.AsReadOnly();
-            }
+            return FilterAndSort(
+                r => r.Status == RentalStatus.Overdue,
+                (a, b) => a.DueDate.CompareTo(b.DueDate));
         }
 
         public IReadOnlyList<Rental> Search(string query, RentalStatus? status)
         {
-            lock (_lock)
-            {
-                bool hasQuery = !string.IsNullOrWhiteSpace(query);
-                var result = new List<Rental>();
+            bool hasQuery = !string.IsNullOrWhiteSpace(query);
 
-                foreach (var r in _rentals.Values)
+            return FilterAndSort(
+                r =>
                 {
-                    RefreshStatus(r);
-
                     if (hasQuery)
                     {
                         bool matchesCustomer = r.CustomerName != null &&
@@ -264,16 +224,37 @@ namespace Vidly.Repositories
                             r.MovieName.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0;
 
                         if (!matchesCustomer && !matchesMovie)
-                            continue;
+                            return false;
                     }
 
                     if (status.HasValue && r.Status != status.Value)
-                        continue;
+                        return false;
 
-                    result.Add(Clone(r));
+                    return true;
+                },
+                (a, b) => b.RentalDate.CompareTo(a.RentalDate));
+        }
+
+        /// <summary>
+        /// Shared helper that acquires the lock, iterates all rentals with
+        /// status refresh, applies a predicate filter, clones matches, and
+        /// sorts the result.  Eliminates the repeated lock-iterate-filter-
+        /// clone-sort pattern across query methods.
+        /// </summary>
+        private IReadOnlyList<Rental> FilterAndSort(
+            Func<Rental, bool> predicate,
+            Comparison<Rental> sortComparison)
+        {
+            lock (_lock)
+            {
+                var result = new List<Rental>();
+                foreach (var r in _rentals.Values)
+                {
+                    RefreshStatus(r);
+                    if (predicate(r))
+                        result.Add(Clone(r));
                 }
-
-                result.Sort((a, b) => b.RentalDate.CompareTo(a.RentalDate));
+                result.Sort(sortComparison);
                 return result.AsReadOnly();
             }
         }
