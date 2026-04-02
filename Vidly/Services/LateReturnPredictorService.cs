@@ -31,23 +31,58 @@ namespace Vidly.Services
 
         /// <summary>
         /// Generates risk predictions for all active (non-returned) rentals.
+        /// Builds a customer rental index once (O(R)) instead of scanning
+        /// all rentals per active rental (previously O(A×R) where A = active
+        /// rentals and R = total rentals). For a store with 500 active
+        /// rentals and 10,000 total rentals, this reduces from ~5M to ~10K
+        /// iterations.
         /// </summary>
         public List<LateReturnPrediction> PredictAll()
         {
             var allRentals = _rentalRepository.GetAll();
-            var activeRentals = allRentals.Where(r => r.Status != RentalStatus.Returned).ToList();
-            var predictions = new List<LateReturnPrediction>();
+            var activeRentals = new List<Rental>();
+
+            // Single pass: build customer rental index and collect active rentals
+            var rentalsByCustomer = new Dictionary<int, List<Rental>>();
+            foreach (var r in allRentals)
+            {
+                if (!rentalsByCustomer.TryGetValue(r.CustomerId, out var list))
+                {
+                    list = new List<Rental>();
+                    rentalsByCustomer[r.CustomerId] = list;
+                }
+                list.Add(r);
+
+                if (r.Status != RentalStatus.Returned)
+                    activeRentals.Add(r);
+            }
+
+            var predictions = new List<LateReturnPrediction>(activeRentals.Count);
 
             foreach (var rental in activeRentals)
             {
-                var customerHistory = allRentals
-                    .Where(r => r.CustomerId == rental.CustomerId && r.Id != rental.Id)
-                    .ToList();
+                // O(1) dictionary lookup + O(H) filter for current rental ID
+                // instead of O(R) linear scan over all rentals
+                List<Rental> customerHistory;
+                if (rentalsByCustomer.TryGetValue(rental.CustomerId, out var allCustomerRentals))
+                {
+                    customerHistory = new List<Rental>(allCustomerRentals.Count);
+                    foreach (var r in allCustomerRentals)
+                    {
+                        if (r.Id != rental.Id)
+                            customerHistory.Add(r);
+                    }
+                }
+                else
+                {
+                    customerHistory = new List<Rental>();
+                }
 
                 predictions.Add(PredictForRental(rental, customerHistory));
             }
 
-            return predictions.OrderByDescending(p => p.RiskScore).ToList();
+            predictions.Sort((a, b) => b.RiskScore.CompareTo(a.RiskScore));
+            return predictions;
         }
 
         /// <summary>
