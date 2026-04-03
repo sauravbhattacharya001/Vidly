@@ -1,7 +1,9 @@
 # Vidly Controllers API Reference
 
-Complete reference for all 20 controllers in `Vidly/Controllers/`.
+Complete reference for all 77 controllers in `Vidly/Controllers/`.
 Each section documents the controller's routes, dependencies, and actions.
+20 controllers are fully documented below; the remaining 57 are listed
+in the [Additional Controllers](#additional-controllers) inventory.
 
 > **Architecture note:** Controllers follow the ASP.NET MVC 5 pattern
 > with constructor injection for testability. Most controllers have a
@@ -435,3 +437,106 @@ Bundle deal management — multi-movie discount packages.
 All controllers use the Repository pattern (`IRepository<T>` base) with
 in-memory implementations. See [ARCHITECTURE.md](../ARCHITECTURE.md) for
 the full repository listing and interface contracts.
+
+---
+
+## Additional Controllers
+
+The following 57 controllers exist in `Vidly/Controllers/` but are not
+yet fully documented above. They are grouped by domain for discoverability.
+
+### Browsing & Discovery
+
+| Controller | Description |
+|-----------|-------------|
+| `DecadeController` | Browse movies by decade |
+| `DirectorsController` | Director filmography and profiles |
+| `MoodController` | Mood-based movie discovery |
+| `SearchController` | Global search across movies, customers, etc. |
+| `SeriesController` | Movie series and franchise grouping |
+| `SoundtrackController` | Movie soundtrack browsing |
+| `TrendsController` | Trending and popular movie tracking |
+
+### Social & Community
+
+| Controller | Description |
+|-----------|-------------|
+| `ConnectionsController` | Customer social connections |
+| `EmojiStoryController` | Emoji-based movie story game |
+| `QuotesController` | Movie quotes board |
+| `StaffPicksController` | Staff-curated movie picks |
+| `WatchPartyController` | Watch party scheduling |
+
+### Gamification & Entertainment
+
+| Controller | Description |
+|-----------|-------------|
+| `BingoController` | Movie bingo game |
+| `ChallengesController` | Viewing challenges |
+| `CrosswordController` | Movie crossword puzzles |
+| `MadLibsController` | Movie Mad Libs fill-in game |
+| `QuizController` | Movie trivia quizzes |
+| `RouletteController` | Random movie roulette |
+| `ShowdownController` | Movie vs movie showdowns |
+| `TournamentController` | Movie tournament brackets |
+| `TriviaController` | Movie trivia game |
+
+### Customer Management
+
+| Controller | Description |
+|-----------|-------------|
+| `CustomerInsightsController` | Customer analytics and insights |
+| `CustomerMergeController` | Merge duplicate customer accounts |
+| `LoyaltyController` | Loyalty points and tiers |
+| `MembershipCardController` | Membership card management |
+| `SurveyController` | Customer satisfaction surveys |
+
+### Rentals & Inventory
+
+| Controller | Description |
+|-----------|-------------|
+| `AvailabilityController` | Movie availability lookup |
+| `CalendarController` | Rental calendar views |
+| `DamageController` | Damaged media reporting |
+| `InsuranceController` | Rental insurance management |
+| `InventoryController` | Physical inventory tracking |
+| `LateFeesController` | Late fee calculation and management |
+| `LostAndFoundController` | Lost and found item tracking |
+| `MarathonController` | Movie marathon planning |
+| `MovieRequestsController` | Customer movie acquisition requests |
+| `SwapController` | Movie swap/exchange between customers |
+| `TimelineController` | Rental activity timeline |
+| `TradeInController` | Media trade-in program |
+| `WaitlistController` | Movie availability waitlists |
+
+### Financial & Billing
+
+| Controller | Description |
+|-----------|-------------|
+| `BudgetController` | Customer rental budgets |
+| `DisputeController` | Billing dispute resolution |
+| `PenaltyWaiverController` | Penalty and fee waivers |
+| `PromotionsController` | Promotional campaigns |
+| `ReceiptController` | Receipt generation and history |
+| `RefundsController` | Refund processing |
+| `StatementController` | Account statement generation |
+| `SubscriptionController` | Subscription plan management |
+
+### Store Operations
+
+| Controller | Description |
+|-----------|-------------|
+| `AnnouncementsController` | Store announcements |
+| `AwardsController` | Movie awards tracking |
+| `FranchiseController` | Multi-store franchise management |
+| `GiftRegistryController` | Movie gift registry |
+| `MovieClubController` | Movie club management |
+| `ParentalControlController` | Parental content controls |
+| `PlaylistController` | Curated movie playlists |
+| `ScreeningRoomController` | In-store screening room booking |
+| `StaffScheduleController` | Staff schedule management |
+| `StoreInfoController` | Store information and hours |
+
+> **Want to contribute?** Pick any controller above and add a full
+> documentation section following the format used for the 20 documented
+> controllers. See [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelines.
