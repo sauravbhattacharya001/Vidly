@@ -52,34 +52,99 @@ namespace Vidly.Controllers
         internal static GenreBreakdown BuildGenreBreakdown(IReadOnlyList<RentalHistoryEntry> history)
         {
             var counts = new Dictionary<string, int>();
-            foreach (var e in history) { var g = e.MovieGenre?.ToString() ?? "Unknown"; counts[g] = counts.ContainsKey(g) ? counts[g] + 1 : 1; }
-            string fav = null; int max = 0;
-            foreach (var kvp in counts) { if (kvp.Value > max) { max = kvp.Value; fav = kvp.Key; } }
-            return new GenreBreakdown { GenreCounts = counts, FavoriteGenre = fav, TotalRentals = history.Count, UniqueGenres = counts.Count };
+            foreach (var entry in history)
+            {
+                var genre = entry.MovieGenre?.ToString() ?? "Unknown";
+                counts[genre] = counts.TryGetValue(genre, out var c) ? c + 1 : 1;
+            }
+
+            return new GenreBreakdown
+            {
+                GenreCounts = counts,
+                FavoriteGenre = MaxKey(counts),
+                TotalRentals = history.Count,
+                UniqueGenres = counts.Count,
+            };
         }
 
         internal static ViewModels.SpendingSummary BuildSpendingSummary(IReadOnlyList<RentalHistoryEntry> history)
         {
-            decimal total = 0, late = 0;
-            foreach (var e in history) { total += e.TotalCost; late += e.LateFee; }
-            return new ViewModels.SpendingSummary { TotalSpent = total, AveragePerRental = history.Count > 0 ? Math.Round(total / history.Count, 2) : 0,
-                TotalLateFees = late, LateFeePct = total > 0 ? Math.Round(late / total * 100, 1) : 0, TotalRentals = history.Count };
+            decimal totalSpent = 0, totalLateFees = 0;
+            foreach (var entry in history)
+            {
+                totalSpent += entry.TotalCost;
+                totalLateFees += entry.LateFee;
+            }
+
+            return new ViewModels.SpendingSummary
+            {
+                TotalSpent = totalSpent,
+                AveragePerRental = history.Count > 0 ? Math.Round(totalSpent / history.Count, 2) : 0,
+                TotalLateFees = totalLateFees,
+                LateFeePct = totalSpent > 0 ? Math.Round(totalLateFees / totalSpent * 100, 1) : 0,
+                TotalRentals = history.Count,
+            };
         }
 
         internal static RentalPatterns BuildRentalPatterns(IReadOnlyList<RentalHistoryEntry> history)
         {
-            if (history.Count == 0) return new RentalPatterns { OnTimeReturnRate = 100, MostActiveDay = "N/A" };
-            double dur = 0; int longest = 0, overdue = 0;
-            var dow = new Dictionary<DayOfWeek, int>();
-            foreach (var e in history) { dur += e.RentalDurationDays; if (e.RentalDurationDays > longest) longest = e.RentalDurationDays;
-                if (e.WasLate) overdue++; var d = e.RentalDate.DayOfWeek; dow[d] = dow.ContainsKey(d) ? dow[d] + 1 : 1; }
-            DayOfWeek best = DayOfWeek.Monday; int mx = 0;
-            foreach (var kvp in dow) { if (kvp.Value > mx) { mx = kvp.Value; best = kvp.Key; } }
-            int streak = 0;
-            foreach (var e in history.OrderByDescending(h => h.RentalDate)) { if (!e.WasLate) streak++; else break; }
-            return new RentalPatterns { AverageDurationDays = Math.Round(dur / history.Count, 1), LongestRentalDays = longest,
-                OnTimeReturnRate = Math.Round((double)(history.Count - overdue) / history.Count * 100, 1),
-                TotalOverdue = overdue, MostActiveDay = best.ToString(), CurrentStreak = streak };
+            if (history.Count == 0)
+                return new RentalPatterns { OnTimeReturnRate = 100, MostActiveDay = "N/A" };
+
+            double totalDuration = 0;
+            int longestRental = 0;
+            int overdueCount = 0;
+            var dayOfWeekCounts = new Dictionary<DayOfWeek, int>();
+
+            foreach (var entry in history)
+            {
+                totalDuration += entry.RentalDurationDays;
+                if (entry.RentalDurationDays > longestRental)
+                    longestRental = entry.RentalDurationDays;
+                if (entry.WasLate)
+                    overdueCount++;
+
+                var dow = entry.RentalDate.DayOfWeek;
+                dayOfWeekCounts[dow] = dayOfWeekCounts.TryGetValue(dow, out var n) ? n + 1 : 1;
+            }
+
+            // Count consecutive on-time returns from the most recent rental
+            int onTimeStreak = 0;
+            foreach (var entry in history.OrderByDescending(h => h.RentalDate))
+            {
+                if (!entry.WasLate) onTimeStreak++;
+                else break;
+            }
+
+            return new RentalPatterns
+            {
+                AverageDurationDays = Math.Round(totalDuration / history.Count, 1),
+                LongestRentalDays = longestRental,
+                OnTimeReturnRate = Math.Round((double)(history.Count - overdueCount) / history.Count * 100, 1),
+                TotalOverdue = overdueCount,
+                MostActiveDay = MaxKey(dayOfWeekCounts)?.ToString() ?? "N/A",
+                CurrentStreak = onTimeStreak,
+            };
+        }
+
+        /// <summary>
+        /// Returns the key with the highest value from a dictionary, or default
+        /// if the dictionary is empty. Consolidates the repeated
+        /// "iterate-and-track-max" pattern used by multiple analytics methods.
+        /// </summary>
+        private static TKey MaxKey<TKey>(Dictionary<TKey, int> dict)
+        {
+            TKey best = default;
+            int max = 0;
+            foreach (var kvp in dict)
+            {
+                if (kvp.Value > max)
+                {
+                    max = kvp.Value;
+                    best = kvp.Key;
+                }
+            }
+            return best;
         }
     }
 }

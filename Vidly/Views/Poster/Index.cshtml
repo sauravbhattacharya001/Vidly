@@ -1,0 +1,657 @@
+@model Vidly.ViewModels.PosterViewModel
+@{
+    ViewBag.Title = "Movie Poster Creator";
+}
+
+<div class="text-center" style="margin-bottom: 20px;">
+    <h2><span class="glyphicon glyphicon-picture"></span> Movie Poster Creator</h2>
+    <p class="lead">Design your own movie poster — pick a layout, customize colors &amp; text, then download!</p>
+</div>
+
+<div class="row">
+    @* Controls Panel *@
+    <div class="col-md-4">
+        <div class="panel panel-primary">
+            <div class="panel-heading"><strong>Poster Settings</strong></div>
+            <div class="panel-body">
+                <div class="form-group">
+                    <label>Start from Movie</label>
+                    <select id="movie-select" class="form-control">
+                        <option value="">— Blank Poster —</option>
+                        @foreach (var m in Model.Movies)
+                        {
+                            <option value="@m.Name" data-genre="@m.Genre" data-year="@m.ReleaseYear" data-rating="@m.Rating">@m.Name (@m.ReleaseYear)</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Layout</label>
+                    <select id="layout-select" class="form-control">
+                        <option value="classic">Classic</option>
+                        <option value="minimalist">Minimalist</option>
+                        <option value="retro">Retro</option>
+                        <option value="noir">Film Noir</option>
+                        <option value="neon">Neon Glow</option>
+                        <option value="vintage">Vintage</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Title</label>
+                    <input type="text" id="poster-title" class="form-control" placeholder="Movie Title" maxlength="60" />
+                </div>
+
+                <div class="form-group">
+                    <label>Tagline</label>
+                    <input type="text" id="poster-tagline" class="form-control" placeholder="A thrilling adventure..." maxlength="100" />
+                </div>
+
+                <div class="form-group">
+                    <label>Credits Line</label>
+                    <input type="text" id="poster-credits" class="form-control" placeholder="Starring: ..." maxlength="120" />
+                </div>
+
+                <div class="form-group">
+                    <label>Year</label>
+                    <input type="number" id="poster-year" class="form-control" placeholder="2026" min="1900" max="2099" />
+                </div>
+
+                <hr />
+
+                <div class="form-group">
+                    <label>Background Color</label>
+                    <input type="color" id="bg-color" class="form-control" value="#1a1a2e" style="height:38px;" />
+                </div>
+
+                <div class="form-group">
+                    <label>Accent Color</label>
+                    <input type="color" id="accent-color" class="form-control" value="#e94560" style="height:38px;" />
+                </div>
+
+                <div class="form-group">
+                    <label>Text Color</label>
+                    <input type="color" id="text-color" class="form-control" value="#ffffff" style="height:38px;" />
+                </div>
+
+                <hr />
+
+                <div class="form-group">
+                    <label>Genre Icon</label>
+                    <select id="genre-icon" class="form-control">
+                        <option value="none">None</option>
+                        <option value="action">⚔️ Action</option>
+                        <option value="comedy">😂 Comedy</option>
+                        <option value="drama">🎭 Drama</option>
+                        <option value="horror">👻 Horror</option>
+                        <option value="scifi">🚀 Sci-Fi</option>
+                        <option value="romance">❤️ Romance</option>
+                        <option value="thriller">🔪 Thriller</option>
+                        <option value="animation">🎨 Animation</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Star Rating</label>
+                    <select id="star-rating" class="form-control">
+                        <option value="0">No rating</option>
+                        <option value="1">★☆☆☆☆</option>
+                        <option value="2">★★☆☆☆</option>
+                        <option value="3">★★★☆☆</option>
+                        <option value="4">★★★★☆</option>
+                        <option value="5">★★★★★</option>
+                    </select>
+                </div>
+
+                <button id="render-btn" class="btn btn-primary btn-block" style="margin-bottom:8px;">
+                    <span class="glyphicon glyphicon-refresh"></span> Render Poster
+                </button>
+                <button id="download-btn" class="btn btn-success btn-block">
+                    <span class="glyphicon glyphicon-download"></span> Download PNG
+                </button>
+            </div>
+        </div>
+
+        @* Preset Themes *@
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong>Quick Themes</strong></div>
+            <div class="panel-body">
+                <button class="btn btn-xs btn-default theme-btn" data-bg="#1a1a2e" data-accent="#e94560" data-text="#ffffff" style="margin:2px;">Midnight</button>
+                <button class="btn btn-xs btn-default theme-btn" data-bg="#f5f0e1" data-accent="#8b4513" data-text="#2c1810" style="margin:2px;">Sepia</button>
+                <button class="btn btn-xs btn-default theme-btn" data-bg="#0d0d0d" data-accent="#ffd700" data-text="#ffffff" style="margin:2px;">Gold &amp; Black</button>
+                <button class="btn btn-xs btn-default theme-btn" data-bg="#1b2838" data-accent="#66c0f4" data-text="#c7d5e0" style="margin:2px;">Cyberpunk</button>
+                <button class="btn btn-xs btn-default theme-btn" data-bg="#2d1b3d" data-accent="#ff6b9d" data-text="#c084fc" style="margin:2px;">Synthwave</button>
+                <button class="btn btn-xs btn-default theme-btn" data-bg="#ffffff" data-accent="#e63946" data-text="#1d3557" style="margin:2px;">Clean</button>
+                <button class="btn btn-xs btn-default theme-btn" data-bg="#0a192f" data-accent="#64ffda" data-text="#ccd6f6" style="margin:2px;">Matrix</button>
+                <button class="btn btn-xs btn-default theme-btn" data-bg="#3d0000" data-accent="#ff0000" data-text="#ffffff" style="margin:2px;">Horror</button>
+            </div>
+        </div>
+    </div>
+
+    @* Canvas Preview *@
+    <div class="col-md-8">
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong>Preview</strong></div>
+            <div class="panel-body text-center" style="background:#333; padding:20px;">
+                <canvas id="poster-canvas" width="600" height="900" style="box-shadow: 0 8px 32px rgba(0,0,0,0.5); max-width:100%; height:auto;"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+<script>
+(function () {
+    var canvas = document.getElementById('poster-canvas');
+    var ctx = canvas.getContext('2d');
+    var W = 600, H = 900;
+
+    var genreEmoji = {
+        none: '', action: '⚔️', comedy: '😂', drama: '🎭',
+        horror: '👻', scifi: '🚀', romance: '❤️', thriller: '🔪', animation: '🎨'
+    };
+
+    function getVals() {
+        return {
+            title: document.getElementById('poster-title').value || 'UNTITLED',
+            tagline: document.getElementById('poster-tagline').value,
+            credits: document.getElementById('poster-credits').value,
+            year: document.getElementById('poster-year').value,
+            bg: document.getElementById('bg-color').value,
+            accent: document.getElementById('accent-color').value,
+            text: document.getElementById('text-color').value,
+            layout: document.getElementById('layout-select').value,
+            genre: document.getElementById('genre-icon').value,
+            stars: parseInt(document.getElementById('star-rating').value) || 0
+        };
+    }
+
+    function drawClassic(v) {
+        // Background gradient
+        var g = ctx.createLinearGradient(0, 0, 0, H);
+        g.addColorStop(0, v.bg);
+        g.addColorStop(1, shadeColor(v.bg, -30));
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H);
+
+        // Accent bar top
+        ctx.fillStyle = v.accent;
+        ctx.fillRect(0, 0, W, 8);
+
+        // Decorative shapes
+        ctx.globalAlpha = 0.08;
+        ctx.fillStyle = v.accent;
+        ctx.beginPath();
+        ctx.arc(W / 2, H * 0.4, 200, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+
+        // Genre emoji
+        if (v.genre !== 'none') {
+            ctx.font = '80px serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(genreEmoji[v.genre], W / 2, H * 0.35);
+        }
+
+        // Title
+        ctx.fillStyle = v.text;
+        ctx.font = 'bold 52px "Georgia", serif';
+        ctx.textAlign = 'center';
+        wrapText(ctx, v.title.toUpperCase(), W / 2, H * 0.52, W - 80, 58);
+
+        // Divider
+        ctx.strokeStyle = v.accent;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(W * 0.2, H * 0.62);
+        ctx.lineTo(W * 0.8, H * 0.62);
+        ctx.stroke();
+
+        // Tagline
+        if (v.tagline) {
+            ctx.fillStyle = v.accent;
+            ctx.font = 'italic 22px "Georgia", serif';
+            wrapText(ctx, v.tagline, W / 2, H * 0.68, W - 100, 28);
+        }
+
+        // Stars
+        drawStars(v, H * 0.76);
+
+        // Credits
+        if (v.credits) {
+            ctx.fillStyle = v.text;
+            ctx.globalAlpha = 0.7;
+            ctx.font = '14px "Courier New", monospace';
+            wrapText(ctx, v.credits.toUpperCase(), W / 2, H * 0.85, W - 60, 18);
+            ctx.globalAlpha = 1;
+        }
+
+        // Year
+        if (v.year) {
+            ctx.fillStyle = v.accent;
+            ctx.font = 'bold 28px "Georgia", serif';
+            ctx.fillText(v.year, W / 2, H * 0.93);
+        }
+
+        // Bottom bar
+        ctx.fillStyle = v.accent;
+        ctx.fillRect(0, H - 8, W, 8);
+    }
+
+    function drawMinimalist(v) {
+        ctx.fillStyle = v.bg;
+        ctx.fillRect(0, 0, W, H);
+
+        // Single vertical accent line
+        ctx.fillStyle = v.accent;
+        ctx.fillRect(80, 100, 4, H - 200);
+
+        // Genre emoji
+        if (v.genre !== 'none') {
+            ctx.font = '48px serif';
+            ctx.textAlign = 'left';
+            ctx.fillText(genreEmoji[v.genre], 110, 180);
+        }
+
+        // Title left-aligned
+        ctx.fillStyle = v.text;
+        ctx.font = 'bold 48px "Helvetica", sans-serif';
+        ctx.textAlign = 'left';
+        wrapTextLeft(ctx, v.title.toUpperCase(), 110, H * 0.4, W - 160, 54);
+
+        if (v.tagline) {
+            ctx.fillStyle = v.accent;
+            ctx.font = '20px "Helvetica", sans-serif';
+            wrapTextLeft(ctx, v.tagline, 110, H * 0.55, W - 160, 26);
+        }
+
+        drawStars(v, H * 0.65);
+
+        if (v.year) {
+            ctx.fillStyle = v.text;
+            ctx.globalAlpha = 0.5;
+            ctx.font = '120px "Helvetica", sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText(v.year, W - 40, H - 80);
+            ctx.globalAlpha = 1;
+        }
+
+        if (v.credits) {
+            ctx.fillStyle = v.text;
+            ctx.globalAlpha = 0.5;
+            ctx.font = '13px "Helvetica", sans-serif';
+            ctx.textAlign = 'left';
+            wrapTextLeft(ctx, v.credits, 110, H * 0.75, W - 160, 17);
+            ctx.globalAlpha = 1;
+        }
+    }
+
+    function drawRetro(v) {
+        // Cream base
+        ctx.fillStyle = '#f5e6c8';
+        ctx.fillRect(0, 0, W, H);
+
+        // Inner border
+        ctx.strokeStyle = v.accent;
+        ctx.lineWidth = 6;
+        ctx.strokeRect(20, 20, W - 40, H - 40);
+        ctx.lineWidth = 2;
+        ctx.strokeRect(30, 30, W - 60, H - 60);
+
+        // Banner
+        ctx.fillStyle = v.accent;
+        roundRect(ctx, 60, 80, W - 120, 100, 0);
+        ctx.fill();
+
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 42px "Georgia", serif';
+        ctx.textAlign = 'center';
+        wrapText(ctx, v.title.toUpperCase(), W / 2, 145, W - 160, 48);
+
+        if (v.genre !== 'none') {
+            ctx.font = '64px serif';
+            ctx.fillText(genreEmoji[v.genre], W / 2, H * 0.35);
+        }
+
+        // Tagline in vintage box
+        if (v.tagline) {
+            ctx.fillStyle = v.bg;
+            ctx.font = 'italic 20px "Georgia", serif';
+            ctx.textAlign = 'center';
+            wrapText(ctx, '"' + v.tagline + '"', W / 2, H * 0.5, W - 120, 26);
+        }
+
+        // Stars
+        ctx.fillStyle = v.accent;
+        drawStars(v, H * 0.6);
+
+        // Credits
+        if (v.credits) {
+            ctx.fillStyle = v.bg;
+            ctx.globalAlpha = 0.8;
+            ctx.font = '13px "Courier New", monospace';
+            wrapText(ctx, v.credits, W / 2, H * 0.75, W - 100, 17);
+            ctx.globalAlpha = 1;
+        }
+
+        if (v.year) {
+            ctx.fillStyle = v.accent;
+            ctx.font = 'bold 36px "Georgia", serif';
+            ctx.fillText('— ' + v.year + ' —', W / 2, H * 0.88);
+        }
+    }
+
+    function drawNoir(v) {
+        ctx.fillStyle = '#0a0a0a';
+        ctx.fillRect(0, 0, W, H);
+
+        // Moody spotlight
+        var sg = ctx.createRadialGradient(W / 2, H * 0.35, 20, W / 2, H * 0.35, 300);
+        sg.addColorStop(0, 'rgba(255,255,255,0.06)');
+        sg.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = sg;
+        ctx.fillRect(0, 0, W, H);
+
+        if (v.genre !== 'none') {
+            ctx.font = '60px serif';
+            ctx.textAlign = 'center';
+            ctx.globalAlpha = 0.4;
+            ctx.fillText(genreEmoji[v.genre], W / 2, H * 0.28);
+            ctx.globalAlpha = 1;
+        }
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 50px "Georgia", serif';
+        ctx.textAlign = 'center';
+        wrapText(ctx, v.title.toUpperCase(), W / 2, H * 0.48, W - 80, 56);
+
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(100, H * 0.57);
+        ctx.lineTo(W - 100, H * 0.57);
+        ctx.stroke();
+
+        if (v.tagline) {
+            ctx.fillStyle = '#aaaaaa';
+            ctx.font = 'italic 20px "Georgia", serif';
+            wrapText(ctx, v.tagline, W / 2, H * 0.64, W - 120, 26);
+        }
+
+        drawStarsColor(v, H * 0.72, '#888888');
+
+        if (v.credits) {
+            ctx.fillStyle = '#666666';
+            ctx.font = '12px "Courier New", monospace';
+            wrapText(ctx, v.credits.toUpperCase(), W / 2, H * 0.82, W - 80, 16);
+        }
+
+        if (v.year) {
+            ctx.fillStyle = '#555555';
+            ctx.font = '24px "Georgia", serif';
+            ctx.fillText(v.year, W / 2, H * 0.92);
+        }
+    }
+
+    function drawNeon(v) {
+        ctx.fillStyle = '#0a0014';
+        ctx.fillRect(0, 0, W, H);
+
+        // Grid lines
+        ctx.strokeStyle = 'rgba(100, 0, 200, 0.15)';
+        ctx.lineWidth = 1;
+        for (var i = 0; i < W; i += 30) {
+            ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, H); ctx.stroke();
+        }
+        for (var j = 0; j < H; j += 30) {
+            ctx.beginPath(); ctx.moveTo(0, j); ctx.lineTo(W, j); ctx.stroke();
+        }
+
+        if (v.genre !== 'none') {
+            ctx.font = '72px serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(genreEmoji[v.genre], W / 2, H * 0.3);
+        }
+
+        // Neon glow title
+        ctx.shadowColor = v.accent;
+        ctx.shadowBlur = 30;
+        ctx.fillStyle = v.accent;
+        ctx.font = 'bold 50px "Helvetica", sans-serif';
+        ctx.textAlign = 'center';
+        wrapText(ctx, v.title.toUpperCase(), W / 2, H * 0.5, W - 80, 56);
+        ctx.shadowBlur = 0;
+
+        if (v.tagline) {
+            ctx.shadowColor = v.text;
+            ctx.shadowBlur = 10;
+            ctx.fillStyle = v.text;
+            ctx.font = '20px "Helvetica", sans-serif';
+            wrapText(ctx, v.tagline, W / 2, H * 0.64, W - 100, 26);
+            ctx.shadowBlur = 0;
+        }
+
+        drawStarsColor(v, H * 0.73, v.accent);
+
+        if (v.credits) {
+            ctx.fillStyle = 'rgba(255,255,255,0.4)';
+            ctx.font = '12px "Courier New", monospace';
+            wrapText(ctx, v.credits.toUpperCase(), W / 2, H * 0.83, W - 80, 16);
+        }
+
+        if (v.year) {
+            ctx.shadowColor = v.accent;
+            ctx.shadowBlur = 15;
+            ctx.fillStyle = v.accent;
+            ctx.font = 'bold 32px "Helvetica", sans-serif';
+            ctx.fillText(v.year, W / 2, H * 0.92);
+            ctx.shadowBlur = 0;
+        }
+    }
+
+    function drawVintage(v) {
+        // Aged paper
+        ctx.fillStyle = '#e8d5b7';
+        ctx.fillRect(0, 0, W, H);
+
+        // Noise texture
+        ctx.globalAlpha = 0.03;
+        for (var i = 0; i < 3000; i++) {
+            ctx.fillStyle = Math.random() > 0.5 ? '#000' : '#fff';
+            ctx.fillRect(Math.random() * W, Math.random() * H, 2, 2);
+        }
+        ctx.globalAlpha = 1;
+
+        // Ornamental corners
+        ctx.strokeStyle = '#5c3a1e';
+        ctx.lineWidth = 3;
+        drawCorner(ctx, 30, 30, 60, 1, 1);
+        drawCorner(ctx, W - 30, 30, 60, -1, 1);
+        drawCorner(ctx, 30, H - 30, 60, 1, -1);
+        drawCorner(ctx, W - 30, H - 30, 60, -1, -1);
+
+        // Border
+        ctx.strokeStyle = '#8b6914';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(40, 40, W - 80, H - 80);
+
+        if (v.genre !== 'none') {
+            ctx.font = '56px serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(genreEmoji[v.genre], W / 2, H * 0.28);
+        }
+
+        ctx.fillStyle = '#2c1810';
+        ctx.font = 'bold 44px "Georgia", serif';
+        ctx.textAlign = 'center';
+        wrapText(ctx, v.title.toUpperCase(), W / 2, H * 0.45, W - 120, 50);
+
+        // Ornamental divider
+        ctx.fillStyle = '#8b6914';
+        ctx.font = '24px serif';
+        ctx.fillText('✦ ✦ ✦', W / 2, H * 0.56);
+
+        if (v.tagline) {
+            ctx.fillStyle = '#5c3a1e';
+            ctx.font = 'italic 19px "Georgia", serif';
+            wrapText(ctx, v.tagline, W / 2, H * 0.64, W - 140, 24);
+        }
+
+        drawStarsColor(v, H * 0.73, '#8b6914');
+
+        if (v.credits) {
+            ctx.fillStyle = '#5c3a1e';
+            ctx.globalAlpha = 0.7;
+            ctx.font = '12px "Georgia", serif';
+            wrapText(ctx, v.credits, W / 2, H * 0.82, W - 120, 16);
+            ctx.globalAlpha = 1;
+        }
+
+        if (v.year) {
+            ctx.fillStyle = '#8b6914';
+            ctx.font = 'bold 30px "Georgia", serif';
+            ctx.fillText('— ' + v.year + ' —', W / 2, H * 0.92);
+        }
+    }
+
+    // ---- Helpers ----
+
+    function wrapText(c, text, x, y, maxW, lineH) {
+        var words = text.split(' '), line = '';
+        for (var i = 0; i < words.length; i++) {
+            var test = line + words[i] + ' ';
+            if (c.measureText(test).width > maxW && i > 0) {
+                c.fillText(line.trim(), x, y);
+                line = words[i] + ' ';
+                y += lineH;
+            } else {
+                line = test;
+            }
+        }
+        c.fillText(line.trim(), x, y);
+    }
+
+    function wrapTextLeft(c, text, x, y, maxW, lineH) {
+        var oldAlign = c.textAlign;
+        c.textAlign = 'left';
+        wrapText(c, text, x, y, maxW, lineH);
+        c.textAlign = oldAlign;
+    }
+
+    function drawStars(v, y) {
+        drawStarsColor(v, y, v.accent);
+    }
+
+    function drawStarsColor(v, y, color) {
+        if (v.stars > 0) {
+            ctx.fillStyle = color;
+            ctx.font = '28px sans-serif';
+            ctx.textAlign = 'center';
+            var s = '';
+            for (var i = 0; i < 5; i++) s += i < v.stars ? '★' : '☆';
+            ctx.fillText(s, W / 2, y);
+        }
+    }
+
+    function shadeColor(hex, pct) {
+        var num = parseInt(hex.replace('#', ''), 16);
+        var r = Math.max(0, Math.min(255, (num >> 16) + pct));
+        var g = Math.max(0, Math.min(255, ((num >> 8) & 0xFF) + pct));
+        var b = Math.max(0, Math.min(255, (num & 0xFF) + pct));
+        return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+    }
+
+    function roundRect(c, x, y, w, h, r) {
+        c.beginPath();
+        c.moveTo(x + r, y);
+        c.lineTo(x + w - r, y);
+        c.arcTo(x + w, y, x + w, y + r, r);
+        c.lineTo(x + w, y + h - r);
+        c.arcTo(x + w, y + h, x + w - r, y + h, r);
+        c.lineTo(x + r, y + h);
+        c.arcTo(x, y + h, x, y + h - r, r);
+        c.lineTo(x, y + r);
+        c.arcTo(x, y, x + r, y, r);
+        c.closePath();
+    }
+
+    function drawCorner(c, x, y, sz, dx, dy) {
+        c.beginPath();
+        c.moveTo(x, y + dy * sz);
+        c.lineTo(x, y);
+        c.lineTo(x + dx * sz, y);
+        c.stroke();
+        // Inner flourish
+        c.beginPath();
+        c.moveTo(x, y + dy * (sz * 0.6));
+        c.quadraticCurveTo(x + dx * 15, y + dy * 15, x + dx * (sz * 0.6), y);
+        c.stroke();
+    }
+
+    function render() {
+        var v = getVals();
+        ctx.clearRect(0, 0, W, H);
+
+        switch (v.layout) {
+            case 'minimalist': drawMinimalist(v); break;
+            case 'retro': drawRetro(v); break;
+            case 'noir': drawNoir(v); break;
+            case 'neon': drawNeon(v); break;
+            case 'vintage': drawVintage(v); break;
+            default: drawClassic(v); break;
+        }
+    }
+
+    // Auto-fill from movie selection
+    document.getElementById('movie-select').addEventListener('change', function () {
+        var opt = this.options[this.selectedIndex];
+        if (this.value) {
+            document.getElementById('poster-title').value = this.value;
+            document.getElementById('poster-year').value = opt.getAttribute('data-year') || '';
+            var rating = parseInt(opt.getAttribute('data-rating')) || 0;
+            document.getElementById('star-rating').value = Math.min(5, Math.max(0, rating));
+            var genre = (opt.getAttribute('data-genre') || '').toLowerCase();
+            var genreMap = { action: 'action', comedy: 'comedy', drama: 'drama', horror: 'horror', scifi: 'scifi', romance: 'romance', thriller: 'thriller', animation: 'animation' };
+            document.getElementById('genre-icon').value = genreMap[genre] || 'none';
+        }
+        render();
+    });
+
+    // Theme buttons
+    var themeBtns = document.querySelectorAll('.theme-btn');
+    for (var t = 0; t < themeBtns.length; t++) {
+        themeBtns[t].addEventListener('click', function () {
+            document.getElementById('bg-color').value = this.getAttribute('data-bg');
+            document.getElementById('accent-color').value = this.getAttribute('data-accent');
+            document.getElementById('text-color').value = this.getAttribute('data-text');
+            render();
+        });
+    }
+
+    document.getElementById('render-btn').addEventListener('click', function (e) {
+        e.preventDefault();
+        render();
+    });
+
+    document.getElementById('download-btn').addEventListener('click', function (e) {
+        e.preventDefault();
+        render();
+        var link = document.createElement('a');
+        var title = document.getElementById('poster-title').value || 'poster';
+        link.download = title.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '_poster.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    });
+
+    // Live preview on input change
+    var inputs = document.querySelectorAll('#poster-title, #poster-tagline, #poster-credits, #poster-year, #bg-color, #accent-color, #text-color, #layout-select, #genre-icon, #star-rating');
+    for (var i = 0; i < inputs.length; i++) {
+        inputs[i].addEventListener('input', render);
+        inputs[i].addEventListener('change', render);
+    }
+
+    // Initial render
+    render();
+})();
+</script>
+}

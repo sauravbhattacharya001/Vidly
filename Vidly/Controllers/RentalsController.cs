@@ -180,51 +180,17 @@ namespace Vidly.Controllers
             }
 
             if (!ModelState.IsValid)
-            {
-                var movies = _movieRepository.GetAll();
-                viewModel.Customers = _customerRepository.GetAll();
-                viewModel.AvailableMovies = movies
-                    .Where(m => !_rentalRepository.IsMovieRentedOut(m.Id))
-                    .ToList();
-                return View(viewModel);
-            }
+                return ViewWithCheckoutData(viewModel);
 
             // Populate resolved names
             rental.CustomerName = customer.Name;
             rental.MovieName = movie.Name;
 
-            // Security: enforce server-side daily rate — never trust client-submitted pricing.
-            // This prevents price manipulation attacks where a user modifies the form to
-            // submit a lower DailyRate (e.g., $0.01 instead of $3.99).
-            // Uses PricingService logic: new releases get premium rate ($5.99),
-            // catalog titles (>1 year old) get discount ($2.99), per-movie overrides
-            // take priority, and membership discounts are applied.
-            var baseDailyRate = Services.PricingService.GetMovieDailyRate(movie, DateTime.Today);
-            var benefits = Services.PricingService.GetBenefits(customer.MembershipType);
-            var discountAmount = baseDailyRate * benefits.DiscountPercent / 100m;
-            rental.DailyRate = baseDailyRate - discountAmount;
-
-            // Security: enforce server-side rental period — prevent users from extending
-            // due dates via form manipulation to avoid late fees.
-            // Membership tiers grant extended rental periods (Silver +1, Gold +2, Platinum +3).
-            var rentalDays = InMemoryRentalRepository.DefaultRentalDays + benefits.ExtendedRentalDays;
-            rental.RentalDate = DateTime.Today;
-            rental.DueDate = DateTime.Today.AddDays(rentalDays);
+            // Enforce server-side pricing and rental period
+            var benefits = ApplyServerSidePricing(rental, movie, customer);
 
             // Apply coupon if provided
-            var couponDiscount = 0m;
-            if (!string.IsNullOrWhiteSpace(viewModel.CouponCode))
-            {
-                var subtotal = rental.DailyRate * (decimal)(rental.DueDate - rental.RentalDate).TotalDays;
-                couponDiscount = _couponService.Apply(viewModel.CouponCode, subtotal);
-                if (couponDiscount > 0)
-                {
-                    // Apply coupon discount by reducing the effective daily rate
-                    var rentalDaysCount = Math.Max(1, (decimal)(rental.DueDate - rental.RentalDate).TotalDays);
-                    rental.DailyRate = Math.Max(0.01m, rental.DailyRate - (couponDiscount / rentalDaysCount));
-                    rental.DailyRate = Math.Round(rental.DailyRate, 2);
-                }
-            }
+            ApplyCouponDiscount(rental, viewModel.CouponCode);
 
             // Use atomic Checkout to prevent TOCTOU race: availability check,
             // concurrent rental limit check, and rental creation happen in a
@@ -239,12 +205,7 @@ namespace Vidly.Controllers
                     ? "Rental.CustomerId"
                     : "Rental.MovieId";
                 ModelState.AddModelError(errorField, ex.Message);
-                var movies = _movieRepository.GetAll();
-                viewModel.Customers = _customerRepository.GetAll();
-                viewModel.AvailableMovies = movies
-                    .Where(m => !_rentalRepository.IsMovieRentedOut(m.Id))
-                    .ToList();
-                return View(viewModel);
+                return ViewWithCheckoutData(viewModel);
             }
 
             return RedirectToAction("Index");
@@ -403,6 +364,61 @@ namespace Vidly.Controllers
             }
 
             return RedirectToAction("Index");
+        }
+        // ── Private helpers ──────────────────────────────────────────
+
+        /// <summary>
+        /// Repopulates the checkout view model with available movies and
+        /// customers for re-display after validation failure.
+        /// Eliminates duplication across error paths in the Checkout POST.
+        /// </summary>
+        private ActionResult ViewWithCheckoutData(RentalCheckoutViewModel viewModel)
+        {
+            var movies = _movieRepository.GetAll();
+            viewModel.Customers = _customerRepository.GetAll();
+            viewModel.AvailableMovies = movies
+                .Where(m => !_rentalRepository.IsMovieRentedOut(m.Id))
+                .ToList();
+            return View(viewModel);
+        }
+
+        /// <summary>
+        /// Enforces server-side daily rate and rental period based on the
+        /// movie's pricing tier and the customer's membership benefits.
+        /// Prevents price manipulation (CWE-915) and due-date extension attacks.
+        /// </summary>
+        private static Services.PricingService.MembershipBenefits ApplyServerSidePricing(
+            Rental rental, Movie movie, Customer customer)
+        {
+            var baseDailyRate = Services.PricingService.GetMovieDailyRate(movie, DateTime.Today);
+            var benefits = Services.PricingService.GetBenefits(customer.MembershipType);
+            var discountAmount = baseDailyRate * benefits.DiscountPercent / 100m;
+            rental.DailyRate = baseDailyRate - discountAmount;
+
+            var rentalDays = InMemoryRentalRepository.DefaultRentalDays + benefits.ExtendedRentalDays;
+            rental.RentalDate = DateTime.Today;
+            rental.DueDate = DateTime.Today.AddDays(rentalDays);
+
+            return benefits;
+        }
+
+        /// <summary>
+        /// Applies a coupon code to the rental by reducing the effective daily
+        /// rate proportionally. No-op if the coupon code is empty or invalid.
+        /// </summary>
+        private void ApplyCouponDiscount(Rental rental, string couponCode)
+        {
+            if (string.IsNullOrWhiteSpace(couponCode))
+                return;
+
+            var subtotal = rental.DailyRate * (decimal)(rental.DueDate - rental.RentalDate).TotalDays;
+            var couponDiscount = _couponService.Apply(couponCode, subtotal);
+            if (couponDiscount <= 0)
+                return;
+
+            var rentalDaysCount = Math.Max(1, (decimal)(rental.DueDate - rental.RentalDate).TotalDays);
+            rental.DailyRate = Math.Max(0.01m, rental.DailyRate - (couponDiscount / rentalDaysCount));
+            rental.DailyRate = Math.Round(rental.DailyRate, 2);
         }
     }
 }

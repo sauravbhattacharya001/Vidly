@@ -74,11 +74,17 @@ namespace Vidly.Controllers
                 };
             }).ToList();
 
+            // When searching, count all franchises from the service;
+            // when not searching, 'franchises' already *is* the full list.
+            var totalCount = string.IsNullOrWhiteSpace(q)
+                ? franchises.Count
+                : _franchiseService.GetAll().Count;
+
             var viewModel = new FranchiseIndexViewModel
             {
                 Franchises = items,
                 SearchQuery = q,
-                TotalCount = _franchiseService.GetAll().Count
+                TotalCount = totalCount
             };
 
             return View(viewModel);
@@ -96,6 +102,20 @@ namespace Vidly.Controllers
             var report = _franchiseService.GetReport(franchise, rentals, movies);
 
             var franchiseMovieSet = new HashSet<int>(franchise.MovieIds);
+
+            // Pre-compute per-movie rental counts to avoid O(movies × rentals) iteration
+            var rentalCountByMovie = new Dictionary<int, int>();
+            foreach (var r in rentals)
+            {
+                if (franchiseMovieSet.Contains(r.MovieId))
+                {
+                    if (rentalCountByMovie.ContainsKey(r.MovieId))
+                        rentalCountByMovie[r.MovieId]++;
+                    else
+                        rentalCountByMovie[r.MovieId] = 1;
+                }
+            }
+
             var movieItems = new List<FranchiseMovieItem>();
             for (int i = 0; i < franchise.MovieIds.Count; i++)
             {
@@ -105,7 +125,7 @@ namespace Vidly.Controllers
                 {
                     Position = i + 1,
                     Movie = movie ?? new Movie { Id = mid, Name = $"Movie #{mid} (not found)" },
-                    RentalCount = rentals.Count(r => r.MovieId == mid)
+                    RentalCount = rentalCountByMovie.ContainsKey(mid) ? rentalCountByMovie[mid] : 0
                 });
             }
 

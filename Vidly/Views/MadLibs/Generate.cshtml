@@ -1,0 +1,74 @@
+@model Vidly.ViewModels.MadLibsResultViewModel
+@{
+    ViewBag.Title = "Mad Libs Result - " + Model.MovieName;
+}
+
+<div class="container" style="margin-top: 20px;">
+    <div class="page-header">
+        <h1>
+            <span class="glyphicon glyphicon-star"></span> Your Mad Lib
+            <small>based on <em>@Model.MovieName</em> (@Model.Year)</small>
+        </h1>
+    </div>
+
+    <div class="panel panel-success">
+        <div class="panel-heading">
+            <h3 class="panel-title"><span class="glyphicon glyphicon-book"></span> Your Version</h3>
+        </div>
+        <div class="panel-body" style="font-size: 20px; line-height: 1.8;">
+            @Html.Raw(Model.GeneratedStory)
+        </div>
+    </div>
+
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <h3 class="panel-title">
+                <span class="glyphicon glyphicon-eye-open"></span> Original Plot
+                <small>(click to reveal)</small>
+            </h3>
+        </div>
+        <div class="panel-body" id="originalPlot" style="display: none; font-size: 16px; color: #666;">
+            @Model.OriginalText
+        </div>
+        <div class="panel-footer">
+            <button class="btn btn-sm btn-default" onclick="document.getElementById('originalPlot').style.display = document.getElementById('originalPlot').style.display === 'none' ? 'block' : 'none';">
+                <span class="glyphicon glyphicon-eye-open"></span> Toggle Original
+            </button>
+        </div>
+    </div>
+
+    <div class="panel panel-info">
+        <div class="panel-heading">
+            <h3 class="panel-title"><span class="glyphicon glyphicon-list"></span> Your Words</h3>
+        </div>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Blank</th>
+                    <th>Your Word</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var kvp in Model.FilledWords)
+                {
+                    <tr>
+                        <td><code>@kvp.Key</code></td>
+                        <td><strong>@kvp.Value</strong></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="text-center" style="margin: 25px 0;">
+        <a href="@Url.Action("Play", new { id = Model.TemplateId })" class="btn btn-warning btn-lg">
+            <span class="glyphicon glyphicon-repeat"></span> Play Again (Same Movie)
+        </a>
+        <a href="@Url.Action("Random")" class="btn btn-success btn-lg" style="margin-left: 10px;">
+            <span class="glyphicon glyphicon-random"></span> Random Movie
+        </a>
+        <a href="@Url.Action("Index")" class="btn btn-default btn-lg" style="margin-left: 10px;">
+            <span class="glyphicon glyphicon-arrow-left"></span> All Templates
+        </a>
+    </div>
+</div>
