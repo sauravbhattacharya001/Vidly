@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web.Mvc;
+using Vidly.Filters;
 using Vidly.Models;
 using Vidly.Repositories;
 using Vidly.Services;
@@ -12,7 +13,12 @@ namespace Vidly.Controllers
     /// <summary>
     /// Subscription management — browse plans, subscribe, pause/resume,
     /// upgrade/downgrade, cancel, and view usage &amp; revenue stats.
+    /// Rate-limited to prevent automated subscription manipulation —
+    /// rapid plan changes could exploit proration logic or race billing
+    /// cycles (CWE-799).
     /// </summary>
+    [RateLimit(MaxRequests = 10, WindowSeconds = 60,
+        Message = "Too many subscription operations. Please wait before trying again.")]
     public class SubscriptionController : Controller
     {
         private readonly ICustomerRepository _customerRepository;

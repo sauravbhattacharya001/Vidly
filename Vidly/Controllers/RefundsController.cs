@@ -1,5 +1,6 @@
 using System;
 using System.Web.Mvc;
+using Vidly.Filters;
 using Vidly.Models;
 using Vidly.Repositories;
 using Vidly.Services;
@@ -7,6 +8,14 @@ using Vidly.ViewModels;
 
 namespace Vidly.Controllers
 {
+    /// <summary>
+    /// Manages refund requests: submit, approve, deny, process.
+    /// Rate-limited to prevent automated refund fraud — an attacker could
+    /// submit many refund requests or rapidly approve their own requests
+    /// in a compromised staff session (CWE-799).
+    /// </summary>
+    [RateLimit(MaxRequests = 10, WindowSeconds = 60,
+        Message = "Too many refund operations. Please wait before trying again.")]
     public class RefundsController : Controller
     {
         private readonly RefundService _refundService;
