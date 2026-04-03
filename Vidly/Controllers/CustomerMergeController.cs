@@ -1,5 +1,6 @@
 using System;
 using System.Web.Mvc;
+using Vidly.Filters;
 using Vidly.Models;
 using Vidly.Repositories;
 using Vidly.Services;
@@ -11,7 +12,11 @@ namespace Vidly.Controllers
     /// Staff tool to detect and merge duplicate customer accounts.
     /// Transfers rentals from the secondary customer to the primary,
     /// keeps the best data from each, and maintains an audit log.
+    /// Rate-limited because merge is a destructive, irreversible operation —
+    /// automated or accidental rapid merges could corrupt customer data (CWE-799).
     /// </summary>
+    [RateLimit(MaxRequests = 5, WindowSeconds = 120,
+        Message = "Too many merge operations. Please wait before merging again.")]
     public class CustomerMergeController : Controller
     {
         private readonly CustomerMergeService _mergeService;
