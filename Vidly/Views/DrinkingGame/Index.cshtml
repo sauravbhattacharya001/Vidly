@@ -1,0 +1,85 @@
+@model Vidly.ViewModels.DrinkingGameViewModel
+@{
+    ViewBag.Title = "Drinking Game Generator";
+}
+
+<h2>🍻 Movie Drinking Game Generator</h2>
+<p class="lead">Pick a movie and difficulty to generate fun watching rules.</p>
+
+<form method="get" class="form-inline" style="margin-bottom: 20px;">
+    <div class="form-group" style="margin-right: 10px;">
+        <label for="movieId">Movie: </label>
+        <select name="movieId" id="movieId" class="form-control">
+            <option value="">-- Choose a movie --</option>
+            @foreach (var movie in Model.Movies)
+            {
+                <option value="@movie.Id"
+                        @(Model.SelectedMovieId == movie.Id ? "selected" : "")>
+                    @movie.Name (@movie.Genre)
+                </option>
+            }
+        </select>
+    </div>
+    <div class="form-group" style="margin-right: 10px;">
+        <label for="difficulty">Difficulty: </label>
+        <select name="difficulty" id="difficulty" class="form-control">
+            <option value="Casual" @(Model.SelectedDifficulty == Vidly.Models.Difficulty.Casual ? "selected" : "")>🟢 Casual (4 rules)</option>
+            <option value="Standard" @(Model.SelectedDifficulty == Vidly.Models.Difficulty.Standard ? "selected" : "")>🟡 Standard (7 rules)</option>
+            <option value="Expert" @(Model.SelectedDifficulty == Vidly.Models.Difficulty.Expert ? "selected" : "")>🔴 Expert (10 rules)</option>
+        </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Generate Game 🎲</button>
+</form>
+
+@if (Model.Game != null)
+{
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <h3 class="panel-title">
+                🎬 @Model.Game.MovieName
+                <span class="label label-info">@Model.Game.Genre</span>
+                <span class="label label-warning">@Model.Game.Difficulty</span>
+            </h3>
+        </div>
+        <div class="panel-body">
+            <p>
+                <strong>Estimated total sips:</strong> ~@Model.Game.EstimatedSips 🍺
+            </p>
+
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>When this happens...</th>
+                        <th>Do this!</th>
+                        <th>Category</th>
+                        <th>How often?</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var rule in Model.Game.Rules)
+                    {
+                        <tr>
+                            <td>@rule.Id</td>
+                            <td>@rule.Trigger</td>
+                            <td><strong>@rule.Action</strong></td>
+                            <td>
+                                <span class="label label-default">@rule.Category</span>
+                            </td>
+                            <td>
+                                @for (int i = 0; i < rule.Frequency; i++)
+                                {
+                                    <text>⚡</text>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <div class="alert alert-info">
+                <strong>📢 Disclaimer:</strong> @Model.Game.Disclaimer
+            </div>
+        </div>
+    </div>
+}
