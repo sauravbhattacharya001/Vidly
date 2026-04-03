@@ -1,0 +1,296 @@
+@model Vidly.ViewModels.AlphabetChallengeViewModel
+@{
+    ViewBag.Title = "Alphabet Challenge";
+
+    var genreColors = new Dictionary<string, string>
+    {
+        {"Action", "#e74c3c"}, {"Comedy", "#f39c12"}, {"Drama", "#3498db"},
+        {"Horror", "#8e44ad"}, {"SciFi", "#1abc9c"}, {"Animation", "#2ecc71"},
+        {"Thriller", "#e67e22"}, {"Romance", "#e91e63"}, {"Documentary", "#607d8b"},
+        {"Adventure", "#ff5722"}
+    };
+
+    string GetGenreColor(Vidly.Models.Genre? genre)
+    {
+        if (!genre.HasValue) return "#95a5a6";
+        string key = genre.Value.ToString();
+        return genreColors.ContainsKey(key) ? genreColors[key] : "#95a5a6";
+    }
+}
+
+<style>
+    .alpha-header { text-align: center; margin-bottom: 30px; }
+    .alpha-header h2 { font-size: 2em; }
+    .alpha-stats { display: flex; justify-content: center; gap: 30px; flex-wrap: wrap; margin-bottom: 25px; }
+    .alpha-stat { text-align: center; padding: 15px 20px; background: #f8f9fa; border-radius: 8px; min-width: 120px; }
+    .alpha-stat .number { font-size: 2em; font-weight: bold; color: #2c3e50; }
+    .alpha-stat .label { color: #7f8c8d; font-size: 0.9em; }
+
+    .progress-ring { text-align: center; margin-bottom: 30px; }
+    .progress-ring svg { width: 160px; height: 160px; }
+
+    .alpha-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        gap: 12px;
+        max-width: 900px;
+        margin: 0 auto 30px;
+    }
+    .alpha-tile {
+        position: relative;
+        aspect-ratio: 1;
+        border-radius: 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+        border: 2px solid transparent;
+    }
+    .alpha-tile:hover { transform: scale(1.08); box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+    .alpha-tile.covered {
+        background: linear-gradient(135deg, #27ae60, #2ecc71);
+        color: white;
+    }
+    .alpha-tile.missing {
+        background: #ecf0f1;
+        color: #bdc3c7;
+        border: 2px dashed #bdc3c7;
+    }
+    .alpha-tile .letter {
+        font-size: 1.8em;
+        font-weight: bold;
+        line-height: 1;
+    }
+    .alpha-tile .count {
+        font-size: 0.75em;
+        margin-top: 2px;
+        opacity: 0.9;
+    }
+    .alpha-tile.missing .count { display: none; }
+
+    .alpha-detail {
+        display: none;
+        max-width: 700px;
+        margin: 0 auto 30px;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+        padding: 20px;
+    }
+    .alpha-detail.active { display: block; }
+    .alpha-detail h3 { margin-top: 0; }
+    .alpha-detail .movie-list { list-style: none; padding: 0; }
+    .alpha-detail .movie-list li {
+        padding: 8px 12px;
+        border-bottom: 1px solid #f0f0f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .alpha-detail .movie-list li:last-child { border-bottom: none; }
+    .genre-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 10px;
+        color: white;
+        font-size: 0.75em;
+    }
+    .star { color: #f39c12; }
+
+    .missing-letters {
+        text-align: center;
+        margin-bottom: 30px;
+        padding: 15px;
+        background: #fdf2e9;
+        border-radius: 8px;
+        max-width: 700px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .missing-letters h4 { margin-top: 0; color: #e67e22; }
+    .missing-letter-badge {
+        display: inline-block;
+        width: 36px;
+        height: 36px;
+        line-height: 36px;
+        text-align: center;
+        margin: 3px;
+        border-radius: 6px;
+        background: #fdebd0;
+        color: #e67e22;
+        font-weight: bold;
+        font-size: 1.1em;
+    }
+
+    .achievements { max-width: 700px; margin: 0 auto 30px; }
+    .achievement {
+        display: inline-block;
+        padding: 8px 16px;
+        margin: 4px;
+        border-radius: 20px;
+        font-size: 0.9em;
+    }
+    .achievement.earned { background: #d5f5e3; color: #27ae60; border: 1px solid #27ae60; }
+    .achievement.locked { background: #f8f9fa; color: #bdc3c7; border: 1px solid #ecf0f1; }
+</style>
+
+<div class="alpha-header">
+    <h2>🔤 Alphabet Challenge</h2>
+    <p class="lead">Collect movies for every letter A–Z. Can you complete the alphabet?</p>
+</div>
+
+@* Progress Ring *@
+<div class="progress-ring">
+    @{
+        var pct = Model.Board.CompletionPercent;
+        var circumference = 2 * Math.PI * 60;
+        var dashOffset = circumference - (circumference * pct / 100.0);
+        var ringColor = pct == 100 ? "#f39c12" : pct >= 75 ? "#27ae60" : pct >= 50 ? "#3498db" : "#e74c3c";
+    }
+    <svg viewBox="0 0 160 160">
+        <circle cx="80" cy="80" r="60" fill="none" stroke="#ecf0f1" stroke-width="12" />
+        <circle cx="80" cy="80" r="60" fill="none" stroke="@ringColor" stroke-width="12"
+                stroke-dasharray="@circumference" stroke-dashoffset="@dashOffset"
+                stroke-linecap="round" transform="rotate(-90 80 80)" />
+        <text x="80" y="72" text-anchor="middle" font-size="28" font-weight="bold" fill="#2c3e50">@pct%</text>
+        <text x="80" y="95" text-anchor="middle" font-size="12" fill="#7f8c8d">@Model.Board.CoveredLetters / 26</text>
+    </svg>
+</div>
+
+@* Stats *@
+<div class="alpha-stats">
+    <div class="alpha-stat">
+        <div class="number">@Model.Board.TotalMovies</div>
+        <div class="label">Total Movies</div>
+    </div>
+    <div class="alpha-stat">
+        <div class="number">@Model.Board.CoveredLetters</div>
+        <div class="label">Letters Covered</div>
+    </div>
+    <div class="alpha-stat">
+        <div class="number">@Model.Board.MissingLetters.Count</div>
+        <div class="label">Letters Missing</div>
+    </div>
+    @if (Model.Board.CoveredLetters > 0)
+    {
+        <div class="alpha-stat">
+            <div class="number">@Model.Board.MostPopularLetter</div>
+            <div class="label">Most Popular (@Model.Board.MostPopularCount)</div>
+        </div>
+        <div class="alpha-stat">
+            <div class="number">@Model.Board.RarestLetter</div>
+            <div class="label">Rarest (@Model.Board.RarestCount)</div>
+        </div>
+    }
+</div>
+
+@* A-Z Grid *@
+<div class="alpha-grid">
+    @for (char c = 'A'; c <= 'Z'; c++)
+    {
+        var hasMov = Model.Board.LetterMovies.ContainsKey(c);
+        var count = hasMov ? Model.Board.LetterMovies[c].Count : 0;
+        <div class="alpha-tile @(hasMov ? "covered" : "missing")" data-letter="@c"
+             onclick="showDetail('@c')">
+            <span class="letter">@c</span>
+            @if (hasMov)
+            {
+                <span class="count">@count movie@(count != 1 ? "s" : "")</span>
+            }
+        </div>
+    }
+</div>
+
+@* Detail panel *@
+<div id="detail-panel" class="alpha-detail">
+    <h3 id="detail-title"></h3>
+    <ul class="movie-list" id="detail-list"></ul>
+</div>
+
+@* Missing letters *@
+@if (Model.Board.MissingLetters.Any())
+{
+    <div class="missing-letters">
+        <h4>🔍 Missing Letters — Add movies starting with:</h4>
+        @foreach (var letter in Model.Board.MissingLetters)
+        {
+            <span class="missing-letter-badge">@letter</span>
+        }
+    </div>
+}
+
+@* Achievements *@
+<div class="achievements" style="text-align: center;">
+    <h4>🏆 Achievements</h4>
+    @{
+        var achievements = new[]
+        {
+            new { Name = "🅰️ First Letter", Desc = "Cover at least 1 letter", Earned = Model.Board.CoveredLetters >= 1 },
+            new { Name = "📖 Half the Alphabet", Desc = "Cover 13 letters", Earned = Model.Board.CoveredLetters >= 13 },
+            new { Name = "🔤 Full Alphabet", Desc = "Cover all 26 letters", Earned = Model.Board.CoveredLetters >= 26 },
+            new { Name = "📚 Collector", Desc = "10+ movies in catalog", Earned = Model.Board.TotalMovies >= 10 },
+            new { Name = "🏛️ Library", Desc = "50+ movies in catalog", Earned = Model.Board.TotalMovies >= 50 },
+            new { Name = "💎 Rare Find", Desc = "Cover letter Q, X, or Z", Earned = Model.Board.LetterMovies.ContainsKey('Q') || Model.Board.LetterMovies.ContainsKey('X') || Model.Board.LetterMovies.ContainsKey('Z') },
+            new { Name = "🌈 Genre Rainbow", Desc = "5+ genres across all letters", Earned = Model.Board.LetterMovies.Values.SelectMany(l => l).Where(m => m.Genre.HasValue).Select(m => m.Genre.Value).Distinct().Count() >= 5 }
+        };
+    }
+    @foreach (var a in achievements)
+    {
+        <span class="achievement @(a.Earned ? "earned" : "locked")" title="@a.Desc">
+            @a.Name @(a.Earned ? "✓" : "🔒")
+        </span>
+    }
+</div>
+
+<div style="text-align: center; margin-top: 20px;">
+    <a href="@Url.Action("Index", "Home")" class="btn btn-default">
+        <span class="glyphicon glyphicon-home"></span> Back to Home
+    </a>
+</div>
+
+@* Movie data for JS *@
+<script>
+    var letterData = {};
+    @foreach (var kv in Model.Board.LetterMovies)
+    {
+        <text>
+        letterData['@kv.Key'] = [
+            @foreach (var m in kv.Value)
+            {
+                var genreStr = m.Genre.HasValue ? m.Genre.Value.ToString() : "";
+                var color = GetGenreColor(m.Genre);
+                var stars = m.Rating.HasValue ? new string('★', m.Rating.Value) + new string('☆', 5 - m.Rating.Value) : "";
+                <text>{ name: "@Html.Raw(m.Name.Replace("\"", "\\\""))", genre: "@genreStr", color: "@color", rating: "@stars", year: "@(m.ReleaseYear?.ToString() ?? "")" },</text>
+            }
+        ];
+        </text>
+    }
+
+    function showDetail(letter) {
+        var panel = document.getElementById('detail-panel');
+        var title = document.getElementById('detail-title');
+        var list = document.getElementById('detail-list');
+
+        if (!letterData[letter] || letterData[letter].length === 0) {
+            panel.className = 'alpha-detail';
+            return;
+        }
+
+        title.innerHTML = 'Letter ' + letter + ' — ' + letterData[letter].length + ' movie' + (letterData[letter].length !== 1 ? 's' : '');
+        list.innerHTML = '';
+
+        letterData[letter].forEach(function(m) {
+            var li = document.createElement('li');
+            var left = '<strong>' + m.name + '</strong>' + (m.year ? ' <span style="color:#999">(' + m.year + ')</span>' : '');
+            var right = (m.genre ? '<span class="genre-badge" style="background:' + m.color + '">' + m.genre + '</span> ' : '') +
+                        (m.rating ? '<span class="star">' + m.rating + '</span>' : '');
+            li.innerHTML = '<span>' + left + '</span><span>' + right + '</span>';
+            list.appendChild(li);
+        });
+
+        panel.className = 'alpha-detail active';
+        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+</script>
