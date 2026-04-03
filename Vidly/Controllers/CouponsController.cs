@@ -83,9 +83,9 @@ namespace Vidly.Controllers
             if (coupon.ValidUntil < coupon.ValidFrom)
                 ModelState.AddModelError("ValidUntil", "Expiration must be after start date.");
 
-            if (coupon.DiscountType == DiscountType.FixedAmount && coupon.DiscountValue > 100)
+            if (coupon.DiscountType == DiscountType.FixedAmount && (coupon.DiscountValue <= 0 || coupon.DiscountValue > 100))
                 ModelState.AddModelError("DiscountValue",
-                    "Fixed discount cannot exceed $100.00.");
+                    "Fixed discount must be between "Fixed discount cannot exceed $100.00.".01 and $100.00.");
 
             if (coupon.DiscountType == DiscountType.Percentage && (coupon.DiscountValue <= 0 || coupon.DiscountValue > 100))
                 ModelState.AddModelError("DiscountValue",
@@ -131,9 +131,9 @@ namespace Vidly.Controllers
             if (coupon.ValidUntil < coupon.ValidFrom)
                 ModelState.AddModelError("ValidUntil", "Expiration must be after start date.");
 
-            if (coupon.DiscountType == DiscountType.FixedAmount && coupon.DiscountValue > 100)
+            if (coupon.DiscountType == DiscountType.FixedAmount && (coupon.DiscountValue <= 0 || coupon.DiscountValue > 100))
                 ModelState.AddModelError("DiscountValue",
-                    "Fixed discount cannot exceed $100.00.");
+                    "Fixed discount must be between "Fixed discount cannot exceed $100.00.".01 and $100.00.");
 
             if (coupon.DiscountType == DiscountType.Percentage && (coupon.DiscountValue <= 0 || coupon.DiscountValue > 100))
                 ModelState.AddModelError("DiscountValue",
@@ -147,9 +147,15 @@ namespace Vidly.Controllers
                 _couponRepository.Update(coupon);
                 TempData["Message"] = $"Coupon '{coupon.Code}' updated.";
             }
-            catch (Exception ex) when (ex is KeyNotFoundException || ex is InvalidOperationException)
+            catch (InvalidOperationException ex)
             {
-                TempData["Error"] = ex.Message;
+                // Duplicate code — re-display form so user can correct
+                ModelState.AddModelError("Code", ex.Message);
+                return View(coupon);
+            }
+            catch (KeyNotFoundException)
+            {
+                return HttpNotFound();
             }
 
             return RedirectToAction("Index");
@@ -176,11 +182,14 @@ namespace Vidly.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult Delete(int id)
         {
+            var coupon = _couponRepository.GetById(id);
+            if (coupon == null)
+                return HttpNotFound();
+
             try
             {
-                var coupon = _couponRepository.GetById(id);
                 _couponRepository.Remove(id);
-                TempData["Message"] = $"Coupon '{coupon?.Code}' deleted.";
+                TempData["Message"] = $"Coupon '{coupon.Code}' deleted.";
             }
             catch (KeyNotFoundException)
             {
