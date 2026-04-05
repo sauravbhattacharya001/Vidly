@@ -1,0 +1,209 @@
+@model Vidly.Models.TasteEvolutionViewModel
+@{
+    ViewBag.Title = "Taste Evolution Tracker";
+}
+
+<div class="container">
+    <div class="page-header">
+        <h1><span class="glyphicon glyphicon-signal"></span> Taste Evolution Tracker</h1>
+        <p class="lead">See how your movie taste evolves over time — with predictions for what you'll love next.</p>
+    </div>
+
+    <!-- Customer selector -->
+    <div class="panel panel-default">
+        <div class="panel-body">
+            @using (Html.BeginForm("Index", "TasteEvolution", FormMethod.Get, new { @class = "form-inline" }))
+            {
+                <div class="form-group">
+                    <label for="customerId">Select Customer:</label>
+                    <select name="customerId" id="customerId" class="form-control" style="margin: 0 10px; min-width: 200px;">
+                        <option value="">-- Choose a customer --</option>
+                        @foreach (var c in Model.Customers)
+                        {
+                            <option value="@c.Id" @(Model.SelectedCustomerId == c.Id ? "selected" : "")>@c.Name</option>
+                        }
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <span class="glyphicon glyphicon-search"></span> Analyze
+                </button>
+            }
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    @if (Model.Report != null)
+    {
+        var r = Model.Report;
+
+        <!-- Persona Card -->
+        <div class="panel panel-info">
+            <div class="panel-heading">
+                <h3 class="panel-title">@r.PersonaEmoji @r.TastePersona — @r.CustomerName</h3>
+            </div>
+            <div class="panel-body">
+                <p style="font-size: 16px;">@r.Insight</p>
+                <span class="label label-info">@r.TotalRentals rentals analyzed</span>
+                <span class="label label-default">@r.Timeline.Count quarters tracked</span>
+            </div>
+        </div>
+
+        @if (r.Timeline.Any())
+        {
+            <!-- Timeline -->
+            <div class="panel panel-default">
+                <div class="panel-heading"><h3 class="panel-title"><span class="glyphicon glyphicon-time"></span> Genre Timeline</h3></div>
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Quarter</th>
+                                <th>Rentals</th>
+                                <th>Top Genre</th>
+                                <th>Genre Mix</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var snap in r.Timeline)
+                            {
+                                <tr>
+                                    <td><strong>@snap.Period</strong></td>
+                                    <td>@snap.RentalCount</td>
+                                    <td><span class="label label-primary">@snap.TopGenre</span></td>
+                                    <td>
+                                        @foreach (var kv in snap.GenreWeights.OrderByDescending(x => x.Value))
+                                        {
+                                            <div class="progress" style="margin-bottom: 2px; height: 18px;">
+                                                <div class="progress-bar progress-bar-info" role="progressbar"
+                                                     style="width: @(kv.Value * 100)%; min-width: 30px; font-size: 11px; line-height: 18px;">
+                                                    @kv.Key (@(Math.Round(kv.Value * 100))%)
+                                                </div>
+                                            </div>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Genre Drift -->
+            @if (r.Drifts.Any())
+            {
+                <div class="panel panel-default">
+                    <div class="panel-heading"><h3 class="panel-title"><span class="glyphicon glyphicon-transfer"></span> Genre Drift Detection</h3></div>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Genre</th>
+                                    <th>Early %</th>
+                                    <th>Recent %</th>
+                                    <th>Change</th>
+                                    <th>Trend</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var drift in r.Drifts)
+                                {
+                                    string rowClass = drift.Direction == "Rising" ? "success" : (drift.Direction == "Falling" ? "danger" : "");
+                                    <tr class="@rowClass">
+                                        <td><strong>@drift.GenreName</strong></td>
+                                        <td>@drift.EarlyWeight%</td>
+                                        <td>@drift.RecentWeight%</td>
+                                        <td>@(drift.Delta > 0 ? "+" : "")@drift.Delta%</td>
+                                        <td>@drift.Emoji @drift.Direction</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+
+            <!-- Predictions -->
+            @if (r.Predictions.Any())
+            {
+                <div class="panel panel-warning">
+                    <div class="panel-heading"><h3 class="panel-title"><span class="glyphicon glyphicon-eye-open"></span> Predicted Next Quarter Preferences</h3></div>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Genre</th>
+                                    <th>Current</th>
+                                    <th>Predicted</th>
+                                    <th>Momentum</th>
+                                    <th>Confidence</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var pred in r.Predictions.Take(5))
+                                {
+                                    <tr>
+                                        <td><strong>@pred.GenreName</strong></td>
+                                        <td>@pred.CurrentWeight%</td>
+                                        <td><strong>@pred.PredictedWeight%</strong></td>
+                                        <td>@(pred.Momentum > 0 ? "+" : "")@pred.Momentum</td>
+                                        <td>
+                                            <div class="progress" style="margin-bottom: 0; height: 18px;">
+                                                <div class="progress-bar @(pred.Confidence > 70 ? "progress-bar-success" : (pred.Confidence > 40 ? "progress-bar-warning" : "progress-bar-danger"))"
+                                                     style="width: @pred.Confidence%; min-width: 30px; font-size: 11px; line-height: 18px;">
+                                                    @pred.Confidence%
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+
+            <!-- Proactive Suggestions -->
+            @if (r.Suggestions.Any())
+            {
+                <div class="panel panel-success">
+                    <div class="panel-heading">
+                        <h3 class="panel-title"><span class="glyphicon glyphicon-thumbs-up"></span> Proactive Suggestions — Movies Matching Your Evolving Taste</h3>
+                    </div>
+                    <div class="panel-body">
+                        <div class="row">
+                            @foreach (var sug in r.Suggestions)
+                            {
+                                <div class="col-md-6 col-lg-4" style="margin-bottom: 15px;">
+                                    <div class="thumbnail" style="@(sug.IsEmergingTaste ? "border-color: #5cb85c; border-width: 2px;" : "")">
+                                        <div class="caption">
+                                            <h4>
+                                                @sug.Movie.Name
+                                                @if (sug.IsEmergingTaste)
+                                                {
+                                                    <span class="label label-success">Emerging Taste</span>
+                                                }
+                                            </h4>
+                                            <p>@sug.Reason</p>
+                                            <p>
+                                                <span class="label label-info">@sug.MatchedGenre</span>
+                                                @if (sug.Movie.Rating.HasValue)
+                                                {
+                                                    <span class="label label-warning">@(new string('★', sug.Movie.Rating.Value))</span>
+                                                }
+                                                <span class="badge">Score: @sug.RelevanceScore</span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    }
+</div>
