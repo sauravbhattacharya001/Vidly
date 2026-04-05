@@ -13,7 +13,7 @@
 <!-- Tech -->
 [![.NET Framework](https://img.shields.io/badge/.NET%20Framework-4.5.2-purple.svg)](https://dotnet.microsoft.com/en-us/download/dotnet-framework)
 [![ASP.NET MVC](https://img.shields.io/badge/ASP.NET%20MVC-5.2-green.svg)](https://www.asp.net/mvc)
-[![Tests](https://img.shields.io/badge/tests-3400%2B%20passing-brightgreen.svg)](Vidly.Tests)
+[![Tests](https://img.shields.io/badge/tests-3600%2B%20passing-brightgreen.svg)](Vidly.Tests)
 
 <!-- Repo -->
 [![GitHub last commit](https://img.shields.io/github/last-commit/sauravbhattacharya001/Vidly)](https://github.com/sauravbhattacharya001/Vidly/commits/master)
@@ -21,7 +21,7 @@
 [![GitHub issues](https://img.shields.io/github/issues/sauravbhattacharya001/Vidly)](https://github.com/sauravbhattacharya001/Vidly/issues)
 [![GitHub stars](https://img.shields.io/github/stars/sauravbhattacharya001/Vidly?style=social)](https://github.com/sauravbhattacharya001/Vidly)
 
-A full-featured video rental store web application built with **ASP.NET MVC 5**, featuring **62 controllers**, **67 services**, and **3,400+ unit tests**. Demonstrates enterprise-scale MVC patterns including layered architecture, repository pattern, service layer, rate limiting, security headers, and comprehensive validation.
+A full-featured video rental store web application built with **ASP.NET MVC 5**, featuring **80 controllers**, **82 services**, and **3,600+ unit tests** across **97 test files**. Demonstrates enterprise-scale MVC patterns including layered architecture, repository pattern, service layer, rate limiting, security headers, and comprehensive validation.
 
 ---
 
@@ -83,14 +83,14 @@ docker build -t vidly . && docker run -d -p 8080:80 vidly
 
 ```
 Vidly/
-├── Controllers/          # 62 MVC controllers
+├── Controllers/          # 80 MVC controllers
 │   ├── MoviesController  # Movie CRUD, browsing, filtering
 │   ├── RentalsController # Checkout, returns, extensions
 │   ├── CustomersController # Customer management
-│   └── ...               # 59 more domain controllers
+│   └── ...               # 77 more domain controllers
 ├── Models/               # Domain entities with data annotations
 ├── ViewModels/           # Composed view models for Razor views
-├── Services/             # 67 business logic services
+├── Services/             # 82 business logic services
 │   ├── RecommendationService
 │   ├── LoyaltyPointsService
 │   ├── ChurnPredictorService
@@ -102,7 +102,7 @@ Vidly/
 ├── Scripts/              # JavaScript (jQuery, Bootstrap)
 ├── Views/                # Razor views with shared layout
 ├── docs/                 # API docs deployed to GitHub Pages
-└── Vidly.Tests/          # 91 test files, 3,400+ test methods
+└── Vidly.Tests/          # 97 test files, 3,600+ test methods
 ```
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for a deep dive into the request lifecycle, layer responsibilities, threading model, and extension points.
@@ -164,7 +164,7 @@ The application includes dedicated controllers and routes for: rentals, customer
 
 ## 🧪 Testing
 
-The project includes a comprehensive test suite with **3,400+ unit tests** across **91 test files** covering models, services, controllers, and view models.
+The project includes a comprehensive test suite with **3,600+ unit tests** across **97 test files** covering models, services, controllers, and view models.
 
 ```bash
 # Restore and run tests
@@ -192,7 +192,7 @@ Coverage reports are generated in Cobertura format and uploaded as CI artifacts 
 | **View Engine** | Razor |
 | **CSS Framework** | Bootstrap 3 (Lumen theme) |
 | **JavaScript** | jQuery 1.10.2 |
-| **Testing** | MSTest + Coverlet (3,400+ tests) |
+| **Testing** | MSTest + Coverlet (3,600+ tests) |
 | **CI/CD** | GitHub Actions |
 | **Container** | Docker (Windows/IIS) |
 | **Security** | CodeQL, Dependabot |
