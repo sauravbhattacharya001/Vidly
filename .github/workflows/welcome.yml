@@ -1,0 +1,37 @@
+name: Welcome New Contributors
+
+on:
+  pull_request_target:
+    types: [opened]
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  welcome:
+    name: Welcome first-time contributors
+    runs-on: ubuntu-latest
+    steps:
+      - name: Welcome
+        uses: actions/first-interaction@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-message: |
+            👋 Welcome to Vidly! Thanks for opening your first issue.
+
+            A maintainer will review this shortly. In the meantime:
+            - Make sure you've checked existing issues for duplicates
+            - Include steps to reproduce if reporting a bug
+            - Check out our [Contributing Guide](../CONTRIBUTING.md)
+          pr-message: |
+            👋 Welcome to Vidly! Thanks for your first pull request.
+
+            A maintainer will review your changes shortly. While you wait:
+            - Make sure CI checks pass
+            - Keep the PR focused on a single change
+            - Check out our [Contributing Guide](../CONTRIBUTING.md) if you haven't already
+
+            We appreciate your contribution! 🎉
