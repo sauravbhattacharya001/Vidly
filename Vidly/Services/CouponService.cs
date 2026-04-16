@@ -12,7 +12,7 @@ namespace Vidly.Services
         private readonly ICouponRepository _couponRepository;
         private readonly IClock _clock;
 
-        public CouponService() : this(new InMemoryCouponRepository()) { }
+        public CouponService() : this(new InMemoryCouponRepository(), new SystemClock()) { }
 
         public CouponService(ICouponRepository couponRepository, IClock clock)
         {
