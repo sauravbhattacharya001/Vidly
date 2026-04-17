@@ -69,63 +69,80 @@ namespace Vidly.Services
         // ── Membership benefits ──────────────────────────────────────
 
         /// <summary>
+        /// Static benefit definitions per tier. The grace-period field is
+        /// intentionally left at 0 here because it depends on
+        /// <see cref="RentalReturnService.GetGracePeriod"/>, which may
+        /// change at runtime.  <see cref="GetBenefits"/> patches it in.
+        /// </summary>
+        private static readonly Dictionary<MembershipType, MembershipBenefits> _benefitsByTier =
+            new Dictionary<MembershipType, MembershipBenefits>
+            {
+                [MembershipType.Basic] = new MembershipBenefits
+                {
+                    Tier = MembershipType.Basic,
+                    DiscountPercent = 0,
+                    MaxConcurrentRentals = 2,
+                    FreeRentalsPerMonth = 0,
+                    LateFeeDiscount = 0,
+                    ExtendedRentalDays = 0,
+                    Description = "Standard pricing with no perks."
+                },
+                [MembershipType.Silver] = new MembershipBenefits
+                {
+                    Tier = MembershipType.Silver,
+                    DiscountPercent = 10,
+                    MaxConcurrentRentals = 3,
+                    FreeRentalsPerMonth = 0,
+                    LateFeeDiscount = 10,
+                    ExtendedRentalDays = 1,
+                    Description = "10% off daily rate, 2-day grace period, 8-day rentals."
+                },
+                [MembershipType.Gold] = new MembershipBenefits
+                {
+                    Tier = MembershipType.Gold,
+                    DiscountPercent = 20,
+                    MaxConcurrentRentals = 5,
+                    FreeRentalsPerMonth = 1,
+                    LateFeeDiscount = 25,
+                    ExtendedRentalDays = 2,
+                    Description = "20% off, 3-day grace, 1 free rental/month, 25% late fee reduction."
+                },
+                [MembershipType.Platinum] = new MembershipBenefits
+                {
+                    Tier = MembershipType.Platinum,
+                    DiscountPercent = 30,
+                    MaxConcurrentRentals = 10,
+                    FreeRentalsPerMonth = 3,
+                    LateFeeDiscount = 50,
+                    ExtendedRentalDays = 3,
+                    Description = "30% off, 5-day grace, 3 free rentals/month, 50% late fee reduction."
+                },
+            };
+
+        /// <summary>
         /// Get the full benefits breakdown for a membership tier.
+        /// Uses O(1) dictionary lookup instead of a switch statement.
+        /// Grace period is resolved from <see cref="RentalReturnService"/>
+        /// to maintain a single source of truth for tier-based grace days.
         /// </summary>
         public static MembershipBenefits GetBenefits(MembershipType tier)
         {
-            switch (tier)
+            if (!_benefitsByTier.TryGetValue(tier, out var template))
+                template = _benefitsByTier[MembershipType.Basic];
+
+            // Return a copy with the runtime-resolved grace period to avoid
+            // mutating the shared template instance.
+            return new MembershipBenefits
             {
-                case MembershipType.Basic:
-                    return new MembershipBenefits
-                    {
-                        Tier = MembershipType.Basic,
-                        DiscountPercent = 0,
-                        GracePeriodDays = RentalReturnService.GetGracePeriod(MembershipType.Basic),
-                        MaxConcurrentRentals = 2,
-                        FreeRentalsPerMonth = 0,
-                        LateFeeDiscount = 0,
-                        ExtendedRentalDays = 0,
-                        Description = "Standard pricing with no perks."
-                    };
-                case MembershipType.Silver:
-                    return new MembershipBenefits
-                    {
-                        Tier = MembershipType.Silver,
-                        DiscountPercent = 10,
-                        GracePeriodDays = RentalReturnService.GetGracePeriod(MembershipType.Silver),
-                        MaxConcurrentRentals = 3,
-                        FreeRentalsPerMonth = 0,
-                        LateFeeDiscount = 10,
-                        ExtendedRentalDays = 1,
-                        Description = "10% off daily rate, 2-day grace period, 8-day rentals."
-                    };
-                case MembershipType.Gold:
-                    return new MembershipBenefits
-                    {
-                        Tier = MembershipType.Gold,
-                        DiscountPercent = 20,
-                        GracePeriodDays = RentalReturnService.GetGracePeriod(MembershipType.Gold),
-                        MaxConcurrentRentals = 5,
-                        FreeRentalsPerMonth = 1,
-                        LateFeeDiscount = 25,
-                        ExtendedRentalDays = 2,
-                        Description = "20% off, 3-day grace, 1 free rental/month, 25% late fee reduction."
-                    };
-                case MembershipType.Platinum:
-                    return new MembershipBenefits
-                    {
-                        Tier = MembershipType.Platinum,
-                        DiscountPercent = 30,
-                        GracePeriodDays = RentalReturnService.GetGracePeriod(MembershipType.Platinum),
-                        MaxConcurrentRentals = 10,
-                        FreeRentalsPerMonth = 3,
-                        LateFeeDiscount = 50,
-                        ExtendedRentalDays = 3,
-                        Description = "30% off, 5-day grace, 3 free rentals/month, 50% late fee reduction."
-                    };
-                default:
-                    return GetBenefits(MembershipType.Basic);
-            }
+                Tier = template.Tier,
+                DiscountPercent = template.DiscountPercent,
+                GracePeriodDays = RentalReturnService.GetGracePeriod(tier),
+                MaxConcurrentRentals = template.MaxConcurrentRentals,
+                FreeRentalsPerMonth = template.FreeRentalsPerMonth,
+                LateFeeDiscount = template.LateFeeDiscount,
+                ExtendedRentalDays = template.ExtendedRentalDays,
+                Description = template.Description
+            };
         }
 
         // ── Rental pricing ───────────────────────────────────────────
@@ -341,9 +358,11 @@ namespace Vidly.Services
                 .Where(r => r.Status == RentalStatus.Returned)
                 .Sum(r => r.TotalCost);
 
-            // Cache the count — previously called CountRentalsThisMonth() twice,
-            // each triggering a full GetAll() + LINQ scan.
-            var freeRentalsUsed = CountRentalsThisMonth(customerId);
+            // Count this month's rentals from the already-fetched list instead
+            // of calling CountRentalsThisMonth() which does another GetAll() scan.
+            var firstOfMonth = new DateTime(_clock.Today.Year, _clock.Today.Month, 1);
+            var freeRentalsUsed = customerRentals
+                .Count(r => r.RentalDate >= firstOfMonth);
 
             return new CustomerBillingSummary
             {
