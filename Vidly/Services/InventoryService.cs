@@ -62,6 +62,8 @@ namespace Vidly.Services
 
         /// <summary>
         /// Get stock status for a single movie.
+        /// Uses a single pass over rentals instead of three separate scans
+        /// (active count, overdue count, earliest return).
         /// </summary>
         public MovieStock GetMovieStock(int movieId)
         {
@@ -69,9 +71,22 @@ namespace Vidly.Services
             if (movie == null) return null;
 
             var rentals = _rentalRepository.GetAll();
-            var activeForMovie = CountActiveRentals(rentals, movieId);
-            var overdueForMovie = CountOverdueRentals(rentals, movieId);
-            var earliestReturn = GetEarliestReturn(rentals, movieId);
+            var today = _clock.Today;
+            int active = 0, overdue = 0;
+            DateTime? earliest = null;
+
+            foreach (var r in rentals)
+            {
+                if (r.MovieId != movieId || r.Status == RentalStatus.Returned)
+                    continue;
+
+                active++;
+                if (r.DueDate < today)
+                    overdue++;
+                if (!earliest.HasValue || r.DueDate < earliest.Value)
+                    earliest = r.DueDate;
+            }
+
             var totalCopies = GetStockCount(movieId);
 
             return new MovieStock
@@ -80,9 +95,9 @@ namespace Vidly.Services
                 MovieName = movie.Name,
                 Genre = movie.Genre,
                 TotalCopies = totalCopies,
-                RentedCopies = activeForMovie,
-                OverdueCopies = overdueForMovie,
-                EarliestReturn = earliestReturn
+                RentedCopies = active,
+                OverdueCopies = overdue,
+                EarliestReturn = active > 0 ? earliest : null
             };
         }
 
@@ -167,35 +182,28 @@ namespace Vidly.Services
 
         /// <summary>
         /// Get overall inventory health summary.
+        /// Computes summary metrics in a single pass over stock data and
+        /// only scans rentals once for overdue revenue calculation.
         /// </summary>
         public InventorySummary GetSummary()
         {
             var allStock = GetAllStock();
-            var rentals = _rentalRepository.GetAll();
+            var today = _clock.Today;
 
-            var summary = new InventorySummary
-            {
-                TotalTitles = allStock.Count,
-                TotalCopies = allStock.Sum(s => s.TotalCopies),
-                TotalRented = allStock.Sum(s => s.RentedCopies),
-                OutOfStockTitles = allStock.Count(s => s.Level == StockLevel.OutOfStock),
-                LowStockTitles = allStock.Count(s => s.Level == StockLevel.Low),
-                TotalOverdue = allStock.Sum(s => s.OverdueCopies)
-            };
-
-            foreach (var r in rentals)
-            {
-                if (r.Status != RentalStatus.Returned && r.DueDate < _clock.Today)
-                {
-                    var daysOverdue = (int)Math.Ceiling(
-                        (_clock.Today - r.DueDate).TotalDays);
-                    summary.OverdueRevenue += daysOverdue * RentalPolicyConstants.LateFeePerDay;
-                }
-            }
-
+            int totalCopies = 0, totalRented = 0, totalOverdue = 0;
+            int outOfStock = 0, lowStock = 0;
             var genreGroups = new Dictionary<string, GenreStock>();
+
+            // Single pass over allStock computes all summary metrics + genre breakdown
             foreach (var stock in allStock)
             {
+                totalCopies += stock.TotalCopies;
+                totalRented += stock.RentedCopies;
+                totalOverdue += stock.OverdueCopies;
+
+                if (stock.Level == StockLevel.OutOfStock) outOfStock++;
+                else if (stock.Level == StockLevel.Low) lowStock++;
+
                 var genreName = stock.Genre?.ToString() ?? "Unknown";
                 if (!genreGroups.TryGetValue(genreName, out var gs))
                 {
@@ -207,11 +215,31 @@ namespace Vidly.Services
                 gs.RentedCopies += stock.RentedCopies;
             }
 
-            summary.GenreBreakdown = genreGroups.Values
-                .OrderByDescending(g => g.Utilization)
-                .ToList();
+            // Compute overdue revenue from rental data (need per-rental due dates)
+            var rentals = _rentalRepository.GetAll();
+            decimal overdueRevenue = 0;
+            foreach (var r in rentals)
+            {
+                if (r.Status != RentalStatus.Returned && r.DueDate < today)
+                {
+                    var daysOverdue = (int)Math.Ceiling((today - r.DueDate).TotalDays);
+                    overdueRevenue += daysOverdue * RentalPolicyConstants.LateFeePerDay;
+                }
+            }
 
-            return summary;
+            return new InventorySummary
+            {
+                TotalTitles = allStock.Count,
+                TotalCopies = totalCopies,
+                TotalRented = totalRented,
+                OutOfStockTitles = outOfStock,
+                LowStockTitles = lowStock,
+                TotalOverdue = totalOverdue,
+                OverdueRevenue = overdueRevenue,
+                GenreBreakdown = genreGroups.Values
+                    .OrderByDescending(g => g.Utilization)
+                    .ToList()
+            };
         }
 
         /// <summary>
