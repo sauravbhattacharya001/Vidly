@@ -1,0 +1,267 @@
+@model Vidly.Services.RevenueDashboard
+@{
+    ViewBag.Title = "Smart Revenue Alerts";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smart Revenue Alerts - Vidly</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f1419; color: #e1e8ed; min-height: 100vh; }
+        .container { display: grid; grid-template-columns: 1fr 1fr 320px; grid-template-rows: auto auto auto; gap: 16px; padding: 20px; max-width: 1600px; margin: 0 auto; }
+        .header { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; padding: 16px 0; border-bottom: 1px solid #2d3741; }
+        .header h1 { font-size: 24px; color: #fff; }
+        .header h1 span { color: #1da1f2; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #17bf63; display: inline-block; margin-right: 8px; animation: pulse 2s infinite; }
+        @@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .card { background: #192734; border-radius: 12px; padding: 20px; border: 1px solid #2d3741; }
+        .card h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #8899a6; margin-bottom: 16px; }
+        .chart-card { grid-column: 1 / 3; min-height: 280px; }
+        .alerts-card { grid-row: 2 / 4; }
+        .genre-card { min-height: 260px; }
+        .forecast-card { min-height: 200px; }
+        .recs-card { grid-column: 3; grid-row: 2 / 4; }
+        canvas { width: 100%; height: 200px; }
+        .alert-item { padding: 12px; margin-bottom: 8px; border-radius: 8px; border-left: 4px solid; }
+        .alert-critical { background: rgba(224,36,94,0.1); border-color: #e0245e; }
+        .alert-warning { background: rgba(255,173,31,0.1); border-color: #ffad1f; }
+        .alert-info { background: rgba(29,161,242,0.1); border-color: #1da1f2; }
+        .alert-item .type { font-size: 11px; text-transform: uppercase; font-weight: 600; margin-bottom: 4px; }
+        .alert-item .msg { font-size: 13px; color: #c8d6e0; }
+        .alert-item .recs { font-size: 12px; color: #8899a6; margin-top: 6px; padding-left: 12px; }
+        .alert-item .recs li { margin-bottom: 3px; }
+        .alert-item .dismiss { float: right; background: none; border: none; color: #8899a6; cursor: pointer; font-size: 16px; }
+        .alert-item .dismiss:hover { color: #fff; }
+        .rec-item { padding: 10px 12px; margin-bottom: 8px; background: rgba(29,161,242,0.05); border-radius: 8px; font-size: 13px; border-left: 3px solid #1da1f2; }
+        .forecast-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #2d3741; font-size: 13px; }
+        .forecast-row:last-child { border: none; }
+        .trend-up { color: #17bf63; }
+        .trend-down { color: #e0245e; }
+        .trend-stable { color: #8899a6; }
+        .config-bar { grid-column: 1 / -1; display: flex; gap: 16px; align-items: center; padding: 12px 20px; background: #192734; border-radius: 8px; }
+        .config-bar label { font-size: 12px; color: #8899a6; }
+        .config-bar input[type=range] { width: 120px; }
+        .config-bar button { padding: 6px 16px; background: #1da1f2; border: none; border-radius: 6px; color: #fff; cursor: pointer; font-size: 13px; }
+        .config-bar button:hover { background: #1a91da; }
+        .metric { text-align: center; }
+        .metric .value { font-size: 28px; font-weight: 700; color: #fff; }
+        .metric .label { font-size: 11px; color: #8899a6; margin-top: 4px; }
+        .metrics-row { display: flex; gap: 24px; margin-bottom: 16px; justify-content: space-around; }
+        .genre-bar { display: flex; align-items: center; margin-bottom: 8px; font-size: 13px; }
+        .genre-bar .bar { height: 20px; border-radius: 4px; margin: 0 10px; min-width: 4px; }
+        .genre-bar .name { width: 90px; }
+        .genre-bar .amount { color: #8899a6; }
+        @@media (max-width: 1200px) { .container { grid-template-columns: 1fr 1fr; } .recs-card { grid-column: 1 / -1; grid-row: auto; } }
+        @@media (max-width: 768px) { .container { grid-template-columns: 1fr; } .chart-card, .recs-card { grid-column: 1; } .alerts-card { grid-row: auto; } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1><span class="status-dot"></span>Smart Revenue <span>Alerts</span></h1>
+        <div>
+            <button onclick="runAnalysis()" style="padding:8px 16px;background:#1da1f2;border:none;border-radius:6px;color:#fff;cursor:pointer;">&#x1F50D; Run Analysis</button>
+        </div>
+    </div>
+
+    <div class="config-bar">
+        <label>Sensitivity: <span id="sensVal">@Model.Snapshots.Count</span></label>
+        <input type="range" min="1" max="5" value="3" id="sensitivity" oninput="document.getElementById('sensVal').textContent=this.value">
+        <label>Window: <input type="number" value="30" min="7" max="90" id="windowDays" style="width:50px;background:#0f1419;border:1px solid #2d3741;color:#fff;border-radius:4px;padding:2px 6px;"></label>
+        <button onclick="updateConfig()">Apply Config</button>
+    </div>
+
+    <!-- Revenue Trend Chart -->
+    <div class="card chart-card">
+        <h2>Revenue Trend &amp; Forecast</h2>
+        <div class="metrics-row">
+            @{ var recent = Model.Snapshots.Any() ? Model.Snapshots.Last() : null; }
+            <div class="metric"><div class="value">$@(Model.Snapshots.Any() ? Model.Snapshots.Sum(s => s.TotalRevenue).ToString("F0") : "0")</div><div class="label">Period Total</div></div>
+            <div class="metric"><div class="value">@(Model.Snapshots.Count(s => s.RentalCount > 0))</div><div class="label">Active Days</div></div>
+            <div class="metric"><div class="value">$@(Model.Snapshots.Any() ? Model.Snapshots.Where(s=>s.RentalCount>0).DefaultIfEmpty(new Vidly.Services.RevenueSnapshot()).Average(s => s.TotalRevenue).ToString("F2") : "0")</div><div class="label">Daily Avg</div></div>
+            <div class="metric"><div class="value">@Model.ActiveAlerts.Count</div><div class="label">Active Alerts</div></div>
+        </div>
+        <canvas id="trendChart" height="180"></canvas>
+    </div>
+
+    <!-- Alerts Panel -->
+    <div class="card alerts-card">
+        <h2>Active Alerts (@Model.ActiveAlerts.Count)</h2>
+        @if (!Model.ActiveAlerts.Any())
+        {
+            <p style="color:#8899a6;font-size:13px;">&#x2705; No active alerts — revenue patterns look healthy.</p>
+        }
+        @foreach (var alert in Model.ActiveAlerts.Take(10))
+        {
+            var cssClass = alert.Severity == Vidly.Services.AlertSeverity.Critical ? "alert-critical"
+                : alert.Severity == Vidly.Services.AlertSeverity.Warning ? "alert-warning" : "alert-info";
+            <div class="alert-item @cssClass" id="alert-@alert.Id">
+                <button class="dismiss" onclick="dismissAlert('@alert.Id')">&times;</button>
+                <div class="type">@alert.Type — @alert.Severity</div>
+                <div class="msg">@alert.Message</div>
+                @if (alert.Recommendations.Any())
+                {
+                    <ul class="recs">
+                        @foreach (var rec in alert.Recommendations)
+                        {
+                            <li>@rec</li>
+                        }
+                    </ul>
+                }
+            </div>
+        }
+    </div>
+
+    <!-- Genre Revenue -->
+    <div class="card genre-card">
+        <h2>Genre Revenue Breakdown</h2>
+        @{
+            var genreColors = new[] { "#1da1f2", "#17bf63", "#ffad1f", "#e0245e", "#794bc4", "#f45d22", "#1dcaff", "#ff6b9d", "#7fdbca", "#c4b5fd" };
+            var maxRevenue = Model.GenreBreakdown.Any() ? Model.GenreBreakdown.Max(g => g.Value.Revenue) : 1m;
+            var gIdx = 0;
+        }
+        @foreach (var genre in Model.GenreBreakdown.OrderByDescending(g => g.Value.Revenue))
+        {
+            var pct = maxRevenue > 0 ? (int)(genre.Value.Revenue / maxRevenue * 100) : 0;
+            var color = genreColors[gIdx % genreColors.Length];
+            var trendClass = genre.Value.Trend == "Rising" ? "trend-up" : genre.Value.Trend == "Declining" ? "trend-down" : "trend-stable";
+            <div class="genre-bar">
+                <span class="name">@genre.Key</span>
+                <div class="bar" style="width:@(pct)%;background:@color;"></div>
+                <span class="amount">$@genre.Value.Revenue.ToString("F0") <span class="@trendClass">@(genre.Value.Trend == "Rising" ? "↑" : genre.Value.Trend == "Declining" ? "↓" : "→")</span></span>
+            </div>
+            gIdx++;
+        }
+        @if (!Model.GenreBreakdown.Any())
+        {
+            <p style="color:#8899a6;font-size:13px;">No genre data available yet.</p>
+        }
+    </div>
+
+    <!-- Forecast -->
+    <div class="card forecast-card">
+        <h2>7-Day Forecast</h2>
+        @foreach (var f in Model.Forecast.Take(7))
+        {
+            var trendClass = f.Trend == "Rising" ? "trend-up" : f.Trend == "Declining" ? "trend-down" : "trend-stable";
+            <div class="forecast-row">
+                <span>@f.Date.ToString("ddd M/d")</span>
+                <span class="@trendClass">$@f.PredictedRevenue.ToString("F2")</span>
+                <span style="color:#8899a6">@f.ConfidenceLevel%</span>
+            </div>
+        }
+        @if (!Model.Forecast.Any())
+        {
+            <p style="color:#8899a6;font-size:13px;">Insufficient data for forecast.</p>
+        }
+    </div>
+
+    <!-- Recommendations -->
+    <div class="card recs-card">
+        <h2>&#x1F4A1; Proactive Recommendations</h2>
+        @foreach (var rec in Model.Recommendations)
+        {
+            <div class="rec-item">@rec</div>
+        }
+        @if (!Model.Recommendations.Any())
+        {
+            <div class="rec-item">System is analyzing patterns — recommendations will appear here.</div>
+        }
+    </div>
+</div>
+
+<script>
+    // Revenue Trend Chart (Canvas)
+    (function() {
+        var canvas = document.getElementById('trendChart');
+        if (!canvas) return;
+        var ctx = canvas.getContext('2d');
+        canvas.width = canvas.parentElement.clientWidth - 40;
+        canvas.height = 180;
+
+        var snapshots = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.Snapshots.Select(s => new { date = s.Date.ToString("M/d"), revenue = s.TotalRevenue })));
+        var forecasts = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.Forecast.Select(f => new { date = f.Date.ToString("M/d"), revenue = f.PredictedRevenue })));
+
+        var allData = snapshots.map(s => s.revenue).concat(forecasts.map(f => f.revenue));
+        var maxVal = Math.max.apply(null, allData.length ? allData : [1]);
+        var w = canvas.width, h = canvas.height, pad = 30;
+
+        // Grid
+        ctx.strokeStyle = '#2d3741';
+        ctx.lineWidth = 0.5;
+        for (var i = 0; i <= 4; i++) {
+            var y = pad + (h - pad * 2) * (i / 4);
+            ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(w - pad, y); ctx.stroke();
+        }
+
+        function drawLine(data, color, dashed) {
+            if (data.length < 2) return;
+            var step = (w - pad * 2) / Math.max(1, data.length - 1);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.setLineDash(dashed ? [5, 5] : []);
+            ctx.beginPath();
+            data.forEach(function(val, i) {
+                var x = pad + i * step;
+                var y = h - pad - ((val / maxVal) * (h - pad * 2));
+                i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        // Actual revenue
+        drawLine(snapshots.map(s => s.revenue), '#1da1f2', false);
+        // Forecast
+        if (forecasts.length) {
+            var forecastVals = [snapshots.length ? snapshots[snapshots.length-1].revenue : 0].concat(forecasts.map(f => f.revenue));
+            var offsetData = new Array(Math.max(0, snapshots.length - 1)).fill(null).concat(forecastVals);
+            // Draw forecast starting from last actual point
+            var fStep = (w - pad * 2) / Math.max(1, snapshots.length + forecasts.length - 1);
+            ctx.strokeStyle = '#17bf63';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            var started = false;
+            for (var i = snapshots.length - 1; i < snapshots.length + forecasts.length; i++) {
+                var val = i < snapshots.length ? snapshots[i].revenue : forecasts[i - snapshots.length].revenue;
+                var x = pad + i * fStep;
+                var y = h - pad - ((val / maxVal) * (h - pad * 2));
+                !started ? (ctx.moveTo(x, y), started = true) : ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        // Labels
+        ctx.fillStyle = '#8899a6';
+        ctx.font = '10px sans-serif';
+        ctx.fillText('$' + maxVal.toFixed(0), 2, pad + 4);
+        ctx.fillText('$0', 2, h - pad + 10);
+        if (snapshots.length) { ctx.fillText(snapshots[0].date, pad, h - 5); ctx.fillText(snapshots[snapshots.length-1].date, w - pad - 30, h - 5); }
+    })();
+
+    function dismissAlert(id) {
+        fetch('/RevenueAlerts/Acknowledge/' + id, { method: 'POST' })
+            .then(function() { var el = document.getElementById('alert-' + id); if (el) el.style.display = 'none'; });
+    }
+
+    function runAnalysis() {
+        fetch('/RevenueAlerts/Analyze', { method: 'POST' })
+            .then(function() { location.reload(); });
+    }
+
+    function updateConfig() {
+        var config = {
+            SensitivityLevel: parseInt(document.getElementById('sensitivity').value),
+            AnomalyWindowDays: parseInt(document.getElementById('windowDays').value),
+            ForecastHorizonDays: 7
+        };
+        fetch('/RevenueAlerts/Config', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(config) })
+            .then(function() { location.reload(); });
+    }
+</script>
+</body>
+</html>
