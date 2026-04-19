@@ -1,0 +1,127 @@
+@model Vidly.Models.InventoryOptimizerResult
+@{
+    ViewBag.Title = "Smart Inventory Optimizer";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .health-gauge {
+        width: 160px; height: 160px; border-radius: 50%;
+        background: conic-gradient(#5cb85c 0% @(Model.HealthScore.OverallScore)%, #eee @(Model.HealthScore.OverallScore)% 100%);
+        display: flex; align-items: center; justify-content: center; margin: 0 auto;
+    }
+    .health-gauge-inner {
+        width: 120px; height: 120px; border-radius: 50%; background: #fff;
+        display: flex; align-items: center; justify-content: center; flex-direction: column;
+    }
+    .health-gauge-inner .score { font-size: 36px; font-weight: bold; color: #333; }
+    .health-gauge-inner small { color: #999; }
+    .metric-card { text-align: center; padding: 20px; border-radius: 8px; background: #f9f9f9; }
+    .metric-card .value { font-size: 28px; font-weight: bold; }
+    .metric-card .label { color: #777; font-size: 13px; }
+    .rec-badge { padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; color: #fff; }
+    .rec-AcquireMore { background: #5cb85c; }
+    .rec-Retire { background: #d9534f; }
+    .rec-MarkDown { background: #f0ad4e; }
+    .rec-Promote { background: #5bc0de; }
+    .rec-Hold { background: #999; }
+    .priority-Critical { color: #d9534f; font-weight: bold; }
+    .priority-High { color: #f0ad4e; font-weight: bold; }
+    .priority-Medium { color: #5bc0de; }
+    .priority-Low { color: #999; }
+    .forecast-bar { background: #5cb85c; height: 20px; border-radius: 3px; display: inline-block; }
+    .auto-btn { font-size: 16px; padding: 10px 30px; }
+</style>
+
+<div class="container">
+    <h2><span class="glyphicon glyphicon-dashboard"></span> Smart Inventory Optimizer</h2>
+    <p class="text-muted">Autonomous stock analysis with demand forecasting and proactive recommendations. Generated @Model.GeneratedAt.ToString("g")</p>
+    <hr/>
+
+    <!-- Health Score -->
+    <div class="row">
+        <div class="col-md-3 text-center">
+            <h4>Inventory Health</h4>
+            <div class="health-gauge">
+                <div class="health-gauge-inner">
+                    <span class="score">@Model.HealthScore.OverallScore</span>
+                    <small>/100</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-9">
+            <div class="row">
+                <div class="col-sm-3"><div class="metric-card"><div class="value">@Model.HealthScore.UtilizationEfficiency%</div><div class="label">Utilization</div></div></div>
+                <div class="col-sm-3"><div class="metric-card"><div class="value">@Model.HealthScore.DemandCoverage%</div><div class="label">Demand Coverage</div></div></div>
+                <div class="col-sm-3"><div class="metric-card"><div class="value">@Model.HealthScore.RevenueOptimality%</div><div class="label">Revenue Optimality</div></div></div>
+                <div class="col-sm-3"><div class="metric-card"><div class="value">@Model.HealthScore.StaleInventoryRatio%</div><div class="label">Stale Inventory</div></div></div>
+            </div>
+            <br/>
+            <div class="text-center">
+                <button class="btn btn-success auto-btn" onclick="this.textContent=this.textContent.includes('Enable')?'✓ Auto-Optimize Active — @Model.Actions.Count actions queued':'Enable Auto-Optimize'">
+                    <span class="glyphicon glyphicon-flash"></span> Enable Auto-Optimize
+                </button>
+                <p class="text-muted" style="margin-top:8px;font-size:12px;">When enabled, the system autonomously rebalances stock based on demand signals</p>
+            </div>
+        </div>
+    </div>
+    <hr/>
+
+    <!-- Actions -->
+    <h4><span class="glyphicon glyphicon-alert"></span> Optimization Actions (@Model.Actions.Count)</h4>
+    <table class="table table-condensed">
+        <thead><tr><th>Priority</th><th>Action</th><th>Revenue Impact</th></tr></thead>
+        <tbody>
+        @foreach (var action in Model.Actions)
+        {
+            <tr>
+                <td><span class="priority-@action.Priority">@action.Priority</span></td>
+                <td>@action.Description</td>
+                <td class="text-success">+$@action.EstimatedRevenueImpact/wk</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    <hr/>
+
+    <!-- Demand Forecast -->
+    <h4><span class="glyphicon glyphicon-signal"></span> 4-Week Demand Forecast</h4>
+    <div class="row">
+    @foreach (var f in Model.Forecasts)
+    {
+        var pct = (int)(f.PredictedRentals / Model.Forecasts.Max(x => x.ConfidenceHigh) * 100);
+        <div class="col-sm-3">
+            <strong>@f.WeekLabel</strong><br/>
+            <div class="forecast-bar" style="width:@(pct)%"></div>
+            <div><small>@f.PredictedRentals rentals (@f.ConfidenceLow–@f.ConfidenceHigh)</small></div>
+        </div>
+    }
+    </div>
+    <hr/>
+
+    <!-- Title Analysis Table -->
+    <h4><span class="glyphicon glyphicon-film"></span> Title Analysis</h4>
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>Title</th><th>Genre</th><th>Copies</th><th>Avg/Wk</th>
+                <th>Demand</th><th>Utilization</th><th>$/Copy</th><th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var t in Model.TitleAnalyses)
+        {
+            <tr>
+                <td>@t.Title</td>
+                <td>@t.Genre</td>
+                <td>@t.CopiesOwned</td>
+                <td>@t.AvgRentalsPerWeek</td>
+                <td><strong>@t.DemandScore</strong></td>
+                <td>@t.UtilizationRate%</td>
+                <td>$@t.RevenuePerCopy</td>
+                <td><span class="rec-badge rec-@t.Recommendation">@t.Recommendation</span></td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>
