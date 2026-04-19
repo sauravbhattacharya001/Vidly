@@ -1,0 +1,300 @@
+@model Vidly.Models.AutopilotViewModel
+@{
+    ViewBag.Title = "Movie Autopilot";
+}
+
+<div class="container">
+    <div class="page-header">
+        <h1><span class="glyphicon glyphicon-autopilot glyphicon-plane"></span> Movie Autopilot</h1>
+        <p class="lead">Let Vidly autonomously curate your weekly movie queue — it learns from your feedback.</p>
+    </div>
+
+    <!-- Customer selector -->
+    <div class="panel panel-default">
+        <div class="panel-body">
+            @using (Html.BeginForm("Index", "Autopilot", FormMethod.Get, new { @class = "form-inline" }))
+            {
+                <div class="form-group">
+                    <label for="customerId">Select Customer:</label>
+                    <select name="customerId" id="customerId" class="form-control" style="margin: 0 10px; min-width: 200px;">
+                        <option value="">-- Choose a customer --</option>
+                        @foreach (var c in Model.Customers)
+                        {
+                            <option value="@c.Id" @(Model.SelectedCustomerId == c.Id ? "selected" : "")>@c.Name</option>
+                        }
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <span class="glyphicon glyphicon-dashboard"></span> Load
+                </button>
+            }
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    @if (Model.SelectedCustomerId.HasValue && Model.Profile != null)
+    {
+        <!-- Stats Bar -->
+        <div class="row" style="margin-bottom: 20px;">
+            <div class="col-md-3">
+                <div class="panel panel-success">
+                    <div class="panel-body text-center">
+                        <h3 style="margin: 0;">@Model.TotalAccepted</h3>
+                        <small class="text-muted">Accepted</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="panel panel-warning">
+                    <div class="panel-body text-center">
+                        <h3 style="margin: 0;">@Model.TotalSkipped</h3>
+                        <small class="text-muted">Skipped</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="panel panel-info">
+                    <div class="panel-body text-center">
+                        <h3 style="margin: 0;">@((Model.AcceptanceRate * 100).ToString("F0"))%</h3>
+                        <small class="text-muted">Acceptance Rate</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="panel panel-default">
+                    <div class="panel-body text-center">
+                        <h3 style="margin: 0;">🔥 @Model.Streak</h3>
+                        <small class="text-muted">Accept Streak</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Settings -->
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title"><span class="glyphicon glyphicon-cog"></span> Autopilot Settings</h3>
+            </div>
+            <div class="panel-body">
+                @using (Html.BeginForm("UpdateProfile", "Autopilot", FormMethod.Post))
+                {
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="customerId" value="@Model.SelectedCustomerId" />
+
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" name="enabled" value="true" @(Model.Profile.Enabled ? "checked" : "") />
+                                    Enable Autopilot
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Favorite Genres:</label><br />
+                                @foreach (Vidly.Models.Genre g in Enum.GetValues(typeof(Vidly.Models.Genre)))
+                                {
+                                    <label class="checkbox-inline">
+                                        <input type="checkbox" name="favoriteGenres" value="@g"
+                                               @(Model.Profile.FavoriteGenres.Contains(g) ? "checked" : "") />
+                                        @g
+                                    </label>
+                                }
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Mood Preferences:</label><br />
+                                @foreach (var mood in new[] { "Exciting", "Relaxing", "Thought-provoking", "Funny", "Intense", "Romantic", "Scary" })
+                                {
+                                    <label class="checkbox-inline">
+                                        <input type="checkbox" name="moodPreferences" value="@mood"
+                                               @(Model.Profile.MoodPreferences.Contains(mood) ? "checked" : "") />
+                                        @mood
+                                    </label>
+                                }
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Decade Preference:</label>
+                                <select name="decadePreference" class="form-control">
+                                    <option value="">Any decade</option>
+                                    @foreach (var decade in new[] { "1970s", "1980s", "1990s", "2000s", "2010s", "2020s" })
+                                    {
+                                        <option value="@decade" @(Model.Profile.DecadePreference == decade ? "selected" : "")>@decade</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Queue Size: <span id="queueSizeLabel">@Model.Profile.MaxQueueSize</span></label>
+                                <input type="range" name="maxQueueSize" min="1" max="10"
+                                       value="@Model.Profile.MaxQueueSize"
+                                       oninput="document.getElementById('queueSizeLabel').textContent=this.value" />
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-default"><span class="glyphicon glyphicon-floppy-disk"></span> Save Settings</button>
+                }
+            </div>
+        </div>
+
+        <!-- Generate Button -->
+        <div style="margin-bottom: 20px;">
+            @using (Html.BeginForm("Generate", "Autopilot", FormMethod.Post, new { style = "display: inline;" }))
+            {
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="customerId" value="@Model.SelectedCustomerId" />
+                <button type="submit" class="btn btn-success btn-lg">
+                    <span class="glyphicon glyphicon-refresh"></span> Generate Weekly Queue
+                </button>
+            }
+        </div>
+
+        <!-- Current Queue -->
+        @if (Model.CurrentQueue != null)
+        {
+            <div class="panel panel-primary">
+                <div class="panel-heading">
+                    <h3 class="panel-title">
+                        📋 This Week's Queue
+                        <small>Generated @Model.CurrentQueue.GeneratedAt.ToString("MMM d, yyyy h:mm tt")
+                            | @Model.CurrentQueue.TotalMoviesConsidered movies analyzed</small>
+                    </h3>
+                </div>
+                <div class="panel-body">
+                    <div class="row">
+                        @foreach (var pick in Model.CurrentQueue.Picks)
+                        {
+                            <div class="col-md-4" style="margin-bottom: 15px;">
+                                <div class="panel @(pick.Accepted == true ? "panel-success" : pick.Accepted == false ? "panel-danger" : "panel-default")">
+                                    <div class="panel-heading">
+                                        <span class="label @(pick.Category == "Genre Match" ? "label-primary" :
+                                                              pick.Category == "Surprise Pick" ? "label-warning" :
+                                                              pick.Category == "Popular Pick" ? "label-info" :
+                                                              pick.Category == "Hidden Gem" ? "label-success" :
+                                                              "label-default")">
+                                            @pick.Category
+                                        </span>
+                                        <strong style="margin-left: 8px;">@pick.Movie.Name</strong>
+                                    </div>
+                                    <div class="panel-body">
+                                        <p>
+                                            @if (pick.Movie.Genre.HasValue)
+                                            {
+                                                <span class="label label-default">@pick.Movie.Genre</span>
+                                            }
+                                            @if (pick.Movie.Rating.HasValue)
+                                            {
+                                                <span>@(new string('★', pick.Movie.Rating.Value))@(new string('☆', 5 - pick.Movie.Rating.Value))</span>
+                                            }
+                                        </p>
+                                        <div class="progress" style="height: 8px; margin-bottom: 8px;">
+                                            <div class="progress-bar progress-bar-info"
+                                                 style="width: @((pick.RelevanceScore * 100).ToString("F0"))%"></div>
+                                        </div>
+                                        <small class="text-muted">@pick.Reason</small>
+                                        <small class="pull-right">Score: @pick.RelevanceScore.ToString("F2")</small>
+
+                                        @if (!pick.Accepted.HasValue)
+                                        {
+                                            <div style="margin-top: 10px;">
+                                                @using (Html.BeginForm("Accept", "Autopilot", FormMethod.Post, new { style = "display: inline;" }))
+                                                {
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="customerId" value="@Model.SelectedCustomerId" />
+                                                    <input type="hidden" name="movieId" value="@pick.Movie.Id" />
+                                                    <button type="submit" class="btn btn-success btn-sm">
+                                                        <span class="glyphicon glyphicon-thumbs-up"></span> Accept
+                                                    </button>
+                                                }
+                                                @using (Html.BeginForm("Skip", "Autopilot", FormMethod.Post, new { style = "display: inline;" }))
+                                                {
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="customerId" value="@Model.SelectedCustomerId" />
+                                                    <input type="hidden" name="movieId" value="@pick.Movie.Id" />
+                                                    <button type="submit" class="btn btn-default btn-sm">
+                                                        <span class="glyphicon glyphicon-thumbs-down"></span> Skip
+                                                    </button>
+                                                }
+                                            </div>
+                                        }
+                                        else if (pick.Accepted.Value)
+                                        {
+                                            <div style="margin-top: 10px;">
+                                                <span class="text-success"><span class="glyphicon glyphicon-ok"></span> Accepted</span>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div style="margin-top: 10px;">
+                                                <span class="text-muted"><span class="glyphicon glyphicon-remove"></span> Skipped</span>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Insights -->
+        @if (Model.Insights.Any())
+        {
+            <div class="panel panel-info">
+                <div class="panel-heading">
+                    <h3 class="panel-title">🧠 Autopilot Insights</h3>
+                </div>
+                <ul class="list-group">
+                    @foreach (var insight in Model.Insights)
+                    {
+                        <li class="list-group-item">
+                            <span style="font-size: 1.3em; margin-right: 8px;">@insight.Emoji</span>
+                            <strong>@insight.Type:</strong> @insight.Message
+                            <div class="progress" style="height: 4px; margin: 5px 0 0 0; max-width: 150px; display: inline-block; vertical-align: middle;">
+                                <div class="progress-bar progress-bar-success"
+                                     style="width: @((insight.Confidence * 100).ToString("F0"))%"></div>
+                            </div>
+                            <small class="text-muted">@((insight.Confidence * 100).ToString("F0"))% confidence</small>
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
+
+        <!-- Past Queues -->
+        @if (Model.PastQueues.Any())
+        {
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h3 class="panel-title"><span class="glyphicon glyphicon-time"></span> Past Queues</h3>
+                </div>
+                <div class="panel-body">
+                    @foreach (var queue in Model.PastQueues)
+                    {
+                        <div class="well well-sm">
+                            <strong>Week of @queue.WeekStart.ToString("MMM d, yyyy")</strong>
+                            <small class="text-muted">| @queue.Picks.Count picks | @queue.Picks.Count(p => p.Accepted == true) accepted | @queue.Picks.Count(p => p.Accepted == false) skipped</small>
+                            <div style="margin-top: 5px;">
+                                @foreach (var pick in queue.Picks)
+                                {
+                                    <span class="label @(pick.Accepted == true ? "label-success" : pick.Accepted == false ? "label-danger" : "label-default")"
+                                          title="@pick.Reason">
+                                        @pick.Movie.Name
+                                    </span>
+                                    <text> </text>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    }
+</div>
