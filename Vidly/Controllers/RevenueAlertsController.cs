@@ -45,6 +45,7 @@ namespace Vidly.Controllers
 
         // POST: RevenueAlerts/Acknowledge/RA-0001
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public ActionResult Acknowledge(string id)
         {
             var success = _service.AcknowledgeAlert(id);
@@ -61,6 +62,7 @@ namespace Vidly.Controllers
 
         // POST: RevenueAlerts/Analyze
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public ActionResult Analyze()
         {
             var dashboard = _service.RunAnalysis();
@@ -77,6 +79,7 @@ namespace Vidly.Controllers
 
         // POST: RevenueAlerts/Config
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public ActionResult Config(AlertConfig config)
         {
             var updated = _service.ConfigureAlerts(config);
