@@ -1,0 +1,343 @@
+@model Vidly.Models.ChurnSummary
+@{
+    ViewBag.Title = "Smart Churn Predictor";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smart Churn Predictor - Vidly</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f1419; color: #e1e8ed; min-height: 100vh; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .header { display: flex; align-items: center; justify-content: space-between; padding: 16px 0; border-bottom: 1px solid #2d3741; margin-bottom: 20px; }
+        .header h1 { font-size: 24px; color: #fff; }
+        .header h1 span { color: #e0245e; }
+        .back-link { color: #1da1f2; text-decoration: none; font-size: 14px; }
+        .back-link:hover { text-decoration: underline; }
+
+        /* Summary cards */
+        .summary { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 20px; }
+        .stat-card { background: #192734; border-radius: 12px; padding: 18px; text-align: center; border: 1px solid #2d3741; }
+        .stat-card .value { font-size: 32px; font-weight: 700; color: #fff; }
+        .stat-card .label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #8899a6; margin-top: 6px; }
+        .stat-card.low .value { color: #17bf63; }
+        .stat-card.med .value { color: #ffad1f; }
+        .stat-card.high .value { color: #f45d22; }
+        .stat-card.crit .value { color: #e0245e; }
+
+        /* Grid layout */
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+        .card { background: #192734; border-radius: 12px; padding: 20px; border: 1px solid #2d3741; }
+        .card h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #8899a6; margin-bottom: 14px; }
+        .card.full { grid-column: 1 / -1; }
+
+        /* Risk donut */
+        .donut-wrap { display: flex; align-items: center; gap: 30px; }
+        .donut-canvas { width: 200px; height: 200px; }
+        .donut-legend { list-style: none; }
+        .donut-legend li { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 14px; }
+        .donut-legend .dot { width: 12px; height: 12px; border-radius: 50%; }
+
+        /* Customer table */
+        .risk-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .risk-table th { text-align: left; padding: 10px 12px; border-bottom: 2px solid #2d3741; color: #8899a6; font-weight: 600; text-transform: uppercase; font-size: 11px; }
+        .risk-table td { padding: 10px 12px; border-bottom: 1px solid #2d3741; }
+        .risk-table tr:hover { background: rgba(29,161,242,0.05); cursor: pointer; }
+        .risk-badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+        .risk-Low { background: rgba(23,191,99,0.15); color: #17bf63; }
+        .risk-Medium { background: rgba(255,173,31,0.15); color: #ffad1f; }
+        .risk-High { background: rgba(244,93,34,0.15); color: #f45d22; }
+        .risk-Critical { background: rgba(224,36,94,0.15); color: #e0245e; }
+
+        /* Progress bars */
+        .factor-bar { margin-bottom: 10px; }
+        .factor-bar .factor-label { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; }
+        .factor-bar .bar-bg { height: 8px; background: #2d3741; border-radius: 4px; overflow: hidden; }
+        .factor-bar .bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+
+        /* Retention panel */
+        .retention-list { list-style: none; }
+        .retention-list li { padding: 10px 14px; margin-bottom: 8px; background: rgba(29,161,242,0.05); border-radius: 8px; font-size: 13px; border-left: 3px solid #1da1f2; line-height: 1.4; }
+
+        /* Tier breakdown */
+        .tier-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+        .tier-card { background: #1c2e3f; border-radius: 8px; padding: 14px; text-align: center; }
+        .tier-card .tier-name { font-size: 13px; font-weight: 600; color: #1da1f2; margin-bottom: 8px; }
+        .tier-card .tier-stat { font-size: 12px; color: #8899a6; margin-bottom: 4px; }
+        .tier-card .tier-stat strong { color: #e1e8ed; }
+
+        /* Detail modal */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-overlay.open { display: flex; }
+        .modal { background: #192734; border-radius: 16px; padding: 24px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; border: 1px solid #2d3741; }
+        .modal h3 { font-size: 18px; margin-bottom: 16px; color: #fff; }
+        .modal-close { float: right; background: none; border: none; color: #8899a6; font-size: 20px; cursor: pointer; }
+        .modal-close:hover { color: #fff; }
+
+        /* Score gauge */
+        .gauge-wrap { text-align: center; margin: 16px 0; }
+        .gauge-canvas { width: 180px; height: 100px; }
+
+        /* Filter */
+        .filter-bar { display: flex; gap: 10px; margin-bottom: 16px; }
+        .filter-btn { padding: 6px 16px; border-radius: 20px; border: 1px solid #2d3741; background: transparent; color: #8899a6; cursor: pointer; font-size: 12px; }
+        .filter-btn.active { background: #1da1f2; border-color: #1da1f2; color: #fff; }
+        .filter-btn:hover { border-color: #1da1f2; }
+
+        /* Revenue at risk */
+        .revenue-at-risk { font-size: 22px; font-weight: 700; color: #e0245e; }
+
+        @@media (max-width: 768px) {
+            .summary { grid-template-columns: repeat(2, 1fr); }
+            .grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>🔮 <span>Smart Churn Predictor</span></h1>
+        <a class="back-link" href="/">← Back to Vidly</a>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="summary">
+        <div class="stat-card">
+            <div class="value">@Model.TotalCustomersAnalyzed</div>
+            <div class="label">Customers Analyzed</div>
+        </div>
+        <div class="stat-card low">
+            <div class="value">@Model.LowRiskCount</div>
+            <div class="label">Low Risk</div>
+        </div>
+        <div class="stat-card med">
+            <div class="value">@Model.MediumRiskCount</div>
+            <div class="label">Medium Risk</div>
+        </div>
+        <div class="stat-card high">
+            <div class="value">@Model.HighRiskCount</div>
+            <div class="label">High Risk</div>
+        </div>
+        <div class="stat-card crit">
+            <div class="value">@Model.CriticalRiskCount</div>
+            <div class="label">Critical Risk</div>
+        </div>
+    </div>
+
+    <div class="grid">
+        <!-- Risk Distribution Donut -->
+        <div class="card">
+            <h2>Risk Distribution</h2>
+            <div class="donut-wrap">
+                <canvas id="donutChart" class="donut-canvas" width="200" height="200"></canvas>
+                <ul class="donut-legend">
+                    <li><span class="dot" style="background:#17bf63"></span> Low (@Model.LowRiskCount)</li>
+                    <li><span class="dot" style="background:#ffad1f"></span> Medium (@Model.MediumRiskCount)</li>
+                    <li><span class="dot" style="background:#f45d22"></span> High (@Model.HighRiskCount)</li>
+                    <li><span class="dot" style="background:#e0245e"></span> Critical (@Model.CriticalRiskCount)</li>
+                </ul>
+            </div>
+            <div style="margin-top:16px; text-align:center;">
+                <div class="label" style="font-size:11px;color:#8899a6;">Avg Risk Score</div>
+                <div style="font-size:24px;font-weight:700;color:#fff;">@Model.AverageRiskScore</div>
+            </div>
+        </div>
+
+        <!-- Revenue at Risk + Tier Breakdown -->
+        <div class="card">
+            <h2>Revenue &amp; Tier Analysis</h2>
+            <div style="margin-bottom:20px;">
+                <div class="label" style="font-size:11px;color:#8899a6;margin-bottom:4px;">Revenue at Risk (High + Critical)</div>
+                <div class="revenue-at-risk">$@Model.RevenueAtRisk.ToString("N2")</div>
+            </div>
+            <h2 style="margin-top:10px;">By Membership Tier</h2>
+            <div class="tier-grid">
+                @foreach (var tier in Model.ByTier)
+                {
+                    <div class="tier-card">
+                        <div class="tier-name">@tier.Key</div>
+                        <div class="tier-stat"><strong>@tier.Value.Count</strong> customers</div>
+                        <div class="tier-stat">Avg Score: <strong>@tier.Value.AverageRiskScore</strong></div>
+                        <div class="tier-stat">High Risk: <strong>@tier.Value.HighRiskCount</strong></div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Top At-Risk Customers -->
+        <div class="card full">
+            <h2>Top At-Risk Customers</h2>
+            <div class="filter-bar">
+                <button class="filter-btn active" data-filter="all">All</button>
+                <button class="filter-btn" data-filter="Critical">Critical</button>
+                <button class="filter-btn" data-filter="High">High</button>
+                <button class="filter-btn" data-filter="Medium">Medium</button>
+                <button class="filter-btn" data-filter="Low">Low</button>
+            </div>
+            <table class="risk-table" id="riskTable">
+                <thead>
+                    <tr>
+                        <th>Customer</th>
+                        <th>Membership</th>
+                        <th>Risk Score</th>
+                        <th>Risk Level</th>
+                        <th>Days Inactive</th>
+                        <th>Rentals</th>
+                        <th>Spend</th>
+                        <th>Top Recommendation</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in Model.TopAtRisk)
+                    {
+                        <tr data-id="@p.CustomerId" data-level="@p.RiskLevel" onclick="showDetail(@p.CustomerId)">
+                            <td><strong>@p.CustomerName</strong></td>
+                            <td>@p.MembershipType</td>
+                            <td><strong>@p.RiskScore</strong></td>
+                            <td><span class="risk-badge risk-@p.RiskLevel">@p.RiskLevel</span></td>
+                            <td>@(p.DaysSinceLastRental == int.MaxValue ? "Never" : p.DaysSinceLastRental.ToString() + "d")</td>
+                            <td>@p.TotalRentals</td>
+                            <td>$@p.TotalSpend.ToString("N2")</td>
+                            <td style="max-width:280px;font-size:12px;color:#8899a6;">@(p.RetentionActions.Count > 0 ? p.RetentionActions[0] : "—")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" id="detailModal">
+    <div class="modal">
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+        <h3 id="modalTitle">Customer Detail</h3>
+        <div class="gauge-wrap">
+            <canvas id="gaugeCanvas" class="gauge-canvas" width="180" height="100"></canvas>
+            <div id="gaugeLabel" style="font-size:13px;color:#8899a6;margin-top:6px;">Risk Score</div>
+        </div>
+        <div id="modalFactors"></div>
+        <h2 style="font-size:13px;text-transform:uppercase;color:#8899a6;margin:16px 0 10px;">Retention Actions</h2>
+        <ul class="retention-list" id="modalActions"></ul>
+    </div>
+</div>
+
+<script>
+// Donut chart
+(function() {
+    var data = [@Model.LowRiskCount, @Model.MediumRiskCount, @Model.HighRiskCount, @Model.CriticalRiskCount];
+    var colors = ['#17bf63','#ffad1f','#f45d22','#e0245e'];
+    var canvas = document.getElementById('donutChart');
+    var ctx = canvas.getContext('2d');
+    var total = data.reduce(function(a,b){return a+b;},0);
+    if (total === 0) return;
+    var cx = 100, cy = 100, r = 80, ir = 50;
+    var angle = -Math.PI/2;
+    for (var i = 0; i < data.length; i++) {
+        var slice = (data[i]/total) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, angle, angle + slice);
+        ctx.arc(cx, cy, ir, angle + slice, angle, true);
+        ctx.closePath();
+        ctx.fillStyle = colors[i];
+        ctx.fill();
+        angle += slice;
+    }
+    ctx.beginPath();
+    ctx.arc(cx, cy, ir - 2, 0, Math.PI * 2);
+    ctx.fillStyle = '#192734';
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 20px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(total, cx, cy + 7);
+})();
+
+// Filter buttons
+document.querySelectorAll('.filter-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.filter-btn').forEach(function(b){b.classList.remove('active');});
+        btn.classList.add('active');
+        var filter = btn.getAttribute('data-filter');
+        document.querySelectorAll('#riskTable tbody tr').forEach(function(row) {
+            if (filter === 'all' || row.getAttribute('data-level') === filter)
+                row.style.display = '';
+            else
+                row.style.display = 'none';
+        });
+    });
+});
+
+// Detail modal
+function showDetail(id) {
+    fetch('/ChurnPredictor/Customer/' + id)
+        .then(function(r){return r.json();})
+        .then(function(d) {
+            if (!d.success) return;
+            var p = d.profile;
+            document.getElementById('modalTitle').textContent = p.CustomerName + ' — ' + p.RiskLevel + ' Risk';
+            // Gauge
+            drawGauge(p.RiskScore);
+            document.getElementById('gaugeLabel').textContent = 'Risk Score: ' + p.RiskScore + '/100';
+            // Factors
+            var factors = [
+                {name:'Recency', val:p.Factors.RecencyScore},
+                {name:'Frequency Decline', val:p.Factors.FrequencyDeclineScore},
+                {name:'Engagement', val:p.Factors.EngagementScore},
+                {name:'Late Returns', val:p.Factors.LateReturnScore},
+                {name:'Genre Diversity', val:p.Factors.DiversityScore}
+            ];
+            var html = '';
+            factors.forEach(function(f) {
+                var color = f.val < 30 ? '#17bf63' : f.val < 60 ? '#ffad1f' : '#e0245e';
+                html += '<div class="factor-bar"><div class="factor-label"><span>'+f.name+'</span><span>'+Math.round(f.val)+'</span></div><div class="bar-bg"><div class="bar-fill" style="width:'+f.val+'%;background:'+color+'"></div></div></div>';
+            });
+            document.getElementById('modalFactors').innerHTML = html;
+            // Actions
+            var actHtml = '';
+            (p.RetentionActions || []).forEach(function(a) { actHtml += '<li>'+a+'</li>'; });
+            document.getElementById('modalActions').innerHTML = actHtml;
+            document.getElementById('detailModal').classList.add('open');
+        });
+}
+
+function drawGauge(score) {
+    var canvas = document.getElementById('gaugeCanvas');
+    var ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,180,100);
+    var cx = 90, cy = 90, r = 70;
+    // Background arc
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, Math.PI, 0);
+    ctx.lineWidth = 14;
+    ctx.strokeStyle = '#2d3741';
+    ctx.stroke();
+    // Score arc
+    var pct = score / 100;
+    var endAngle = Math.PI + pct * Math.PI;
+    var color = score < 25 ? '#17bf63' : score < 50 ? '#ffad1f' : score < 75 ? '#f45d22' : '#e0245e';
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, Math.PI, endAngle);
+    ctx.lineWidth = 14;
+    ctx.strokeStyle = color;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+    // Score text
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 24px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(Math.round(score), cx, cy - 10);
+}
+
+function closeModal() {
+    document.getElementById('detailModal').classList.remove('open');
+}
+
+document.getElementById('detailModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
+</script>
+</body>
+</html>
