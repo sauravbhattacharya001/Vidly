@@ -1,0 +1,333 @@
+@model Vidly.Models.PricingDashboard
+@{
+    ViewBag.Title = "Smart Pricing Engine";
+}
+
+<style>
+    .pricing-container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+    .stats-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 30px; }
+    .stat-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); text-align: center; border-top: 4px solid #2563eb; }
+    .stat-card h3 { font-size: 2em; margin: 8px 0; color: #1e293b; }
+    .stat-card p { color: #64748b; font-size: 0.85em; text-transform: uppercase; letter-spacing: 1px; }
+    .stat-card.green { border-top-color: #16a34a; }
+    .stat-card.red { border-top-color: #dc2626; }
+    .stat-card.amber { border-top-color: #d97706; }
+    .stat-card.purple { border-top-color: #7c3aed; }
+
+    .section { background: #fff; border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .section h2 { margin-top: 0; color: #1e293b; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; }
+
+    .heatmap-canvas { width: 100%; height: 200px; border-radius: 8px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+
+    .rule-card { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; background: #f8fafc; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #2563eb; }
+    .rule-card.inactive { opacity: 0.5; border-left-color: #94a3b8; }
+    .rule-badge { background: #2563eb; color: #fff; padding: 3px 10px; border-radius: 20px; font-size: 0.85em; font-weight: 600; }
+    .rule-badge.discount { background: #16a34a; }
+    .rule-badge.surge { background: #dc2626; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; padding: 10px 12px; border-bottom: 2px solid #e2e8f0; color: #64748b; font-size: 0.85em; text-transform: uppercase; }
+    td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; }
+    .confidence-bar { height: 8px; border-radius: 4px; background: #e2e8f0; }
+    .confidence-fill { height: 100%; border-radius: 4px; }
+    .demand-bar { height: 10px; border-radius: 5px; background: #e2e8f0; display: inline-block; width: 100px; }
+    .demand-fill { height: 100%; border-radius: 5px; background: linear-gradient(90deg, #2563eb, #7c3aed); }
+    .trend-up { color: #16a34a; font-weight: bold; }
+    .trend-down { color: #dc2626; font-weight: bold; }
+    .trend-stable { color: #64748b; }
+
+    .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9em; font-weight: 500; }
+    .btn-primary { background: #2563eb; color: #fff; }
+    .btn-danger { background: #dc2626; color: #fff; }
+    .btn-success { background: #16a34a; color: #fff; }
+    .btn-sm { padding: 5px 12px; font-size: 0.8em; }
+
+    .add-rule-form { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; padding: 16px; background: #f8fafc; border-radius: 8px; margin-top: 16px; }
+    .add-rule-form .field { display: flex; flex-direction: column; }
+    .add-rule-form label { font-size: 0.8em; color: #64748b; margin-bottom: 4px; }
+    .add-rule-form input, .add-rule-form select { padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; }
+
+    .autopilot-panel { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); color: #fff; border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+    .autopilot-panel h2 { color: #fff; border-bottom-color: #475569; }
+    .autopilot-status { font-size: 1.2em; margin: 12px 0; }
+    .autopilot-status .active { color: #4ade80; }
+    .autopilot-status .inactive { color: #94a3b8; }
+
+    #priceChart { width: 100%; height: 250px; }
+</style>
+
+<div class="pricing-container">
+    <h1>⚡ Smart Pricing Engine</h1>
+    <p style="color:#64748b; margin-bottom:24px;">Autonomous demand-driven pricing with real-time analysis and recommendations</p>
+
+    <!-- Stats Cards -->
+    <div class="stats-row">
+        <div class="stat-card">
+            <p>Avg Multiplier</p>
+            <h3>@Model.Stats.AvgMultiplier.ToString("F2")x</h3>
+        </div>
+        <div class="stat-card green">
+            <p>Active Rules</p>
+            <h3>@Model.Stats.RulesActive</h3>
+        </div>
+        <div class="stat-card amber">
+            <p>Recommendations</p>
+            <h3>@Model.Stats.TotalRecommendations</h3>
+        </div>
+        <div class="stat-card red">
+            <p>Est. Revenue Gain</p>
+            <h3>$@Model.Stats.EstimatedRevenueGain.ToString("F2")</h3>
+        </div>
+        <div class="stat-card purple">
+            <p>Autopilot</p>
+            <h3>@(Model.Stats.AutopilotEnabled ? "ON" : "OFF")</h3>
+        </div>
+    </div>
+
+    <div class="grid-2">
+        <!-- Demand Heatmap -->
+        <div class="section">
+            <h2>🔥 Demand Heatmap</h2>
+            <canvas id="heatmapCanvas" class="heatmap-canvas"></canvas>
+            <p style="font-size:0.8em;color:#64748b;margin-top:8px;">Hours (0-23) × Days — brighter = higher demand</p>
+        </div>
+
+        <!-- Top Demand Movies -->
+        <div class="section">
+            <h2>📈 Top Demand Movies</h2>
+            <table>
+                <thead><tr><th>Movie</th><th>Rentals</th><th>Demand</th><th>Trend</th></tr></thead>
+                <tbody>
+                @foreach (var entry in Model.TopDemandMovies)
+                {
+                    <tr>
+                        <td>@entry.MovieTitle</td>
+                        <td>@entry.RentalCount</td>
+                        <td>
+                            <div class="demand-bar">
+                                <div class="demand-fill" style="width:@entry.DemandScore%"></div>
+                            </div>
+                        </td>
+                        <td class="@(entry.Trend == Vidly.Models.DemandTrend.Rising ? "trend-up" : entry.Trend == Vidly.Models.DemandTrend.Falling ? "trend-down" : "trend-stable")">
+                            @(entry.Trend == Vidly.Models.DemandTrend.Rising ? "↑" : entry.Trend == Vidly.Models.DemandTrend.Falling ? "↓" : "→")
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Autopilot Panel -->
+    <div class="autopilot-panel">
+        <h2>🤖 Autopilot</h2>
+        <div class="autopilot-status">
+            Status: <span class="@(Model.Stats.AutopilotEnabled ? "active" : "inactive")">@(Model.Stats.AutopilotEnabled ? "● Active — auto-applying high-confidence rules" : "○ Inactive")</span>
+        </div>
+        <p>Autopilot automatically applies recommendations with 80%+ confidence.</p>
+        @using (Html.BeginForm("RunAutopilot", "Pricing"))
+        {
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-success" onclick="return confirm('Run autopilot? This will auto-apply high-confidence pricing adjustments.')">⚡ Run Autopilot</button>
+        }
+    </div>
+
+    <!-- Active Rules -->
+    <div class="section">
+        <h2>📋 Active Pricing Rules</h2>
+        @foreach (var rule in Model.ActiveRules)
+        {
+            <div class="rule-card @(!rule.IsActive ? "inactive" : "")">
+                <div>
+                    <strong>@rule.Name</strong>
+                    <span class="rule-badge @(rule.Multiplier < 1 ? "discount" : rule.Multiplier > 1 ? "surge" : "")">@rule.Multiplier.ToString("F2")x</span>
+                    <br /><small style="color:#64748b;">@rule.Description</small>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    @using (Html.BeginForm("ToggleRule", "Pricing", new { id = rule.Id }))
+                    {
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-sm btn-primary">@(rule.IsActive ? "Disable" : "Enable")</button>
+                    }
+                    @using (Html.BeginForm("RemoveRule", "Pricing", new { id = rule.Id }))
+                    {
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-sm btn-danger">✕</button>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- Add Rule Form -->
+        @using (Html.BeginForm("AddRule", "Pricing"))
+        {
+            @Html.AntiForgeryToken()
+            <div class="add-rule-form">
+                <div class="field">
+                    <label>Rule Name</label>
+                    <input type="text" name="Name" placeholder="e.g. Holiday Surge" required />
+                </div>
+                <div class="field">
+                    <label>Type</label>
+                    <select name="Type">
+                        <option value="0">Demand Surge</option>
+                        <option value="1">Off-Peak Discount</option>
+                        <option value="2">New Release Premium</option>
+                        <option value="3">Loyalty Discount</option>
+                        <option value="4">Bundle Discount</option>
+                        <option value="5">Seasonal Adjustment</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Multiplier</label>
+                    <input type="number" name="Multiplier" step="0.05" min="0.5" max="2.0" value="1.20" required />
+                </div>
+                <div class="field">
+                    <label>Priority</label>
+                    <input type="number" name="Priority" min="1" max="10" value="5" />
+                </div>
+                <div class="field">
+                    <label>Description</label>
+                    <input type="text" name="Description" placeholder="Short description" />
+                </div>
+                <button type="submit" class="btn btn-primary">+ Add Rule</button>
+            </div>
+        }
+    </div>
+
+    <!-- Recommendations -->
+    <div class="section">
+        <h2>💡 Pricing Recommendations</h2>
+        <table>
+            <thead><tr><th>Movie</th><th>Current</th><th>Recommended</th><th>Confidence</th><th>Reason</th><th>Revenue Δ</th></tr></thead>
+            <tbody>
+            @foreach (var rec in Model.Recommendations)
+            {
+                <tr>
+                    <td>@rec.MovieTitle</td>
+                    <td>$@rec.CurrentPrice.ToString("F2")</td>
+                    <td style="font-weight:600;color:@(rec.RecommendedPrice > rec.CurrentPrice ? "#dc2626" : "#16a34a")">$@rec.RecommendedPrice.ToString("F2")</td>
+                    <td>
+                        <div class="confidence-bar" style="width:100px;display:inline-block;">
+                            <div class="confidence-fill" style="width:@rec.Confidence%;background:@(rec.Confidence >= 80 ? "#16a34a" : rec.Confidence >= 60 ? "#d97706" : "#dc2626")"></div>
+                        </div>
+                        <span style="font-size:0.8em;color:#64748b;"> @rec.Confidence%</span>
+                    </td>
+                    <td style="font-size:0.85em;">@rec.Reason</td>
+                    <td style="font-weight:600;color:@(rec.PotentialRevenueDelta >= 0 ? "#16a34a" : "#dc2626")">
+                        @(rec.PotentialRevenueDelta >= 0 ? "+" : "")$@rec.PotentialRevenueDelta.ToString("F2")
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Price History Chart -->
+    <div class="section">
+        <h2>📊 Price & Revenue History (30 days)</h2>
+        <canvas id="priceChart"></canvas>
+    </div>
+</div>
+
+<script>
+(function() {
+    // Heatmap
+    var canvas = document.getElementById('heatmapCanvas');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    canvas.width = canvas.offsetWidth;
+    canvas.height = 200;
+
+    var days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    var heatmapData = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.DemandHeatmap));
+
+    var cellW = (canvas.width - 50) / 24;
+    var cellH = (canvas.height - 30) / 7;
+
+    days.forEach(function(day, di) {
+        var key = di.toString();
+        var values = heatmapData[key] || [];
+        ctx.fillStyle = '#64748b';
+        ctx.font = '11px sans-serif';
+        ctx.fillText(day, 2, 30 + di * cellH + cellH/2 + 4);
+
+        values.forEach(function(val, hi) {
+            var intensity = Math.min(1, val);
+            var r = Math.round(37 + intensity * 180);
+            var g = Math.round(99 - intensity * 60);
+            var b = Math.round(235 - intensity * 180);
+            ctx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
+            ctx.fillRect(50 + hi * cellW, 20 + di * cellH, cellW - 1, cellH - 1);
+        });
+    });
+
+    // Hour labels
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '10px sans-serif';
+    for (var h = 0; h < 24; h += 3) {
+        ctx.fillText(h + '', 50 + h * cellW, 14);
+    }
+
+    // Price chart
+    var chartCanvas = document.getElementById('priceChart');
+    if (!chartCanvas) return;
+    var cctx = chartCanvas.getContext('2d');
+    chartCanvas.width = chartCanvas.offsetWidth;
+    chartCanvas.height = 250;
+
+    var snapshots = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.Snapshots));
+    if (!snapshots.length) return;
+
+    var w = chartCanvas.width, h = chartCanvas.height;
+    var pad = { t: 20, b: 40, l: 60, r: 20 };
+    var plotW = w - pad.l - pad.r, plotH = h - pad.t - pad.b;
+
+    var revenues = snapshots.map(function(s) { return s.Revenue || s.revenue; });
+    var prices = snapshots.map(function(s) { return s.AvgPrice || s.avgPrice; });
+    var maxRev = Math.max.apply(null, revenues);
+    var maxPrice = Math.max.apply(null, prices);
+
+    // Revenue area
+    cctx.beginPath();
+    cctx.moveTo(pad.l, pad.t + plotH);
+    snapshots.forEach(function(s, i) {
+        var x = pad.l + (i / (snapshots.length - 1)) * plotW;
+        var y = pad.t + plotH - ((s.Revenue || s.revenue) / maxRev) * plotH;
+        cctx.lineTo(x, y);
+    });
+    cctx.lineTo(pad.l + plotW, pad.t + plotH);
+    cctx.closePath();
+    cctx.fillStyle = 'rgba(37,99,235,0.1)';
+    cctx.fill();
+    cctx.strokeStyle = '#2563eb';
+    cctx.lineWidth = 2;
+    cctx.beginPath();
+    snapshots.forEach(function(s, i) {
+        var x = pad.l + (i / (snapshots.length - 1)) * plotW;
+        var y = pad.t + plotH - ((s.Revenue || s.revenue) / maxRev) * plotH;
+        i === 0 ? cctx.moveTo(x, y) : cctx.lineTo(x, y);
+    });
+    cctx.stroke();
+
+    // Price line
+    cctx.strokeStyle = '#dc2626';
+    cctx.lineWidth = 2;
+    cctx.setLineDash([5, 3]);
+    cctx.beginPath();
+    snapshots.forEach(function(s, i) {
+        var x = pad.l + (i / (snapshots.length - 1)) * plotW;
+        var y = pad.t + plotH - ((s.AvgPrice || s.avgPrice) / maxPrice) * plotH;
+        i === 0 ? cctx.moveTo(x, y) : cctx.lineTo(x, y);
+    });
+    cctx.stroke();
+    cctx.setLineDash([]);
+
+    // Legend
+    cctx.fillStyle = '#2563eb'; cctx.fillRect(pad.l, h - 15, 20, 3);
+    cctx.fillStyle = '#1e293b'; cctx.font = '11px sans-serif'; cctx.fillText('Revenue', pad.l + 25, h - 10);
+    cctx.strokeStyle = '#dc2626'; cctx.setLineDash([5,3]); cctx.beginPath(); cctx.moveTo(pad.l + 100, h - 13); cctx.lineTo(pad.l + 120, h - 13); cctx.stroke(); cctx.setLineDash([]);
+    cctx.fillStyle = '#1e293b'; cctx.fillText('Avg Price', pad.l + 125, h - 10);
+})();
+</script>
