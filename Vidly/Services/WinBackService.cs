@@ -43,7 +43,7 @@ namespace Vidly.Services
             var allRentals = _rentalRepo.GetAll();
             var allMovies = _movieRepo.GetAll();
 
-            var rentalsByCustomer = BuildRentalLookup(allRentals);
+            var rentalsByCustomer = CustomerRentalAnalytics.BuildRentalsByCustomer(allRentals);
             var movieLookup = allMovies.ToDictionary(m => m.Id);
 
             var cases = new List<WinBackCase>();
@@ -145,20 +145,10 @@ namespace Vidly.Services
             var totalLateFees = rentals.Sum(r => r.LateFee);
             var lateFeeRatio = totalSpend > 0 ? totalLateFees / totalSpend : 0m;
 
-            var genreCounts = new Dictionary<string, int>();
-            foreach (var r in rentals)
-            {
-                Movie movie;
-                var genre = movieLookup.TryGetValue(r.MovieId, out movie) && movie.Genre.HasValue
-                    ? movie.Genre.Value.ToString()
-                    : "Unknown";
-                if (!genreCounts.ContainsKey(genre))
-                    genreCounts[genre] = 0;
-                genreCounts[genre]++;
-            }
+            var genreCounts = CustomerRentalAnalytics.ComputeGenreDistribution(rentals, movieLookup);
 
             var topGenre = genreCounts.OrderByDescending(kv => kv.Value).FirstOrDefault().Key ?? "Unknown";
-            var diversity = ShannonEntropy(genreCounts);
+            var diversity = CustomerRentalAnalytics.ShannonEntropy(genreCounts);
 
             var reason = ClassifyLapseReason(rentals, lateFeeRatio, diversity);
             var campaign = MapCampaign(reason);
@@ -333,21 +323,7 @@ namespace Vidly.Services
             }
         }
 
-        private double ShannonEntropy(Dictionary<string, int> counts)
-        {
-            var total = counts.Values.Sum();
-            if (total == 0 || counts.Count <= 1) return 0;
-
-            var entropy = 0.0;
-            foreach (var count in counts.Values)
-            {
-                if (count == 0) continue;
-                var p = (double)count / total;
-                entropy -= p * Math.Log(p);
-            }
-
-            return entropy / Math.Log(counts.Count);
-        }
+        // ShannonEntropy moved to CustomerRentalAnalytics.ShannonEntropy
 
         private List<string> GenerateInsights(
             List<WinBackCase> cases,
@@ -399,20 +375,6 @@ namespace Vidly.Services
             return insights;
         }
 
-        private static Dictionary<int, List<Rental>> BuildRentalLookup(IEnumerable<Rental> rentals)
-        {
-            var lookup = new Dictionary<int, List<Rental>>();
-            foreach (var r in rentals)
-            {
-                List<Rental> list;
-                if (!lookup.TryGetValue(r.CustomerId, out list))
-                {
-                    list = new List<Rental>();
-                    lookup[r.CustomerId] = list;
-                }
-                list.Add(r);
-            }
-            return lookup;
-        }
+        // BuildRentalLookup moved to CustomerRentalAnalytics.BuildRentalsByCustomer
     }
 }

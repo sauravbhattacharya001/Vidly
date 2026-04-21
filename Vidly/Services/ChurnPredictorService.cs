@@ -93,9 +93,7 @@ namespace Vidly.Services
         {
             var customers = _customerRepo.GetAll();
             var allRentals = _rentalRepo.GetAll();
-            var rentalsByCustomer = allRentals
-                .GroupBy(r => r.CustomerId)
-                .ToDictionary(g => g.Key, g => g.OrderBy(r => r.RentalDate).ToList());
+            var rentalsByCustomer = CustomerRentalAnalytics.BuildRentalsByCustomer(allRentals);
 
             // Build movie lookup once — shared across all customers
             var movieLookup = _movieRepo.GetAll().ToDictionary(m => m.Id);
@@ -105,7 +103,8 @@ namespace Vidly.Services
             {
                 if (!rentalsByCustomer.TryGetValue(c.Id, out var rentals) || rentals.Count == 0)
                     continue;
-                profiles.Add(BuildProfile(c, rentals, asOfDate, movieLookup));
+                var sorted = rentals.OrderBy(r => r.RentalDate).ToList();
+                profiles.Add(BuildProfile(c, sorted, asOfDate, movieLookup));
             }
 
             return profiles.OrderByDescending(p => p.RiskScore).ToList();
@@ -251,22 +250,16 @@ namespace Vidly.Services
             var totalSpend = rentals.Sum(r => r.TotalCost);
 
             // Late return rate
-            var returned = rentals.Where(r => r.ReturnDate.HasValue).ToList();
-            var lateCount = returned.Count(r => r.ReturnDate.Value > r.DueDate);
-            var lateRate = returned.Count > 0 ? (double)lateCount / returned.Count : 0;
+            var lateRate = CustomerRentalAnalytics.LateReturnRate(rentals);
 
             // Genre diversity
-            var genreIds = rentals
-                .Where(r => movies.ContainsKey(r.MovieId) && movies[r.MovieId].Genre.HasValue)
-                .Select(r => movies[r.MovieId].Genre.Value)
-                .Distinct()
-                .Count();
+            var genreIds = CustomerRentalAnalytics.CountDistinctGenres(rentals, movies);
 
             // Average days between rentals
-            var avgGap = CalculateAverageGap(rentals);
+            var avgGap = CustomerRentalAnalytics.AverageRentalGap(rentals);
 
             // Frequency trend (compare first-half to second-half gap)
-            var trend = CalculateFrequencyTrend(rentals);
+            var trend = CustomerRentalAnalytics.FrequencyTrend(rentals, _config.MinRentalsForTrend);
 
             // Factor scores
             var factors = new ChurnFactors
@@ -364,41 +357,8 @@ namespace Vidly.Services
             return ChurnRisk.Critical;
         }
 
-        private static List<double> ComputeRentalGaps(List<Rental> rentals)
-        {
-            if (rentals.Count < 2) return new List<double>();
-            var dates = rentals.Select(r => r.RentalDate).OrderBy(d => d).ToList();
-            var gaps = new List<double>(dates.Count - 1);
-            for (int i = 1; i < dates.Count; i++)
-                gaps.Add((dates[i] - dates[i - 1]).TotalDays);
-            return gaps;
-        }
-
-        private double CalculateAverageGap(List<Rental> rentals)
-        {
-            var gaps = ComputeRentalGaps(rentals);
-            return gaps.Count > 0 ? gaps.Average() : 0;
-        }
-
-        /// <summary>
-        /// Compares average gap in first half vs second half of rental history.
-        /// Positive = gaps growing (declining engagement). Negative = gaps shrinking (improving).
-        /// </summary>
-        private double CalculateFrequencyTrend(List<Rental> rentals)
-        {
-            if (rentals.Count < _config.MinRentalsForTrend) return 0;
-
-            var gaps = ComputeRentalGaps(rentals);
-            if (gaps.Count < 2) return 0;
-
-            var mid = gaps.Count / 2;
-            var firstHalf = gaps.Take(mid).Average();
-            var secondHalf = gaps.Skip(mid).Average();
-
-            // Normalize: positive means gaps are increasing (bad)
-            if (firstHalf == 0) return 0;
-            return (secondHalf - firstHalf) / firstHalf;
-        }
+        // ComputeRentalGaps, CalculateAverageGap, CalculateFrequencyTrend
+        // moved to CustomerRentalAnalytics
 
         private List<string> GenerateRetentionActions(ChurnProfile profile)
         {
