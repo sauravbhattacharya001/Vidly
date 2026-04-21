@@ -262,7 +262,7 @@
                 var genreStr = m.Genre.HasValue ? m.Genre.Value.ToString() : "";
                 var color = GetGenreColor(m.Genre);
                 var stars = m.Rating.HasValue ? new string('★', m.Rating.Value) + new string('☆', 5 - m.Rating.Value) : "";
-                <text>{ name: "@Html.Raw(m.Name.Replace("\"", "\\\""))", genre: "@genreStr", color: "@color", rating: "@stars", year: "@(m.ReleaseYear?.ToString() ?? "")" },</text>
+                <text>{ name: "@Html.Raw(System.Web.HttpUtility.JavaScriptStringEncode(m.Name))", genre: "@genreStr", color: "@color", rating: "@stars", year: "@(m.ReleaseYear?.ToString() ?? "")" },</text>
             }
         ];
         </text>
