@@ -234,7 +234,7 @@ namespace Vidly.Services
                     .ToList();
 
                 wrapped.FavoriteGenre = wrapped.GenreBreakdown.First().Genre;
-                wrapped.GenreDiversity = CalculateShannonEvenness(genreCounts.Values.ToList());
+                wrapped.GenreDiversity = CustomerRentalAnalytics.ShannonEntropy(genreCounts.Values);
             }
 
             // Streaks (consecutive days with a new rental)
@@ -289,20 +289,7 @@ namespace Vidly.Services
             return wrapped;
         }
 
-        private static double CalculateShannonEvenness(List<int> counts)
-        {
-            if (counts.Count <= 1) return 0.0;
-            double total = counts.Sum();
-            double entropy = 0;
-            foreach (var c in counts)
-            {
-                if (c <= 0) continue;
-                double p = c / total;
-                entropy -= p * Math.Log(p);
-            }
-            double maxEntropy = Math.Log(counts.Count);
-            return maxEntropy > 0 ? entropy / maxEntropy : 0.0;
-        }
+        // CalculateShannonEvenness removed — replaced by CustomerRentalAnalytics.ShannonEntropy
 
         private static string DeterminePersonality(CustomerWrapped w, Dictionary<Genre, int> genreCounts)
         {
