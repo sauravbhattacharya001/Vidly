@@ -19,6 +19,7 @@ namespace Vidly.Services
 
         // In-memory ledger (would be a DB table in production)
         private readonly List<PointsTransaction> _ledger = new List<PointsTransaction>();
+        private readonly object _ledgerLock = new object();
 
         /// <summary>Base points earned per dollar spent.</summary>
         public const int PointsPerDollar = 10;
@@ -81,45 +82,48 @@ namespace Vidly.Services
                     $"Rental {rentalId} has not been returned yet. " +
                     "Points can only be awarded for completed rentals.");
 
-            // Don't double-award
-            if (_ledger.Any(t => t.RentalId == rentalId && t.Type == TransactionType.Earned))
-                throw new InvalidOperationException(
-                    $"Points already awarded for rental {rentalId}.");
-
             var customer = _customerRepository.GetById(rental.CustomerId);
             if (customer == null)
                 throw new ArgumentException($"Customer {rental.CustomerId} not found.");
 
-            var multiplier = GetTierMultiplier(customer.MembershipType);
-            var basePoints = (int)Math.Floor(rental.TotalCost * PointsPerDollar);
-            var earnedPoints = (int)Math.Floor(basePoints * multiplier);
-
-            // Bonus for on-time return
-            var bonus = 0;
-            if (rental.Status == RentalStatus.Returned &&
-                rental.ReturnDate.HasValue &&
-                rental.ReturnDate.Value <= rental.DueDate)
+            lock (_ledgerLock)
             {
-                bonus = OnTimeReturnBonus;
+                // Don't double-award — check inside lock to prevent TOCTOU race
+                if (_ledger.Any(t => t.RentalId == rentalId && t.Type == TransactionType.Earned))
+                    throw new InvalidOperationException(
+                        $"Points already awarded for rental {rentalId}.");
+
+                var multiplier = GetTierMultiplier(customer.MembershipType);
+                var basePoints = (int)Math.Floor(rental.TotalCost * PointsPerDollar);
+                var earnedPoints = (int)Math.Floor(basePoints * multiplier);
+
+                // Bonus for on-time return
+                var bonus = 0;
+                if (rental.Status == RentalStatus.Returned &&
+                    rental.ReturnDate.HasValue &&
+                    rental.ReturnDate.Value <= rental.DueDate)
+                {
+                    bonus = OnTimeReturnBonus;
+                }
+
+                var totalEarned = earnedPoints + bonus;
+
+                var tx = new PointsTransaction
+                {
+                    Id = _ledger.Count + 1,
+                    CustomerId = rental.CustomerId,
+                    RentalId = rentalId,
+                    Points = totalEarned,
+                    Type = TransactionType.Earned,
+                    Description = $"Earned {earnedPoints} pts for rental #{rentalId}" +
+                        (bonus > 0 ? $" + {bonus} on-time bonus" : "") +
+                        $" ({multiplier:0.##}x {customer.MembershipType} multiplier)",
+                    Timestamp = _clock.Now
+                };
+
+                _ledger.Add(tx);
+                return tx;
             }
-
-            var totalEarned = earnedPoints + bonus;
-
-            var tx = new PointsTransaction
-            {
-                Id = _ledger.Count + 1,
-                CustomerId = rental.CustomerId,
-                RentalId = rentalId,
-                Points = totalEarned,
-                Type = TransactionType.Earned,
-                Description = $"Earned {earnedPoints} pts for rental #{rentalId}" +
-                    (bonus > 0 ? $" + {bonus} on-time bonus" : "") +
-                    $" ({multiplier:0.##}x {customer.MembershipType} multiplier)",
-                Timestamp = _clock.Now
-            };
-
-            _ledger.Add(tx);
-            return tx;
         }
 
         // ── Redeem points ────────────────────────────────────────────
@@ -133,26 +137,30 @@ namespace Vidly.Services
             if (customer == null)
                 throw new ArgumentException($"Customer {customerId} not found.");
 
-            var balance = GetBalance(customerId);
             var cost = GetRewardCost(reward);
 
-            if (balance < cost)
-                throw new InvalidOperationException(
-                    $"Insufficient points. Need {cost}, have {balance}.");
-
-            var tx = new PointsTransaction
+            lock (_ledgerLock)
             {
-                Id = _ledger.Count + 1,
-                CustomerId = customerId,
-                RentalId = null,
-                Points = -cost,
-                Type = TransactionType.Redeemed,
-                Description = $"Redeemed {cost} pts for {GetRewardDescription(reward)}",
-                Timestamp = _clock.Now
-            };
+                var balance = GetBalance(customerId);
 
-            _ledger.Add(tx);
-            return tx;
+                if (balance < cost)
+                    throw new InvalidOperationException(
+                        $"Insufficient points. Need {cost}, have {balance}.");
+
+                var tx = new PointsTransaction
+                {
+                    Id = _ledger.Count + 1,
+                    CustomerId = customerId,
+                    RentalId = null,
+                    Points = -cost,
+                    Type = TransactionType.Redeemed,
+                    Description = $"Redeemed {cost} pts for {GetRewardDescription(reward)}",
+                    Timestamp = _clock.Now
+                };
+
+                _ledger.Add(tx);
+                return tx;
+            }
         }
 
         // ── Balance & history ────────────────────────────────────────
