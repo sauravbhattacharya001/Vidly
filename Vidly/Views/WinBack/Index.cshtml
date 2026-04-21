@@ -1,0 +1,320 @@
+@model Vidly.Models.WinBackSummary
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Customer Win-Back Engine — Vidly</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #111827; color: #E5E7EB; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+
+        /* Header */
+        .header { text-align: center; margin-bottom: 32px; animation: fadeIn 0.6s ease; }
+        .header h1 { font-size: 2.2rem; color: #F59E0B; margin-bottom: 4px; }
+        .header p { color: #9CA3AF; font-size: 0.95rem; }
+
+        /* Summary Cards */
+        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px; animation: slideUp 0.5s ease; }
+        .card { background: #1F2937; border-radius: 12px; padding: 20px; border-left: 4px solid #F59E0B; }
+        .card .label { font-size: 0.8rem; color: #9CA3AF; text-transform: uppercase; letter-spacing: 1px; }
+        .card .value { font-size: 1.8rem; font-weight: 700; color: #F59E0B; margin-top: 4px; }
+        .card .sub { font-size: 0.85rem; color: #6B7280; margin-top: 2px; }
+
+        /* Sections */
+        .section { background: #1F2937; border-radius: 12px; padding: 24px; margin-bottom: 24px; animation: slideUp 0.6s ease; }
+        .section h2 { font-size: 1.3rem; color: #F59E0B; margin-bottom: 16px; }
+
+        /* Bar charts */
+        .bar-row { display: flex; align-items: center; margin-bottom: 10px; }
+        .bar-label { width: 150px; font-size: 0.85rem; color: #D1D5DB; flex-shrink: 0; }
+        .bar-track { flex: 1; background: #374151; border-radius: 6px; height: 24px; overflow: hidden; margin: 0 12px; }
+        .bar-fill { height: 100%; border-radius: 6px; transition: width 1s ease; display: flex; align-items: center; padding-left: 8px; font-size: 0.75rem; font-weight: 600; color: #111827; }
+        .bar-count { width: 40px; text-align: right; font-size: 0.85rem; color: #9CA3AF; }
+
+        /* Reason colors */
+        .reason-inactivity { background: #6366F1; }
+        .reason-priceshock { background: #EF4444; }
+        .reason-narrowtaste { background: #8B5CF6; }
+        .reason-badexperience { background: #F97316; }
+        .reason-seasonaldropoff { background: #06B6D4; }
+        .reason-unknown { background: #6B7280; }
+
+        /* Campaign colors */
+        .campaign-welcomeback { background: #10B981; }
+        .campaign-priceincentive { background: #EF4444; }
+        .campaign-genreexpansion { background: #8B5CF6; }
+        .campaign-loyaltyrecovery { background: #F59E0B; }
+        .campaign-seasonalreminder { background: #06B6D4; }
+        .campaign-personalpick { background: #EC4899; }
+
+        /* Insights */
+        .insight { background: #374151; border-radius: 8px; padding: 14px 16px; margin-bottom: 10px; font-size: 0.9rem; border-left: 3px solid #F59E0B; }
+        .insight::before { content: '💡 '; }
+
+        /* Filters */
+        .filters { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+        .filters select, .filters input { background: #374151; border: 1px solid #4B5563; color: #E5E7EB; padding: 8px 12px; border-radius: 8px; font-size: 0.85rem; }
+        .filters input { width: 200px; }
+
+        /* Table */
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th { text-align: left; padding: 10px 12px; color: #9CA3AF; border-bottom: 2px solid #374151; cursor: pointer; user-select: none; white-space: nowrap; }
+        th:hover { color: #F59E0B; }
+        td { padding: 10px 12px; border-bottom: 1px solid #1F2937; }
+        tr.data-row { background: #111827; transition: background 0.2s; cursor: pointer; }
+        tr.data-row:hover { background: #1F2937; }
+        tr.detail-row { display: none; }
+        tr.detail-row td { background: #1F2937; padding: 16px 24px; }
+        tr.detail-row.open { display: table-row; }
+
+        /* Probability bar */
+        .prob-bar { width: 80px; height: 8px; background: #374151; border-radius: 4px; display: inline-block; vertical-align: middle; margin-right: 6px; }
+        .prob-fill { height: 100%; border-radius: 4px; background: #F59E0B; }
+
+        /* Badge */
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+        .badge-high { background: #065F46; color: #6EE7B7; }
+        .badge-med { background: #78350F; color: #FCD34D; }
+        .badge-low { background: #7F1D1D; color: #FCA5A5; }
+
+        @@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>🎯 Customer Win-Back Engine</h1>
+        <p>Autonomous lapsed-customer detection &amp; personalized re-engagement</p>
+        <p style="color:#6B7280; font-size:0.8rem; margin-top:4px;">Analysis: @Model.AnalysisDate.ToString("MMMM d, yyyy h:mm tt")</p>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="cards">
+        <div class="card">
+            <div class="label">Lapsed Customers</div>
+            <div class="value">@Model.TotalLapsedCustomers</div>
+            <div class="sub">Inactive 60+ days</div>
+        </div>
+        <div class="card">
+            <div class="label">High-Probability Targets</div>
+            <div class="value">@Model.HighProbabilityTargets</div>
+            <div class="sub">≥ 50% win-back chance</div>
+        </div>
+        <div class="card">
+            <div class="label">Recoverable Revenue</div>
+            <div class="value">$@Model.EstimatedRecoverableRevenue.ToString("N0")</div>
+            <div class="sub">Estimated 6-month potential</div>
+        </div>
+        <div class="card">
+            <div class="label">Campaigns Generated</div>
+            <div class="value">@Model.CampaignsGenerated</div>
+            <div class="sub">Personalized outreach</div>
+        </div>
+    </div>
+
+    <!-- Breakdown Charts -->
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:24px;">
+        <div class="section">
+            <h2>📊 Lapse Reasons</h2>
+            @foreach (var kv in Model.ReasonBreakdown.OrderByDescending(x => x.Value))
+            {
+                var maxVal = Model.ReasonBreakdown.Values.Max();
+                var pct = maxVal > 0 ? (kv.Value * 100 / maxVal) : 0;
+                var cls = "reason-" + kv.Key.ToString().ToLower();
+                <div class="bar-row">
+                    <div class="bar-label">@kv.Key</div>
+                    <div class="bar-track"><div class="bar-fill @cls" style="width:@(pct)%">@kv.Value</div></div>
+                    <div class="bar-count">@kv.Value</div>
+                </div>
+            }
+        </div>
+        <div class="section">
+            <h2>📬 Campaign Types</h2>
+            @foreach (var kv in Model.CampaignBreakdown.OrderByDescending(x => x.Value))
+            {
+                var maxVal = Model.CampaignBreakdown.Values.Max();
+                var pct = maxVal > 0 ? (kv.Value * 100 / maxVal) : 0;
+                var cls = "campaign-" + kv.Key.ToString().ToLower();
+                <div class="bar-row">
+                    <div class="bar-label">@kv.Key</div>
+                    <div class="bar-track"><div class="bar-fill @cls" style="width:@(pct)%">@kv.Value</div></div>
+                    <div class="bar-count">@kv.Value</div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Proactive Insights -->
+    @if (Model.ProactiveInsights.Any())
+    {
+        <div class="section">
+            <h2>🧠 Proactive Insights</h2>
+            @foreach (var insight in Model.ProactiveInsights)
+            {
+                <div class="insight">@insight</div>
+            }
+        </div>
+    }
+
+    <!-- Customer Table -->
+    <div class="section">
+        <h2>👥 Win-Back Candidates</h2>
+        <div class="filters">
+            <select id="filterReason">
+                <option value="">All Reasons</option>
+                @foreach (var reason in Enum.GetValues(typeof(Vidly.Models.LapseReason)))
+                {
+                    <option value="@reason">@reason</option>
+                }
+            </select>
+            <input type="text" id="filterName" placeholder="Search customer name..." />
+            <select id="filterProb">
+                <option value="0">All Probabilities</option>
+                <option value="0.5">≥ 50%</option>
+                <option value="0.3">≥ 30%</option>
+                <option value="0.7">≥ 70%</option>
+            </select>
+        </div>
+        <div class="table-wrap">
+            <table id="casesTable">
+                <thead>
+                    <tr>
+                        <th data-sort="name">Customer ↕</th>
+                        <th data-sort="tier">Tier ↕</th>
+                        <th data-sort="days">Days Lapsed ↕</th>
+                        <th data-sort="reason">Reason ↕</th>
+                        <th data-sort="campaign">Campaign ↕</th>
+                        <th data-sort="prob">Probability ↕</th>
+                        <th>Offer</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in Model.Cases)
+                    {
+                        var probPct = (c.WinBackProbability * 100).ToString("F0");
+                        var badgeCls = c.WinBackProbability >= 0.5 ? "badge-high" : c.WinBackProbability >= 0.3 ? "badge-med" : "badge-low";
+                        <tr class="data-row" data-id="@c.CustomerId" data-reason="@c.LapseReason" data-prob="@c.WinBackProbability.ToString("F2")" data-name="@c.CustomerName.ToLower()">
+                            <td><strong>@c.CustomerName</strong></td>
+                            <td>@c.MembershipType</td>
+                            <td>@c.DaysSinceLastRental</td>
+                            <td>@c.LapseReason</td>
+                            <td>@c.RecommendedCampaign</td>
+                            <td>
+                                <span class="prob-bar"><span class="prob-fill" style="width:@(probPct)%"></span></span>
+                                <span class="badge @badgeCls">@(probPct)%</span>
+                            </td>
+                            <td style="max-width:250px; font-size:0.8rem; color:#9CA3AF;">@c.PersonalizedOffer</td>
+                        </tr>
+                        <tr class="detail-row" id="detail-@c.CustomerId">
+                            <td colspan="7">
+                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                                    <div>
+                                        <strong style="color:#F59E0B;">Profile</strong><br />
+                                        Email: @(c.Email ?? "—")<br />
+                                        Lifetime Rentals: @c.TotalLifetimeRentals<br />
+                                        Lifetime Spend: $@c.TotalLifetimeSpend.ToString("N2")<br />
+                                        Late Fee Ratio: @((c.LateFeeRatio * 100).ToString("F1"))%<br />
+                                        Top Genre: @c.TopGenre<br />
+                                        Genre Diversity: @c.GenreDiversity.ToString("F2")
+                                    </div>
+                                    <div>
+                                        <strong style="color:#F59E0B;">Campaign Messages</strong><br />
+                                        @foreach (var msg in c.CampaignMessages)
+                                        {
+                                            <p style="margin:6px 0; padding:8px; background:#111827; border-radius:6px; font-size:0.85rem;">@msg</p>
+                                        }
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Row expand/collapse
+    document.querySelectorAll('.data-row').forEach(function(row) {
+        row.addEventListener('click', function() {
+            var id = this.getAttribute('data-id');
+            var detail = document.getElementById('detail-' + id);
+            if (detail) detail.classList.toggle('open');
+        });
+    });
+
+    // Filtering
+    var filterReason = document.getElementById('filterReason');
+    var filterName = document.getElementById('filterName');
+    var filterProb = document.getElementById('filterProb');
+
+    function applyFilters() {
+        var reason = filterReason.value.toLowerCase();
+        var name = filterName.value.toLowerCase();
+        var minProb = parseFloat(filterProb.value) || 0;
+
+        document.querySelectorAll('.data-row').forEach(function(row) {
+            var rReason = row.getAttribute('data-reason').toLowerCase();
+            var rName = row.getAttribute('data-name');
+            var rProb = parseFloat(row.getAttribute('data-prob'));
+
+            var show = true;
+            if (reason && rReason !== reason) show = false;
+            if (name && rName.indexOf(name) === -1) show = false;
+            if (rProb < minProb) show = false;
+
+            row.style.display = show ? '' : 'none';
+            var detailId = 'detail-' + row.getAttribute('data-id');
+            var detail = document.getElementById(detailId);
+            if (detail && !show) detail.classList.remove('open');
+        });
+    }
+
+    filterReason.addEventListener('change', applyFilters);
+    filterName.addEventListener('input', applyFilters);
+    filterProb.addEventListener('change', applyFilters);
+
+    // Column sorting
+    var sortDir = {};
+    document.querySelectorAll('th[data-sort]').forEach(function(th) {
+        th.addEventListener('click', function() {
+            var key = this.getAttribute('data-sort');
+            sortDir[key] = !sortDir[key];
+            var tbody = document.querySelector('#casesTable tbody');
+            var rows = Array.from(tbody.querySelectorAll('.data-row'));
+
+            rows.sort(function(a, b) {
+                var av, bv;
+                switch(key) {
+                    case 'name': av = a.getAttribute('data-name'); bv = b.getAttribute('data-name'); break;
+                    case 'days': av = parseInt(a.children[2].textContent); bv = parseInt(b.children[2].textContent); break;
+                    case 'prob': av = parseFloat(a.getAttribute('data-prob')); bv = parseFloat(b.getAttribute('data-prob')); break;
+                    case 'reason': av = a.getAttribute('data-reason'); bv = b.getAttribute('data-reason'); break;
+                    case 'campaign': av = a.children[4].textContent; bv = b.children[4].textContent; break;
+                    case 'tier': av = a.children[1].textContent; bv = b.children[1].textContent; break;
+                    default: return 0;
+                }
+                if (typeof av === 'string') { av = av.toLowerCase(); bv = bv.toLowerCase(); }
+                var cmp = av < bv ? -1 : av > bv ? 1 : 0;
+                return sortDir[key] ? cmp : -cmp;
+            });
+
+            rows.forEach(function(row) {
+                var detailId = 'detail-' + row.getAttribute('data-id');
+                var detail = document.getElementById(detailId);
+                tbody.appendChild(row);
+                if (detail) tbody.appendChild(detail);
+            });
+        });
+    });
+</script>
+</body>
+</html>
