@@ -126,18 +126,33 @@ namespace Vidly.Services
         /// </summary>
         public static double ShannonEntropy(Dictionary<string, int> counts)
         {
-            var total = counts.Values.Sum();
-            if (total == 0 || counts.Count <= 1) return 0;
+            return ShannonEntropy(counts.Values);
+        }
+
+        /// <summary>
+        /// Normalized Shannon entropy for a collection of counts.
+        /// Returns 0..1 where 0 = single category, 1 = perfectly uniform.
+        /// Shared overload used by CustomerWrappedService and others that
+        /// have raw count lists rather than string-keyed dictionaries.
+        /// </summary>
+        public static double ShannonEntropy(IEnumerable<int> values)
+        {
+            var countList = values as ICollection<int> ?? values.ToList();
+            if (countList.Count <= 1) return 0;
+
+            var total = 0;
+            foreach (var c in countList) total += c;
+            if (total == 0) return 0;
 
             var entropy = 0.0;
-            foreach (var count in counts.Values)
+            foreach (var count in countList)
             {
-                if (count == 0) continue;
+                if (count <= 0) continue;
                 var p = (double)count / total;
                 entropy -= p * Math.Log(p);
             }
 
-            return entropy / Math.Log(counts.Count);
+            return entropy / Math.Log(countList.Count);
         }
     }
 }
