@@ -101,7 +101,7 @@ namespace Vidly.Controllers
                     ? "Policy created successfully!"
                     : "Policy updated successfully!";
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException || ex is KeyNotFoundException)
             {
                 TempData["Error"] = ex.Message;
             }

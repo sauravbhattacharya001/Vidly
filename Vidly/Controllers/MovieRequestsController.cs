@@ -96,7 +96,7 @@ namespace Vidly.Controllers
                 _service.SubmitRequest(customerId, title, year, genreParsed, reason);
                 TempData["SuccessMessage"] = $"Request for '{title}' submitted successfully!";
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException || ex is KeyNotFoundException)
             {
                 TempData["ErrorMessage"] = ex.Message;
             }
@@ -117,7 +117,7 @@ namespace Vidly.Controllers
                 else
                     TempData["SuccessMessage"] = "Vote recorded!";
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException || ex is KeyNotFoundException)
             {
                 TempData["ErrorMessage"] = ex.Message;
             }
@@ -135,7 +135,7 @@ namespace Vidly.Controllers
                 _service.MarkUnderReview(requestId, staffNote);
                 TempData["SuccessMessage"] = "Request marked as under review.";
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException || ex is KeyNotFoundException)
             {
                 TempData["ErrorMessage"] = ex.Message;
             }
@@ -153,7 +153,7 @@ namespace Vidly.Controllers
                 _service.Fulfill(requestId, staffNote);
                 TempData["SuccessMessage"] = "Request fulfilled — movie added to catalog!";
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException || ex is KeyNotFoundException)
             {
                 TempData["ErrorMessage"] = ex.Message;
             }
@@ -171,7 +171,7 @@ namespace Vidly.Controllers
                 _service.Decline(requestId, staffNote);
                 TempData["SuccessMessage"] = "Request declined.";
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException || ex is KeyNotFoundException)
             {
                 TempData["ErrorMessage"] = ex.Message;
             }

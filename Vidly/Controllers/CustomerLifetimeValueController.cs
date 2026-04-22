@@ -67,7 +67,7 @@ namespace Vidly.Controllers
                     }
                 }, JsonRequestBehavior.AllowGet);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException || ex is KeyNotFoundException)
             {
                 return Json(new { success = false, error = ex.Message },
                             JsonRequestBehavior.AllowGet);

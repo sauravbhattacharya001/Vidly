@@ -182,7 +182,7 @@ namespace Vidly.Controllers
                 TempData["Message"] = $"Franchise '{model.Name}' created!";
                 return RedirectToAction("Index");
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException || ex is KeyNotFoundException)
             {
                 ModelState.AddModelError("", ex.Message);
                 model.AvailableMovies = _movieRepository.GetAll()
