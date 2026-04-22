@@ -1,0 +1,358 @@
+@model Vidly.Services.FraudSummary
+@{
+    ViewBag.Title = "Smart Fraud Detector";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smart Fraud Detector - Vidly</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f1419; color: #e1e8ed; min-height: 100vh; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .header { display: flex; align-items: center; justify-content: space-between; padding: 16px 0; border-bottom: 1px solid #2d3741; margin-bottom: 20px; }
+        .header h1 { font-size: 24px; color: #fff; }
+        .header h1 span { color: #e0245e; }
+        .back-link { color: #1da1f2; text-decoration: none; font-size: 14px; }
+        .back-link:hover { text-decoration: underline; }
+        .monitor-bar { display: flex; align-items: center; gap: 10px; }
+        .monitor-toggle { width: 48px; height: 26px; background: #2d3741; border-radius: 13px; cursor: pointer; position: relative; transition: background 0.3s; border: none; }
+        .monitor-toggle.active { background: #e0245e; }
+        .monitor-toggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; background: #fff; border-radius: 50%; transition: transform 0.3s; }
+        .monitor-toggle.active::after { transform: translateX(22px); }
+        .monitor-label { font-size: 12px; color: #8899a6; }
+        .monitor-label.active { color: #e0245e; }
+        .pulse-dot { width: 8px; height: 8px; background: #e0245e; border-radius: 50%; display: none; }
+        .pulse-dot.active { display: block; animation: pulse 1.5s infinite; }
+        @@keyframes pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.3); } }
+
+        .summary { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 20px; }
+        .stat-card { background: #192734; border-radius: 12px; padding: 18px; text-align: center; border: 1px solid #2d3741; }
+        .stat-card .value { font-size: 32px; font-weight: 700; color: #fff; }
+        .stat-card .label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #8899a6; margin-top: 6px; }
+        .stat-card.green .value { color: #17bf63; }
+        .stat-card.yellow .value { color: #ffad1f; }
+        .stat-card.orange .value { color: #f45d22; }
+        .stat-card.red .value { color: #e0245e; }
+
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+        .panel { background: #192734; border-radius: 12px; padding: 18px; border: 1px solid #2d3741; }
+        .panel h2 { font-size: 15px; color: #fff; margin-bottom: 14px; }
+        .panel h2 span { font-size: 11px; color: #8899a6; font-weight: 400; margin-left: 8px; }
+
+        canvas { width: 100% !important; height: 220px !important; }
+
+        .table-panel { background: #192734; border-radius: 12px; padding: 18px; border: 1px solid #2d3741; }
+        .table-panel h2 { font-size: 15px; color: #fff; margin-bottom: 14px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 10px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #8899a6; border-bottom: 1px solid #2d3741; cursor: pointer; }
+        th:hover { color: #fff; }
+        td { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid rgba(45,55,65,0.5); }
+        tr:hover { background: rgba(29,161,242,0.05); }
+        tr.clickable { cursor: pointer; }
+
+        .risk-bar { width: 80px; height: 8px; background: #2d3741; border-radius: 4px; overflow: hidden; display: inline-block; vertical-align: middle; margin-right: 8px; }
+        .risk-bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
+        .risk-score { font-weight: 600; font-size: 13px; }
+
+        .badge { padding: 3px 10px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+        .badge-clean { background: rgba(23,191,99,0.15); color: #17bf63; }
+        .badge-watch { background: rgba(255,173,31,0.15); color: #ffad1f; }
+        .badge-suspect { background: rgba(244,93,34,0.15); color: #f45d22; }
+        .badge-blocked { background: rgba(224,36,94,0.15); color: #e0245e; }
+
+        /* Modal */
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 100; display: none; align-items: center; justify-content: center; }
+        .modal-overlay.open { display: flex; }
+        .modal { background: #192734; border-radius: 16px; padding: 24px; width: 560px; max-height: 80vh; overflow-y: auto; border: 1px solid #2d3741; }
+        .modal h3 { font-size: 18px; color: #fff; margin-bottom: 4px; }
+        .modal .subtitle { font-size: 12px; color: #8899a6; margin-bottom: 16px; }
+        .modal-close { float: right; background: none; border: none; color: #8899a6; font-size: 20px; cursor: pointer; }
+        .modal-close:hover { color: #fff; }
+        .modal-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+        .modal-stat { background: #0f1419; border-radius: 8px; padding: 12px; text-align: center; }
+        .modal-stat .mv { font-size: 22px; font-weight: 700; color: #fff; }
+        .modal-stat .ml { font-size: 10px; color: #8899a6; text-transform: uppercase; margin-top: 4px; }
+        .signal-card { background: #0f1419; border-radius: 8px; padding: 12px; margin-bottom: 8px; border-left: 3px solid #2d3741; }
+        .signal-card.sev-4 { border-left-color: #e0245e; }
+        .signal-card.sev-3 { border-left-color: #f45d22; }
+        .signal-card.sev-2 { border-left-color: #ffad1f; }
+        .signal-card.sev-1 { border-left-color: #17bf63; }
+        .signal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .signal-name { font-weight: 600; font-size: 13px; color: #fff; }
+        .signal-desc { font-size: 12px; color: #8899a6; margin-bottom: 6px; }
+        .signal-evidence { font-size: 11px; color: #1da1f2; font-family: monospace; }
+        .conf-bar { width: 60px; height: 5px; background: #2d3741; border-radius: 3px; display: inline-block; vertical-align: middle; margin-left: 6px; }
+        .conf-fill { height: 100%; border-radius: 3px; background: #1da1f2; }
+        .conf-label { font-size: 10px; color: #8899a6; }
+
+        .empty-msg { text-align: center; padding: 40px; color: #8899a6; font-size: 14px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>🛡️ Smart <span>Fraud Detector</span></h1>
+        <div class="monitor-bar">
+            <div class="pulse-dot" id="pulseDot"></div>
+            <span class="monitor-label" id="monLabel">Auto-Monitor Off</span>
+            <button class="monitor-toggle" id="monToggle" onclick="toggleMonitor()"></button>
+            <a href="/" class="back-link">← Back to Vidly</a>
+        </div>
+    </div>
+
+    <div class="summary">
+        <div class="stat-card green">
+            <div class="value">@Model.TotalCustomers</div>
+            <div class="label">Total Customers</div>
+        </div>
+        <div class="stat-card @(Model.FlaggedCustomers > 0 ? "yellow" : "green")">
+            <div class="value">@Model.FlaggedCustomers</div>
+            <div class="label">Flagged</div>
+        </div>
+        <div class="stat-card red">
+            <div class="value">@Model.CriticalAlerts</div>
+            <div class="label">Critical</div>
+        </div>
+        <div class="stat-card orange">
+            <div class="value">@Model.HighAlerts</div>
+            <div class="label">High Risk</div>
+        </div>
+        <div class="stat-card yellow">
+            <div class="value">@Model.MediumAlerts</div>
+            <div class="label">Medium Risk</div>
+        </div>
+    </div>
+
+    <div class="grid">
+        <div class="panel">
+            <h2>Risk Distribution <span>by tier</span></h2>
+            <canvas id="tierChart"></canvas>
+        </div>
+        <div class="panel">
+            <h2>Signal Heatmap <span>rule frequency</span></h2>
+            <canvas id="signalChart"></canvas>
+        </div>
+    </div>
+
+    <div class="table-panel">
+        <h2>Investigation Queue</h2>
+        @if (Model.AllProfiles.Count == 0)
+        {
+            <div class="empty-msg">No customers to analyze.</div>
+        }
+        else
+        {
+            <table id="riskTable">
+                <thead>
+                    <tr>
+                        <th onclick="sortTable(0)">Customer</th>
+                        <th onclick="sortTable(1)">Risk Score</th>
+                        <th onclick="sortTable(2)">Tier</th>
+                        <th onclick="sortTable(3)">Signals</th>
+                        <th onclick="sortTable(4)">Active</th>
+                        <th onclick="sortTable(5)">Total</th>
+                        <th onclick="sortTable(6)">Membership</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in Model.AllProfiles)
+                    {
+                        var barColor = p.RiskScore < 20 ? "#17bf63"
+                            : p.RiskScore < 50 ? "#ffad1f"
+                            : p.RiskScore < 80 ? "#f45d22" : "#e0245e";
+                        var tierClass = p.RiskTier.ToLower();
+                        <tr class="clickable" onclick="showProfile(@p.CustomerId)">
+                            <td>@p.CustomerName</td>
+                            <td>
+                                <div class="risk-bar"><div class="risk-bar-fill" style="width:@(p.RiskScore)%;background:@barColor"></div></div>
+                                <span class="risk-score" style="color:@barColor">@p.RiskScore</span>
+                            </td>
+                            <td><span class="badge badge-@tierClass">@p.RiskTier</span></td>
+                            <td>@p.Signals.Count</td>
+                            <td>@p.ActiveRentals</td>
+                            <td>@p.TotalRentals</td>
+                            <td>@p.MembershipType</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+        <h3 id="mName"></h3>
+        <div class="subtitle" id="mSub"></div>
+        <div class="modal-stats">
+            <div class="modal-stat"><div class="mv" id="mScore"></div><div class="ml">Risk Score</div></div>
+            <div class="modal-stat"><div class="mv" id="mActive"></div><div class="ml">Active Rentals</div></div>
+            <div class="modal-stat"><div class="mv" id="mTotal"></div><div class="ml">Total Rentals</div></div>
+        </div>
+        <div id="mSignals"></div>
+    </div>
+</div>
+
+<script>
+// Tier donut chart
+(function() {
+    var profiles = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.AllProfiles.Select(p => p.RiskTier)));
+    var counts = { Clean: 0, Watch: 0, Suspect: 0, Blocked: 0 };
+    profiles.forEach(function(t) { counts[t] = (counts[t] || 0) + 1; });
+    var data = [
+        { label: 'Clean', value: counts.Clean, color: '#17bf63' },
+        { label: 'Watch', value: counts.Watch, color: '#ffad1f' },
+        { label: 'Suspect', value: counts.Suspect, color: '#f45d22' },
+        { label: 'Blocked', value: counts.Blocked, color: '#e0245e' }
+    ];
+    var canvas = document.getElementById('tierChart');
+    var ctx = canvas.getContext('2d');
+    canvas.width = canvas.parentElement.clientWidth - 36;
+    canvas.height = 220;
+    var cx = canvas.width / 2, cy = 110, r = 80, ir = 50;
+    var total = data.reduce(function(s, d) { return s + d.value; }, 0) || 1;
+    var angle = -Math.PI / 2;
+    data.forEach(function(d) {
+        var slice = (d.value / total) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, angle, angle + slice);
+        ctx.arc(cx, cy, ir, angle + slice, angle, true);
+        ctx.closePath();
+        ctx.fillStyle = d.color;
+        ctx.fill();
+        if (d.value > 0) {
+            var mid = angle + slice / 2;
+            var lx = cx + Math.cos(mid) * (r + 18);
+            var ly = cy + Math.sin(mid) * (r + 18);
+            ctx.fillStyle = '#e1e8ed';
+            ctx.font = '11px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(d.label + ' (' + d.value + ')', lx, ly);
+        }
+        angle += slice;
+    });
+    ctx.fillStyle = '#8899a6';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(total + ' total', cx, cy + 4);
+})();
+
+// Signal heatmap bar chart
+(function() {
+    var dist = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.SignalDistribution));
+    var labels = Object.keys(dist);
+    var values = labels.map(function(l) { return dist[l]; });
+    var canvas = document.getElementById('signalChart');
+    var ctx = canvas.getContext('2d');
+    canvas.width = canvas.parentElement.clientWidth - 36;
+    canvas.height = 220;
+    if (labels.length === 0) {
+        ctx.fillStyle = '#8899a6';
+        ctx.font = '14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('No signals detected', canvas.width / 2, 110);
+        return;
+    }
+    var max = Math.max.apply(null, values) || 1;
+    var barW = Math.min(40, (canvas.width - 40) / labels.length - 8);
+    var startX = (canvas.width - labels.length * (barW + 8)) / 2;
+    var colors = { VELOCITY: '#e0245e', LATE_PATTERN: '#f45d22', NEW_BURST: '#ffad1f',
+        HIGH_VALUE: '#794bc4', CONCURRENT: '#e0245e', DAMAGE: '#f45d22', WEEKEND_SURGE: '#1da1f2' };
+    labels.forEach(function(l, i) {
+        var h = (values[i] / max) * 160;
+        var x = startX + i * (barW + 8);
+        ctx.fillStyle = colors[l] || '#1da1f2';
+        ctx.fillRect(x, 190 - h, barW, h);
+        ctx.fillStyle = '#e1e8ed';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(values[i], x + barW / 2, 185 - h);
+        ctx.fillStyle = '#8899a6';
+        ctx.font = '9px sans-serif';
+        ctx.save();
+        ctx.translate(x + barW / 2, 200);
+        ctx.rotate(-0.5);
+        ctx.fillText(l, 0, 0);
+        ctx.restore();
+    });
+})();
+
+// Table sorting
+function sortTable(col) {
+    var table = document.getElementById('riskTable');
+    var tbody = table.tBodies[0];
+    var rows = Array.from(tbody.rows);
+    var asc = table.getAttribute('data-sort') !== col + 'a';
+    table.setAttribute('data-sort', asc ? col + 'a' : col + 'd');
+    rows.sort(function(a, b) {
+        var av = a.cells[col].textContent.trim();
+        var bv = b.cells[col].textContent.trim();
+        var an = parseFloat(av), bn = parseFloat(bv);
+        if (!isNaN(an) && !isNaN(bn)) return asc ? an - bn : bn - an;
+        return asc ? av.localeCompare(bv) : bv.localeCompare(av);
+    });
+    rows.forEach(function(r) { tbody.appendChild(r); });
+}
+
+// Modal
+function showProfile(id) {
+    fetch('@Url.Action("Customer", "FraudDetector")/' + id)
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (!d.success) return;
+            var p = d.profile;
+            document.getElementById('mName').textContent = p.CustomerName;
+            var tierColor = p.RiskTier === 'Clean' ? '#17bf63' : p.RiskTier === 'Watch' ? '#ffad1f'
+                : p.RiskTier === 'Suspect' ? '#f45d22' : '#e0245e';
+            document.getElementById('mSub').innerHTML = p.MembershipType + ' Member &bull; <span style="color:' + tierColor + '">' + p.RiskTier + '</span>';
+            document.getElementById('mScore').textContent = p.RiskScore;
+            document.getElementById('mScore').style.color = tierColor;
+            document.getElementById('mActive').textContent = p.ActiveRentals;
+            document.getElementById('mTotal').textContent = p.TotalRentals;
+            var html = '';
+            if (p.signals.length === 0) {
+                html = '<div style="text-align:center;padding:20px;color:#8899a6">No fraud signals — this customer is clean.</div>';
+            } else {
+                p.signals.forEach(function(s) {
+                    html += '<div class="signal-card sev-' + s.severityLevel + '">'
+                        + '<div class="signal-header"><span class="signal-name">' + s.RuleName + '</span>'
+                        + '<span class="badge badge-' + s.severity.toLowerCase() + '" style="background:rgba(255,255,255,0.08)">' + s.severity + '</span></div>'
+                        + '<div class="signal-desc">' + s.Description + '</div>'
+                        + '<div class="signal-evidence">📋 ' + s.Evidence + '</div>'
+                        + '<div class="conf-label" style="margin-top:4px">Confidence: ' + Math.round(s.Confidence * 100) + '% <div class="conf-bar"><div class="conf-fill" style="width:' + (s.Confidence * 100) + '%"></div></div></div>'
+                        + '</div>';
+                });
+            }
+            document.getElementById('mSignals').innerHTML = html;
+            document.getElementById('modal').classList.add('open');
+        });
+}
+
+function closeModal() {
+    document.getElementById('modal').classList.remove('open');
+}
+
+// Auto-monitor toggle
+function toggleMonitor() {
+    var btn = document.getElementById('monToggle');
+    var active = !btn.classList.contains('active');
+    btn.classList.toggle('active', active);
+    document.getElementById('monLabel').textContent = active ? 'Auto-Monitor On' : 'Auto-Monitor Off';
+    document.getElementById('monLabel').classList.toggle('active', active);
+    document.getElementById('pulseDot').classList.toggle('active', active);
+    localStorage.setItem('vidly-fraud-monitor', active ? '1' : '0');
+}
+// Restore toggle state
+if (localStorage.getItem('vidly-fraud-monitor') === '1') {
+    document.getElementById('monToggle').classList.add('active');
+    document.getElementById('monLabel').textContent = 'Auto-Monitor On';
+    document.getElementById('monLabel').classList.add('active');
+    document.getElementById('pulseDot').classList.add('active');
+}
+</script>
+</body>
+</html>
