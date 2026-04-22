@@ -168,6 +168,9 @@
     <Compile Include="Services\RentalTrendsService.cs" />
     <Compile Include="Controllers\TrendsController.cs" />
     <Compile Include="ViewModels\TrendsViewModel.cs" />
+    <Compile Include="Models\CustomerLifetimeValue.cs" />
+    <Compile Include="Services\CustomerLifetimeValueService.cs" />
+    <Compile Include="Controllers\CustomerLifetimeValueController.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Content\bootstrap-lumen.css" />
@@ -230,6 +233,7 @@
     <Content Include="Views\Trends\Index.cshtml" />
     <Content Include="Views\Trends\Movie.cshtml" />
     <Content Include="Views\Trends\Trending.cshtml" />
+    <Content Include="Views\CustomerLifetimeValue\Index.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
