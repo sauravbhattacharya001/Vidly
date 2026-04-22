@@ -176,15 +176,52 @@ namespace Vidly.Services
 
             // Build customer -> set of rented movie IDs index in one pass: O(R)
             var customerMovies = BuildCustomerMovieIndex(allRentals);
-            // Build movie -> set of renters index from customer index: O(edges)
-            // Eliminates O(M*R) rental scans — each movie's renters looked up in O(1)
-            var movieRenters = BuildMovieRentersIndex(customerMovies);
 
-            // Derive co-rental indices for all movies using both indexes
-            var coRentalIndices = new Dictionary<int, Dictionary<int, double>>();
-            foreach (var movie in allMovies)
+            // Single-pass pairwise co-rental counts: for each customer, count
+            // co-occurrences across all their rented movie pairs. This replaces
+            // M separate BuildCoRentalFromIndex calls (each traversing all renters
+            // and their movies) with one pass over the customer-movie index:
+            // O(sum of C(|movies_per_customer|, 2)) vs O(M × avg_renters × avg_movies).
+            var pairwiseCounts = new Dictionary<int, Dictionary<int, int>>();
+            foreach (var kvp in customerMovies)
             {
-                coRentalIndices[movie.Id] = BuildCoRentalFromIndex(movie.Id, customerMovies, movieRenters);
+                var movieIds = new List<int>(kvp.Value);
+                for (int p = 0; p < movieIds.Count; p++)
+                {
+                    for (int q = p + 1; q < movieIds.Count; q++)
+                    {
+                        var a = movieIds[p];
+                        var b = movieIds[q];
+                        // Increment (a -> b)
+                        if (!pairwiseCounts.TryGetValue(a, out var innerA))
+                        {
+                            innerA = new Dictionary<int, int>();
+                            pairwiseCounts[a] = innerA;
+                        }
+                        innerA.TryGetValue(b, out var cntAB);
+                        innerA[b] = cntAB + 1;
+                        // Increment (b -> a)
+                        if (!pairwiseCounts.TryGetValue(b, out var innerB))
+                        {
+                            innerB = new Dictionary<int, int>();
+                            pairwiseCounts[b] = innerB;
+                        }
+                        innerB.TryGetValue(a, out var cntBA);
+                        innerB[a] = cntBA + 1;
+                    }
+                }
+            }
+            // Normalize each movie's co-rental counts to [0,1] by its max count
+            var coRentalIndices = new Dictionary<int, Dictionary<int, double>>();
+            foreach (var kvp in pairwiseCounts)
+            {
+                var maxCount = 0;
+                foreach (var v in kvp.Value.Values)
+                    if (v > maxCount) maxCount = v;
+                var normalized = new Dictionary<int, double>(kvp.Value.Count);
+                foreach (var inner in kvp.Value)
+                    normalized[inner.Key] = (double)inner.Value / maxCount;
+                coRentalIndices[kvp.Key] = normalized;
             }
 
             for (int i = 0; i < n; i++)
@@ -194,8 +231,8 @@ namespace Vidly.Services
                 {
                     var genreScore = CalculateGenreScore(allMovies[i], allMovies[j]);
                     var ratingScore = CalculateRatingScore(allMovies[i], allMovies[j]);
-                    var coRentalScore = coRentalIndices[allMovies[i].Id]
-                        .TryGetValue(allMovies[j].Id, out var crs) ? crs : 0.0;
+                    var coRentalScore = coRentalIndices.TryGetValue(allMovies[i].Id, out var coMap)
+                        && coMap.TryGetValue(allMovies[j].Id, out var crs) ? crs : 0.0;
 
                     var total = Math.Round(
                         (genreScore * GenreWeight) + (ratingScore * RatingWeight) + (coRentalScore * CoRentalWeight), 2);
