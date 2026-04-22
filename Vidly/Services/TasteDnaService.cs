@@ -32,18 +32,16 @@ namespace Vidly.Services
         /// <summary>Build a full Taste DNA profile for one customer.</summary>
         public TasteDnaProfile BuildProfile(int customerId)
         {
-            var customer = _customerRepo.GetAll()
-                .FirstOrDefault(c => c.Id == customerId);
+            var customer = _customerRepo.GetById(customerId);
             if (customer == null)
                 return null;
 
-            var rentals = _rentalRepo.GetAll()
-                .Where(r => r.CustomerId == customerId)
-                .ToList();
+            var rentals = _rentalRepo.GetByCustomer(customerId);
             var movies = _movieRepo.GetAll().ToList();
+            var movieById = movies.ToDictionary(m => m.Id);
 
             var rented = rentals
-                .Select(r => movies.FirstOrDefault(m => m.Id == r.MovieId))
+                .Select(r => movieById.TryGetValue(r.MovieId, out var m) ? m : null)
                 .Where(m => m != null)
                 .ToList();
 
@@ -74,14 +72,20 @@ namespace Vidly.Services
 
             var profiles = new List<TasteDnaProfileSummary>();
             var archetypeCounts = new Dictionary<string, int>();
+            var movieById = movies.ToDictionary(m => m.Id);
+
+            // Group rentals by customer in a single pass — avoids O(C×R)
+            // re-scanning all rentals per customer.
+            var rentalsByCustomer = rentals.GroupBy(r => r.CustomerId)
+                .ToDictionary(g => g.Key, g => g.ToList());
 
             foreach (var c in customers)
             {
-                var cRentals = rentals.Where(r => r.CustomerId == c.Id).ToList();
-                if (cRentals.Count == 0) continue;
+                if (!rentalsByCustomer.TryGetValue(c.Id, out var cRentals)
+                    || cRentals.Count == 0) continue;
 
                 var rented = cRentals
-                    .Select(r => movies.FirstOrDefault(m => m.Id == r.MovieId))
+                    .Select(r => movieById.TryGetValue(r.MovieId, out var m) ? m : null)
                     .Where(m => m != null)
                     .ToList();
 
