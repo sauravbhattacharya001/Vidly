@@ -1,0 +1,329 @@
+@model Vidly.Models.ClvSummary
+@{
+    ViewBag.Title = "Customer Lifetime Value";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Customer Lifetime Value - Vidly</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f1419;color:#e1e8ed;min-height:100vh}
+        .container{max-width:1400px;margin:0 auto;padding:20px}
+        .header{display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-bottom:1px solid #2d3741;margin-bottom:20px}
+        .header h1{font-size:24px;color:#fff}
+        .header h1 span{color:#9b59b6}
+        .back-link{color:#1da1f2;text-decoration:none;font-size:14px}
+        .back-link:hover{text-decoration:underline}
+        .summary{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:20px}
+        .stat-card{background:#192734;border-radius:12px;padding:18px;text-align:center;border:1px solid #2d3741}
+        .stat-card .value{font-size:32px;font-weight:700;color:#fff}
+        .stat-card .label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#8899a6;margin-top:6px}
+        .stat-card.whale .value{color:#9b59b6}
+        .stat-card.high .value{color:#1da1f2}
+        .stat-card.risk .value{color:#e0245e}
+        .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+        .panel{background:#192734;border-radius:12px;padding:20px;border:1px solid #2d3741}
+        .panel h2{font-size:16px;color:#fff;margin-bottom:14px}
+        .panel h2 .icon{margin-right:6px}
+        canvas{width:100%!important;max-height:280px}
+        table{width:100%;border-collapse:collapse;font-size:13px}
+        th{text-align:left;color:#8899a6;padding:8px 6px;border-bottom:1px solid #2d3741;font-size:11px;text-transform:uppercase;letter-spacing:.5px;cursor:pointer}
+        th:hover{color:#1da1f2}
+        td{padding:8px 6px;border-bottom:1px solid #1e2d3d}
+        tr:hover td{background:#1c3045}
+        .tier-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+        .tier-Whale{background:rgba(155,89,182,.2);color:#9b59b6}
+        .tier-High{background:rgba(29,161,242,.2);color:#1da1f2}
+        .tier-Mid{background:rgba(23,191,99,.2);color:#17bf63}
+        .tier-Low{background:rgba(136,153,166,.2);color:#8899a6}
+        .traj{font-weight:600}
+        .traj-Rising{color:#17bf63}
+        .traj-Stable{color:#8899a6}
+        .traj-Declining{color:#e0245e}
+        .clv-bar{height:6px;border-radius:3px;background:#2d3741;position:relative;min-width:60px}
+        .clv-bar-fill{height:100%;border-radius:3px}
+        .rec-card{background:#1c2e3f;border-radius:10px;padding:14px;margin-bottom:10px;border-left:3px solid #1da1f2}
+        .rec-card.Critical{border-left-color:#e0245e}
+        .rec-card.High{border-left-color:#f45d22}
+        .rec-card.Medium{border-left-color:#ffad1f}
+        .rec-card.Low{border-left-color:#8899a6}
+        .rec-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+        .rec-title{font-weight:600;color:#fff;font-size:14px}
+        .rec-badge{font-size:10px;padding:2px 8px;border-radius:8px;font-weight:600;text-transform:uppercase}
+        .rec-badge.Critical{background:rgba(224,36,94,.2);color:#e0245e}
+        .rec-badge.High{background:rgba(244,93,34,.2);color:#f45d22}
+        .rec-badge.Medium{background:rgba(255,173,31,.2);color:#ffad1f}
+        .rec-badge.Low{background:rgba(136,153,166,.2);color:#8899a6}
+        .rec-desc{font-size:13px;color:#8899a6;line-height:1.5}
+        .rec-meta{display:flex;gap:16px;margin-top:8px;font-size:12px;color:#657786}
+        .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;align-items:center;justify-content:center}
+        .modal-overlay.active{display:flex}
+        .modal{background:#192734;border-radius:14px;padding:24px;max-width:500px;width:90%;border:1px solid #2d3741;max-height:80vh;overflow-y:auto}
+        .modal h3{color:#fff;margin-bottom:12px;font-size:18px}
+        .modal .close{float:right;cursor:pointer;color:#8899a6;font-size:20px}
+        .modal .close:hover{color:#fff}
+        .detail-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1e2d3d;font-size:13px}
+        .detail-row .dl{color:#8899a6}
+        .driver-tag{display:inline-block;background:#1c2e3f;color:#1da1f2;padding:2px 8px;border-radius:8px;font-size:11px;margin:2px}
+        .full-width{grid-column:1/-1}
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>💎 Customer <span>Lifetime Value</span></h1>
+        <div>
+            <a href="/CustomerLifetimeValue/Export" class="back-link" style="margin-right:16px">📤 Export JSON</a>
+            <a href="/Dashboard" class="back-link">← Dashboard</a>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="summary">
+        <div class="stat-card">
+            <div class="value">$@Model.TotalEstimatedClv.ToString("N0")</div>
+            <div class="label">Total Estimated CLV</div>
+        </div>
+        <div class="stat-card">
+            <div class="value">$@Model.AverageClv.ToString("N0")</div>
+            <div class="label">Average CLV</div>
+        </div>
+        <div class="stat-card whale">
+            <div class="value">@Model.WhaleCount</div>
+            <div class="label">🐋 Whale Customers</div>
+        </div>
+        <div class="stat-card high">
+            <div class="value">@Model.HighValueCount</div>
+            <div class="label">⭐ High Value</div>
+        </div>
+        <div class="stat-card risk">
+            <div class="value">@Model.AtRiskCount</div>
+            <div class="label">⚠️ At Risk (Declining)</div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="grid2">
+        <div class="panel">
+            <h2><span class="icon">🍩</span>CLV Distribution by Tier</h2>
+            <canvas id="donutChart" height="260"></canvas>
+        </div>
+        <div class="panel">
+            <h2><span class="icon">📈</span>CLV Trend (6 Months)</h2>
+            <canvas id="trendChart" height="260"></canvas>
+        </div>
+    </div>
+
+    <!-- Top Customers -->
+    <div class="panel" style="margin-bottom:20px">
+        <h2><span class="icon">🏆</span>Top Customers by Lifetime Value</h2>
+        <table id="topTable">
+            <thead>
+                <tr>
+                    <th onclick="sortTable(0)">Customer</th>
+                    <th onclick="sortTable(1)">Tier</th>
+                    <th onclick="sortTable(2)">CLV</th>
+                    <th onclick="sortTable(3)">Historical</th>
+                    <th onclick="sortTable(4)">Predicted</th>
+                    <th onclick="sortTable(5)">Rentals</th>
+                    <th onclick="sortTable(6)">Avg/Mo</th>
+                    <th onclick="sortTable(7)">Trajectory</th>
+                    <th onclick="sortTable(8)">Retention</th>
+                    <th>CLV Bar</th>
+                </tr>
+            </thead>
+            <tbody>
+                @{ var maxClv = Model.TopCustomers.Any() ? Model.TopCustomers.Max(c => c.EstimatedClv) : 1; }
+                @foreach (var c in Model.TopCustomers)
+                {
+                    var pct = maxClv > 0 ? (c.EstimatedClv / maxClv * 100) : 0;
+                    var barColor = c.Tier == "Whale" ? "#9b59b6" : c.Tier == "High" ? "#1da1f2" : c.Tier == "Mid" ? "#17bf63" : "#8899a6";
+                    <tr style="cursor:pointer" onclick="showCustomer(@c.CustomerId)">
+                        <td><strong>@c.Name</strong></td>
+                        <td><span class="tier-badge tier-@c.Tier">@c.Tier</span></td>
+                        <td>$@c.EstimatedClv.ToString("N2")</td>
+                        <td>$@c.HistoricalRevenue.ToString("N2")</td>
+                        <td>$@c.PredictedFutureRevenue.ToString("N2")</td>
+                        <td>@c.TotalRentals</td>
+                        <td>$@c.AvgMonthlySpend.ToString("N2")</td>
+                        <td><span class="traj traj-@c.Trajectory">@(c.Trajectory == "Rising" ? "↗" : c.Trajectory == "Declining" ? "↘" : "→") @c.Trajectory</span></td>
+                        <td>@c.RetentionProbability%</td>
+                        <td><div class="clv-bar"><div class="clv-bar-fill" style="width:@pct%;background:@barColor"></div></div></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- At-Risk + Recommendations -->
+    <div class="grid2">
+        <div class="panel">
+            <h2><span class="icon">⚠️</span>At-Risk Customers (Declining)</h2>
+            @if (Model.AtRiskCustomers.Any())
+            {
+                <table>
+                    <thead><tr><th>Customer</th><th>Tier</th><th>CLV</th><th>Retention</th></tr></thead>
+                    <tbody>
+                        @foreach (var c in Model.AtRiskCustomers)
+                        {
+                            <tr style="cursor:pointer" onclick="showCustomer(@c.CustomerId)">
+                                <td>@c.Name</td>
+                                <td><span class="tier-badge tier-@c.Tier">@c.Tier</span></td>
+                                <td>$@c.EstimatedClv.ToString("N2")</td>
+                                <td><span class="traj traj-Declining">@c.RetentionProbability%</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <p style="color:#8899a6;text-align:center;padding:20px">🎉 No declining customers detected!</p>
+            }
+        </div>
+        <div class="panel">
+            <h2><span class="icon">💡</span>Proactive Recommendations</h2>
+            @foreach (var r in Model.Recommendations)
+            {
+                <div class="rec-card @r.Priority">
+                    <div class="rec-header">
+                        <span class="rec-title">@r.Title</span>
+                        <span class="rec-badge @r.Priority">@r.Priority</span>
+                    </div>
+                    <div class="rec-desc">@r.Description</div>
+                    <div class="rec-meta">
+                        <span>👥 @r.AffectedCustomers customers</span>
+                        <span>💰 $@r.EstimatedImpact.ToString("N0") impact</span>
+                        <span>📋 @r.Type</span>
+                    </div>
+                </div>
+            }
+            @if (!Model.Recommendations.Any())
+            {
+                <p style="color:#8899a6;text-align:center;padding:20px">No recommendations at this time.</p>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+        <span class="close" onclick="closeModal()">✕</span>
+        <h3 id="modalTitle">Customer Details</h3>
+        <div id="modalBody">Loading...</div>
+    </div>
+</div>
+
+<script>
+// Donut chart
+(function(){
+    var tiers = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.TierBreakdown));
+    var canvas = document.getElementById('donutChart');
+    var ctx = canvas.getContext('2d');
+    canvas.width = canvas.offsetWidth * 2; canvas.height = 520;
+    var cx = canvas.width/2, cy = canvas.height/2, r = Math.min(cx,cy)-40, ri = r*0.55;
+    var total = 0; tiers.forEach(function(t){total += t.TotalClv;});
+    if(total===0) total=1;
+    var angle = -Math.PI/2;
+    tiers.forEach(function(t){
+        var slice = (t.TotalClv/total)*Math.PI*2;
+        ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,angle,angle+slice); ctx.closePath();
+        ctx.fillStyle = t.Color; ctx.fill();
+        // label
+        var mid = angle+slice/2;
+        var lx = cx+Math.cos(mid)*(r+ri)/2, ly = cy+Math.sin(mid)*(r+ri)/2;
+        ctx.fillStyle='#fff'; ctx.font='bold '+(canvas.width>600?'24':'18')+'px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+        if(t.RevenueShare > 5) ctx.fillText(t.RevenueShare.toFixed(0)+'%', lx, ly);
+        angle += slice;
+    });
+    // Inner circle
+    ctx.beginPath(); ctx.arc(cx,cy,ri,0,Math.PI*2); ctx.fillStyle='#192734'; ctx.fill();
+    ctx.fillStyle='#fff'; ctx.font='bold 28px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(tiers.reduce(function(s,t){return s+t.Count;},0)+' customers', cx, cy);
+    // Legend
+    var ly2 = canvas.height - 20;
+    var lx2 = 20;
+    tiers.forEach(function(t){
+        ctx.fillStyle=t.Color; ctx.fillRect(lx2,ly2-12,16,16); ctx.fillStyle='#8899a6';
+        ctx.font='22px sans-serif'; ctx.textAlign='left'; ctx.fillText(t.Tier+' ('+t.Count+')',lx2+22,ly2);
+        lx2 += 160;
+    });
+})();
+
+// Trend chart
+(function(){
+    var trend = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.Trend));
+    var canvas = document.getElementById('trendChart');
+    var ctx = canvas.getContext('2d');
+    canvas.width = canvas.offsetWidth * 2; canvas.height = 520;
+    var pad = {t:30,r:20,b:50,l:70};
+    var w = canvas.width-pad.l-pad.r, h = canvas.height-pad.t-pad.b;
+    var n = trend.Labels.length; if(n<2) return;
+    var allVals = trend.AvgClvOverTime.concat(trend.NewCustomerClv);
+    var maxV = Math.max.apply(null, allVals)||1;
+    function x(i){return pad.l + (i/(n-1))*w;}
+    function y(v){return pad.t + h - (v/maxV)*h;}
+    // Grid
+    ctx.strokeStyle='#2d3741'; ctx.lineWidth=1;
+    for(var g=0;g<=4;g++){var gy=pad.t+(h/4)*g; ctx.beginPath();ctx.moveTo(pad.l,gy);ctx.lineTo(pad.l+w,gy);ctx.stroke();
+        ctx.fillStyle='#657786';ctx.font='20px sans-serif';ctx.textAlign='right';ctx.fillText('$'+(maxV-maxV/4*g).toFixed(0),pad.l-8,gy+6);}
+    // Labels
+    trend.Labels.forEach(function(l,i){ctx.fillStyle='#657786';ctx.font='20px sans-serif';ctx.textAlign='center';ctx.fillText(l,x(i),canvas.height-16);});
+    // Lines
+    function drawLine(data,color){ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=3;
+        data.forEach(function(v,i){i===0?ctx.moveTo(x(i),y(v)):ctx.lineTo(x(i),y(v));});ctx.stroke();
+        data.forEach(function(v,i){ctx.beginPath();ctx.arc(x(i),y(v),5,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();});}
+    drawLine(trend.AvgClvOverTime,'#1da1f2');
+    drawLine(trend.NewCustomerClv,'#17bf63');
+    // Legend
+    ctx.fillStyle='#1da1f2';ctx.fillRect(pad.l,8,14,14);ctx.fillStyle='#8899a6';ctx.font='20px sans-serif';ctx.textAlign='left';ctx.fillText('Avg CLV',pad.l+20,21);
+    ctx.fillStyle='#17bf63';ctx.fillRect(pad.l+140,8,14,14);ctx.fillStyle='#8899a6';ctx.fillText('New Customer CLV',pad.l+160,21);
+})();
+
+// Table sort
+var sortDir={};
+function sortTable(col){
+    var table=document.getElementById('topTable'), tbody=table.tBodies[0];
+    var rows=Array.from(tbody.rows);
+    sortDir[col]=!sortDir[col];
+    rows.sort(function(a,b){
+        var va=a.cells[col].innerText.replace(/[$,%]/g,''), vb=b.cells[col].innerText.replace(/[$,%]/g,'');
+        var na=parseFloat(va),nb=parseFloat(vb);
+        if(!isNaN(na)&&!isNaN(nb)) return sortDir[col]?na-nb:nb-na;
+        return sortDir[col]?va.localeCompare(vb):vb.localeCompare(va);
+    });
+    rows.forEach(function(r){tbody.appendChild(r);});
+}
+
+// Customer detail modal
+function showCustomer(id){
+    document.getElementById('modal').classList.add('active');
+    document.getElementById('modalBody').innerHTML='Loading...';
+    fetch('/CustomerLifetimeValue/Customer/'+id).then(function(r){return r.json();}).then(function(d){
+        if(!d.success){document.getElementById('modalBody').innerHTML='<p style="color:#e0245e">'+d.error+'</p>';return;}
+        var p=d.profile;
+        document.getElementById('modalTitle')='💎 '+p.Name;
+        var html='<div class="detail-row"><span class="dl">Tier</span><span class="tier-badge tier-'+p.Tier+'">'+p.Tier+'</span></div>';
+        html+='<div class="detail-row"><span class="dl">Estimated CLV</span><span>$'+p.EstimatedClv.toFixed(2)+'</span></div>';
+        html+='<div class="detail-row"><span class="dl">Historical Revenue</span><span>$'+p.HistoricalRevenue.toFixed(2)+'</span></div>';
+        html+='<div class="detail-row"><span class="dl">Predicted Future</span><span>$'+p.PredictedFutureRevenue.toFixed(2)+'</span></div>';
+        html+='<div class="detail-row"><span class="dl">Total Rentals</span><span>'+p.TotalRentals+'</span></div>';
+        html+='<div class="detail-row"><span class="dl">Avg Monthly Spend</span><span>$'+p.AvgMonthlySpend.toFixed(2)+'</span></div>';
+        html+='<div class="detail-row"><span class="dl">Months Active</span><span>'+p.MonthsActive+'</span></div>';
+        html+='<div class="detail-row"><span class="dl">Membership</span><span>'+p.Membership+'</span></div>';
+        html+='<div class="detail-row"><span class="dl">Trajectory</span><span class="traj traj-'+p.Trajectory+'">'+(p.Trajectory==='Rising'?'↗':p.Trajectory==='Declining'?'↘':'→')+' '+p.Trajectory+'</span></div>';
+        html+='<div class="detail-row"><span class="dl">Retention Probability</span><span>'+p.RetentionProbability+'%</span></div>';
+        html+='<div style="margin-top:10px"><span class="dl">Value Drivers</span><div style="margin-top:4px">';
+        p.ValueDrivers.forEach(function(d){html+='<span class="driver-tag">'+d+'</span>';});
+        html+='</div></div>';
+        document.getElementById('modalTitle').textContent='💎 '+p.Name;
+        document.getElementById('modalBody').innerHTML=html;
+    }).catch(function(){document.getElementById('modalBody').innerHTML='<p style="color:#e0245e">Failed to load</p>';});
+}
+function closeModal(){document.getElementById('modal').classList.remove('active');}
+</script>
+</body>
+</html>
