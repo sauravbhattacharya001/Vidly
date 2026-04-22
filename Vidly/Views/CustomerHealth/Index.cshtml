@@ -1,0 +1,193 @@
+@model Vidly.Services.FleetHealthResult
+@{ Layout = null; }
+<!DOCTYPE html>
+<html>
+<head>
+<title>Customer Health Dashboard - Vidly</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f1117;color:#e0e0e0;padding:20px}
+h1{font-size:1.8em;margin-bottom:8px;color:#fff}
+.subtitle{color:#888;margin-bottom:24px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+.card{background:#1a1d27;border-radius:12px;padding:20px;text-align:center}
+.card .value{font-size:2em;font-weight:700}
+.card .label{color:#888;font-size:.85em;margin-top:4px}
+.gauge-wrap{display:flex;justify-content:center;margin-bottom:24px}
+.sections{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px}
+@media(max-width:800px){.sections{grid-template-columns:1fr}}
+.section{background:#1a1d27;border-radius:12px;padding:20px}
+.section h2{font-size:1.1em;margin-bottom:12px;color:#ccc}
+canvas{max-width:100%}
+table{width:100%;border-collapse:collapse;margin-top:12px}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid #2a2d37}
+th{cursor:pointer;color:#aaa;font-size:.8em;text-transform:uppercase;user-select:none}
+th:hover{color:#fff}
+tr:hover{background:#22253080}
+.tier{padding:3px 10px;border-radius:12px;font-size:.75em;font-weight:600;display:inline-block}
+.tier-Thriving{background:#0d4d2a;color:#4ade80}
+.tier-Healthy{background:#1e3a5f;color:#60a5fa}
+.tier-AtRisk{background:#4a3620;color:#fbbf24}
+.tier-Critical{background:#4a2020;color:#f87171}
+.tier-Churned{background:#3a1a1a;color:#888}
+.trend-Improving{color:#4ade80}
+.trend-Stable{color:#888}
+.trend-Declining{color:#f87171}
+.filter-bar{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.filter-btn{padding:6px 14px;border-radius:20px;border:1px solid #333;background:transparent;color:#aaa;cursor:pointer;font-size:.8em}
+.filter-btn.active{background:#3b82f6;border-color:#3b82f6;color:#fff}
+.alert-badge{background:#ef4444;color:#fff;padding:4px 10px;border-radius:12px;font-size:.75em;margin-left:8px}
+.alert-item{padding:12px;border-left:3px solid #ef4444;margin-bottom:8px;background:#1f1215;border-radius:0 8px 8px 0}
+.search{background:#1a1d27;border:1px solid #333;color:#e0e0e0;padding:8px 14px;border-radius:8px;width:220px;margin-bottom:16px}
+a{color:#60a5fa;text-decoration:none}
+a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<h1>🏥 Customer Health Dashboard</h1>
+<p class="subtitle">Autonomous health monitoring for @Model.TotalCustomers customers</p>
+
+<div class="cards">
+    <div class="card">
+        <div class="value" style="color:@ScoreColor(Model.OverallScore)">@Model.OverallScore</div>
+        <div class="label">Fleet Health Score</div>
+    </div>
+    <div class="card">
+        <div class="value" style="color:#4ade80">@Model.Improving</div>
+        <div class="label">↗ Improving</div>
+    </div>
+    <div class="card">
+        <div class="value" style="color:#888">@Model.Stable</div>
+        <div class="label">→ Stable</div>
+    </div>
+    <div class="card">
+        <div class="value" style="color:#f87171">@Model.Declining</div>
+        <div class="label">↘ Declining</div>
+    </div>
+</div>
+
+<div class="sections">
+    <div class="section">
+        <h2>Tier Distribution</h2>
+        <canvas id="tierChart" width="300" height="300"></canvas>
+    </div>
+    <div class="section">
+        <h2>⚠️ Auto-Monitor Alerts</h2>
+        <div id="alertsContainer">
+        @{var alerts = new Vidly.Services.CustomerHealthService().AutoMonitor();}
+        @if(!alerts.Any()){<p style="color:#888">No tier-drop alerts detected ✅</p>}
+        @foreach(var a in alerts){
+            <div class="alert-item">
+                <strong>@a.CustomerName</strong>
+                <span class="tier tier-@a.PreviousTier">@a.PreviousTier</span> →
+                <span class="tier tier-@a.CurrentTier">@a.CurrentTier</span>
+                <span style="color:#888;font-size:.85em"> — Score: @a.HealthScore</span>
+            </div>
+        }
+        </div>
+    </div>
+</div>
+
+<div class="section" style="margin-bottom:24px">
+    <h2>All Customers</h2>
+    <input type="text" class="search" id="searchInput" placeholder="Search customers..." oninput="filterTable()">
+    <div class="filter-bar">
+        <button class="filter-btn active" onclick="filterTier(this,'all')">All</button>
+        <button class="filter-btn" onclick="filterTier(this,'Thriving')">Thriving</button>
+        <button class="filter-btn" onclick="filterTier(this,'Healthy')">Healthy</button>
+        <button class="filter-btn" onclick="filterTier(this,'AtRisk')">At Risk</button>
+        <button class="filter-btn" onclick="filterTier(this,'Critical')">Critical</button>
+        <button class="filter-btn" onclick="filterTier(this,'Churned')">Churned</button>
+    </div>
+    <table>
+        <thead><tr>
+            <th onclick="sortTable(0)">Name</th>
+            <th onclick="sortTable(1)">Score</th>
+            <th onclick="sortTable(2)">Tier</th>
+            <th onclick="sortTable(3)">Trend</th>
+        </tr></thead>
+        <tbody id="custBody">
+        @foreach(var c in Model.AllCustomers){
+            <tr data-tier="@c.Tier" data-score="@c.HealthScore">
+                <td><a href="@Url.Action("Details","CustomerHealth",new{id=c.CustomerId})">@c.CustomerName</a></td>
+                <td style="font-weight:600;color:@ScoreColor(c.HealthScore)">@c.HealthScore</td>
+                <td><span class="tier tier-@c.Tier">@c.Tier</span></td>
+                <td class="trend-@c.Trend">@TrendArrow(c.Trend) @c.Trend</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>
+
+<script>
+// Tier donut chart
+(function(){
+    var c=document.getElementById('tierChart'),ctx=c.getContext('2d');
+    var data=[@Model.TierDistribution[Vidly.Services.HealthTier.Thriving],
+              @Model.TierDistribution[Vidly.Services.HealthTier.Healthy],
+              @Model.TierDistribution[Vidly.Services.HealthTier.AtRisk],
+              @Model.TierDistribution[Vidly.Services.HealthTier.Critical],
+              @Model.TierDistribution[Vidly.Services.HealthTier.Churned]];
+    var colors=['#4ade80','#60a5fa','#fbbf24','#f87171','#666'];
+    var labels=['Thriving','Healthy','At Risk','Critical','Churned'];
+    var total=data.reduce(function(a,b){return a+b},0);
+    if(total===0)return;
+    var cx=150,cy=150,r=120,ir=70,a=-Math.PI/2;
+    for(var i=0;i<data.length;i++){
+        if(data[i]===0)continue;
+        var slice=data[i]/total*2*Math.PI;
+        ctx.beginPath();ctx.moveTo(cx+Math.cos(a)*ir,cy+Math.sin(a)*ir);
+        ctx.arc(cx,cy,r,a,a+slice);
+        var ea=a+slice;ctx.lineTo(cx+Math.cos(ea)*ir,cy+Math.sin(ea)*ir);
+        ctx.arc(cx,cy,ir,ea,a,true);ctx.closePath();
+        ctx.fillStyle=colors[i];ctx.fill();
+        // Label
+        var mid=a+slice/2;var lr=r+20;
+        ctx.fillStyle='#ccc';ctx.font='12px sans-serif';ctx.textAlign='center';
+        ctx.fillText(labels[i]+' ('+data[i]+')',cx+Math.cos(mid)*(r-25),cy+Math.sin(mid)*(r-25));
+        a+=slice;
+    }
+    ctx.fillStyle='#fff';ctx.font='bold 24px sans-serif';ctx.textAlign='center';
+    ctx.fillText('@Model.OverallScore',cx,cy+4);
+    ctx.fillStyle='#888';ctx.font='11px sans-serif';
+    ctx.fillText('Fleet Score',cx,cy+20);
+})();
+
+var activeTier='all';
+function filterTier(btn,tier){
+    document.querySelectorAll('.filter-btn').forEach(function(b){b.classList.remove('active')});
+    btn.classList.add('active');activeTier=tier;filterTable();
+}
+function filterTable(){
+    var q=document.getElementById('searchInput').value.toLowerCase();
+    document.querySelectorAll('#custBody tr').forEach(function(r){
+        var name=r.cells[0].textContent.toLowerCase();
+        var tier=r.getAttribute('data-tier');
+        var show=(activeTier==='all'||tier===activeTier)&&name.indexOf(q)!==-1;
+        r.style.display=show?'':'none';
+    });
+}
+var sortDir={};
+function sortTable(col){
+    var tbody=document.getElementById('custBody');
+    var rows=Array.from(tbody.rows);
+    sortDir[col]=!sortDir[col];
+    rows.sort(function(a,b){
+        var va=col===1?parseFloat(a.cells[col].textContent):a.cells[col].textContent;
+        var vb=col===1?parseFloat(b.cells[col].textContent):b.cells[col].textContent;
+        if(va<vb)return sortDir[col]?-1:1;if(va>vb)return sortDir[col]?1:-1;return 0;
+    });
+    rows.forEach(function(r){tbody.appendChild(r)});
+}
+</script>
+</body>
+</html>
+
+@functions{
+    string ScoreColor(double s){
+        if(s>=80)return"#4ade80";if(s>=60)return"#60a5fa";if(s>=40)return"#fbbf24";if(s>=20)return"#f87171";return"#888";
+    }
+    string TrendArrow(Vidly.Services.TrendDirection t){
+        switch(t){case Vidly.Services.TrendDirection.Improving:return"↗";case Vidly.Services.TrendDirection.Declining:return"↘";default:return"→";}
+    }
+}
