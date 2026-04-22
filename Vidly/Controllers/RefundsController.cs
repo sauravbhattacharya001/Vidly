@@ -113,7 +113,7 @@ namespace Vidly.Controllers
                     message = $"Refund #{request.Id} approved — ${request.RefundAmount:F2} for \"{request.MovieName}\"."
                 });
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException || ex is KeyNotFoundException)
             {
                 return RedirectToAction("Index", new { message = ex.Message, error = true });
             }
@@ -132,7 +132,7 @@ namespace Vidly.Controllers
                     message = $"Refund #{request.Id} denied for \"{request.MovieName}\"."
                 });
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException || ex is KeyNotFoundException)
             {
                 return RedirectToAction("Index", new { message = ex.Message, error = true });
             }
@@ -151,7 +151,7 @@ namespace Vidly.Controllers
                     message = $"Refund #{request.Id} processed — ${request.RefundAmount:F2} returned to customer."
                 });
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException || ex is KeyNotFoundException)
             {
                 return RedirectToAction("Index", new { message = ex.Message, error = true });
             }

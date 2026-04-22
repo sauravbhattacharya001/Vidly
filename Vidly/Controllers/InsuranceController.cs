@@ -181,7 +181,7 @@ namespace Vidly.Controllers
                     message = $"Claim #{claim.Id} denied."
                 });
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException || ex is KeyNotFoundException)
             {
                 return RedirectToAction("Policy", new
                 {
@@ -205,7 +205,7 @@ namespace Vidly.Controllers
                     message = $"Policy #{policy.Id} cancelled."
                 });
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException || ex is KeyNotFoundException)
             {
                 return RedirectToAction("Policy", new
                 {
