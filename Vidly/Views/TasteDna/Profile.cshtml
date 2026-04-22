@@ -1,0 +1,168 @@
+@model Vidly.Services.TasteDnaProfile
+@{
+    ViewBag.Title = "Taste DNA – " + Model.CustomerName;
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <title>🧬 @Model.CustomerName — Taste DNA</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0a1a;color:#e0e0e0;min-height:100vh}
+        .header{background:linear-gradient(135deg,#1a0a2e,#0d1b3e);padding:2rem;text-align:center;border-bottom:2px solid #6c3fa0}
+        .header h1{font-size:2rem;background:linear-gradient(90deg,#a855f7,#3b82f6);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+        .header .sub{color:#888;margin-top:.3rem}
+        .back{display:inline-block;margin:1rem 0;color:#a855f7;text-decoration:none;font-size:.9rem}
+        .back:hover{text-decoration:underline}
+        .container{max-width:1000px;margin:0 auto;padding:1.5rem}
+        .archetype-banner{background:linear-gradient(135deg,#1a0a3e,#0d1b4e);border:1px solid #6c3fa0;border-radius:16px;padding:1.5rem;text-align:center;margin-bottom:2rem}
+        .archetype-banner .emoji{font-size:3rem}
+        .archetype-banner .name{font-size:1.5rem;font-weight:700;color:#c4b5fd;margin:.3rem 0}
+        .archetype-banner .desc{color:#999;font-size:.95rem}
+        .radar-wrap{display:flex;justify-content:center;margin-bottom:2rem}
+        canvas{background:#12122a;border-radius:16px;border:1px solid #2a2a4a}
+        .dims{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;margin-bottom:2rem}
+        .dim-card{background:#12122a;border:1px solid #2a2a4a;border-radius:12px;padding:1rem}
+        .dim-card .name{font-weight:600;font-size:.95rem;color:#c4b5fd}
+        .dim-card .bar-bg{background:#1a1a3a;border-radius:6px;height:8px;margin:.5rem 0}
+        .dim-card .bar-fill{height:8px;border-radius:6px;background:linear-gradient(90deg,#a855f7,#3b82f6)}
+        .dim-card .detail{font-size:.8rem;color:#888}
+        .section-title{font-size:1.2rem;font-weight:600;margin:1.5rem 0 1rem;color:#c4b5fd}
+        .insight{background:#12122a;border-left:3px solid #a855f7;padding:.8rem 1rem;margin-bottom:.5rem;border-radius:0 8px 8px 0;font-size:.9rem}
+        .rec{background:#12122a;border:1px solid #2a2a4a;border-radius:12px;padding:1rem;margin-bottom:.8rem;display:flex;justify-content:space-between;align-items:center}
+        .rec .info .movie{font-weight:600;color:#e0e0e0}
+        .rec .info .reason{font-size:.8rem;color:#888;margin-top:.2rem}
+        .rec .conf{font-size:.85rem;color:#a855f7;font-weight:600;white-space:nowrap}
+        .empty{text-align:center;padding:2rem;color:#666}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🧬 @Model.CustomerName</h1>
+        <div class="sub">Taste DNA Profile — @Model.TotalRentals rentals analyzed</div>
+    </div>
+    <div class="container">
+        <a class="back" href="@Url.Action("Index", "TasteDna")">← All Profiles</a>
+
+        <div class="archetype-banner">
+            <div class="emoji">@Model.Archetype.Emoji</div>
+            <div class="name">@Model.Archetype.Name</div>
+            <div class="desc">@Model.Archetype.Description</div>
+        </div>
+
+        <div class="radar-wrap">
+            <canvas id="radar" width="420" height="420"></canvas>
+        </div>
+
+        <div class="section-title">📊 Dimension Breakdown</div>
+        <div class="dims">
+            @foreach (var d in Model.Dimensions)
+            {
+                <div class="dim-card">
+                    <div class="name">@d.Name</div>
+                    <div class="bar-bg"><div class="bar-fill" style="width:@((int)(d.Score * 100))%"></div></div>
+                    <div class="detail">@d.Detail — @((d.Score * 100).ToString("F0"))%</div>
+                </div>
+            }
+        </div>
+
+        @if (Model.Insights.Count > 0)
+        {
+            <div class="section-title">💡 Autonomous Insights</div>
+            foreach (var ins in Model.Insights)
+            {
+                <div class="insight">@ins</div>
+            }
+        }
+
+        @if (Model.Recommendations.Count > 0)
+        {
+            <div class="section-title">🎯 Proactive Recommendations</div>
+            foreach (var rec in Model.Recommendations)
+            {
+                <div class="rec">
+                    <div class="info">
+                        <div class="movie">@rec.MovieName</div>
+                        <div class="reason">@rec.Reason</div>
+                    </div>
+                    <div class="conf">@((rec.Confidence * 100).ToString("F0"))% match</div>
+                </div>
+            }
+        }
+    </div>
+
+    <script>
+    (function(){
+        var dims = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(
+            Model.Dimensions.Select(d => new { d.Name, d.Score })));
+        var canvas = document.getElementById('radar');
+        var ctx = canvas.getContext('2d');
+        var cx = 210, cy = 210, R = 160, n = dims.length;
+        if (n < 3) return;
+
+        function angle(i) { return (Math.PI * 2 * i / n) - Math.PI / 2; }
+
+        // Grid rings
+        [0.25, 0.5, 0.75, 1.0].forEach(function(r) {
+            ctx.beginPath();
+            for (var i = 0; i <= n; i++) {
+                var a = angle(i % n);
+                var x = cx + Math.cos(a) * R * r;
+                var y = cy + Math.sin(a) * R * r;
+                i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            }
+            ctx.strokeStyle = 'rgba(100,100,180,0.2)';
+            ctx.stroke();
+        });
+
+        // Axis lines & labels
+        ctx.font = '12px system-ui';
+        ctx.fillStyle = '#888';
+        ctx.textAlign = 'center';
+        dims.forEach(function(d, i) {
+            var a = angle(i);
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.lineTo(cx + Math.cos(a) * R, cy + Math.sin(a) * R);
+            ctx.strokeStyle = 'rgba(100,100,180,0.3)';
+            ctx.stroke();
+            var lx = cx + Math.cos(a) * (R + 24);
+            var ly = cy + Math.sin(a) * (R + 24);
+            ctx.fillText(d.Name, lx, ly + 4);
+        });
+
+        // Data polygon
+        ctx.beginPath();
+        dims.forEach(function(d, i) {
+            var a = angle(i);
+            var x = cx + Math.cos(a) * R * d.Score;
+            var y = cy + Math.sin(a) * R * d.Score;
+            i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        });
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(168,85,247,0.25)';
+        ctx.fill();
+        ctx.strokeStyle = '#a855f7';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Data points
+        dims.forEach(function(d, i) {
+            var a = angle(i);
+            var x = cx + Math.cos(a) * R * d.Score;
+            var y = cy + Math.sin(a) * R * d.Score;
+            ctx.beginPath();
+            ctx.arc(x, y, 5, 0, Math.PI * 2);
+            ctx.fillStyle = '#a855f7';
+            ctx.fill();
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        });
+    })();
+    </script>
+</body>
+</html>

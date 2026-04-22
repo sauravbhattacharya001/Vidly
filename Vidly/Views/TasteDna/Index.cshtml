@@ -1,0 +1,109 @@
+@model Vidly.Services.TasteDnaFleet
+@{
+    ViewBag.Title = "Movie Taste DNA";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <title>🧬 Movie Taste DNA</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0a1a;color:#e0e0e0;min-height:100vh}
+        .header{background:linear-gradient(135deg,#1a0a2e,#0d1b3e);padding:2rem;text-align:center;border-bottom:2px solid #6c3fa0}
+        .header h1{font-size:2.2rem;background:linear-gradient(90deg,#a855f7,#3b82f6);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+        .header p{color:#888;margin-top:.5rem}
+        .container{max-width:1200px;margin:0 auto;padding:1.5rem}
+        .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:2rem}
+        .stat-card{background:#12122a;border:1px solid #2a2a4a;border-radius:12px;padding:1.2rem;text-align:center}
+        .stat-card .number{font-size:2rem;font-weight:700;color:#a855f7}
+        .stat-card .label{font-size:.85rem;color:#888;margin-top:.3rem}
+        .section-title{font-size:1.3rem;font-weight:600;margin:1.5rem 0 1rem;color:#c4b5fd}
+        .archetype-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:2rem}
+        .arch-card{background:#12122a;border:1px solid #2a2a4a;border-radius:12px;padding:1rem;text-align:center}
+        .arch-card .emoji{font-size:2rem}
+        .arch-card .name{font-weight:600;margin:.3rem 0}
+        .arch-card .count{color:#a855f7;font-size:1.5rem;font-weight:700}
+        table{width:100%;border-collapse:collapse;background:#12122a;border-radius:12px;overflow:hidden}
+        th{background:#1a1a3a;padding:.8rem 1rem;text-align:left;font-weight:600;color:#c4b5fd;font-size:.85rem;text-transform:uppercase;letter-spacing:.5px}
+        td{padding:.7rem 1rem;border-top:1px solid #1a1a3a}
+        tr:hover td{background:#1a1a35}
+        .badge{display:inline-block;padding:.2rem .6rem;border-radius:20px;font-size:.75rem;font-weight:600}
+        .badge-purple{background:rgba(168,85,247,.15);color:#c084fc}
+        .badge-blue{background:rgba(59,130,246,.15);color:#60a5fa}
+        a{color:#a855f7;text-decoration:none}
+        a:hover{text-decoration:underline}
+        .empty{text-align:center;padding:3rem;color:#666}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🧬 Movie Taste DNA</h1>
+        <p>Autonomous preference fingerprinting — discover every customer's cinematic personality</p>
+    </div>
+    <div class="container">
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="number">@Model.TotalCustomers</div>
+                <div class="label">Profiled Customers</div>
+            </div>
+            <div class="stat-card">
+                <div class="number">@Model.ArchetypeDistribution.Count</div>
+                <div class="label">Archetype Types</div>
+            </div>
+            <div class="stat-card">
+                <div class="number">@(Model.Profiles.Count > 0 ? Model.Profiles.Max(p => p.Rentals).ToString() : "0")</div>
+                <div class="label">Most Rentals (Single Customer)</div>
+            </div>
+        </div>
+
+        @if (Model.ArchetypeDistribution.Count > 0)
+        {
+            <div class="section-title">🎭 Archetype Distribution</div>
+            <div class="archetype-grid">
+                @foreach (var arch in Model.ArchetypeDistribution)
+                {
+                    <div class="arch-card">
+                        <div class="count">@arch.Count</div>
+                        <div class="name">@arch.Name</div>
+                    </div>
+                }
+            </div>
+        }
+
+        <div class="section-title">👥 Customer DNA Profiles</div>
+        @if (Model.Profiles.Count == 0)
+        {
+            <div class="empty">No rental data to analyze yet.</div>
+        }
+        else
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Customer</th>
+                        <th>Rentals</th>
+                        <th>Archetype</th>
+                        <th>Dominant Trait</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in Model.Profiles)
+                    {
+                        <tr>
+                            <td><strong>@p.CustomerName</strong></td>
+                            <td>@p.Rentals</td>
+                            <td><span class="badge badge-purple">@p.ArchetypeEmoji @p.ArchetypeName</span></td>
+                            <td><span class="badge badge-blue">@p.DominantDimension</span></td>
+                            <td><a href="@Url.Action("Profile", "TasteDna", new { id = p.CustomerId })">View DNA →</a></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</body>
+</html>
