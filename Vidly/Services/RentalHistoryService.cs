@@ -260,31 +260,39 @@ namespace Vidly.Services
             var returned = rentals.Where(r => r.Status == RentalStatus.Returned).ToList();
             metrics.ReturnRate = rentals.Count > 0 ? (double)returned.Count / rentals.Count : 0;
 
-            var byCustomer = rentals.GroupBy(r => r.CustomerId).ToList();
-            var repeatCustomers = byCustomer.Where(g => g.Count() > 1).ToList();
+            // Use shared utility for O(1) per-customer lookup instead of
+            // GroupBy which allocates intermediate IGrouping enumerators.
+            var byCustomer = CustomerRentalAnalytics.BuildRentalsByCustomer(rentals);
+            var repeatCustomers = new List<KeyValuePair<int, List<Rental>>>();
+            foreach (var kv in byCustomer)
+            {
+                if (kv.Value.Count > 1)
+                    repeatCustomers.Add(kv);
+            }
             metrics.RepeatCustomers = repeatCustomers.Count;
 
             var customersWithRentals = byCustomer.Count;
             metrics.RepeatRentalRate = customersWithRentals > 0
                 ? (double)repeatCustomers.Count / customersWithRentals : 0;
 
-            // Average gap between rentals for repeat customers
+            // Delegate gap computation to shared CustomerRentalAnalytics
+            // instead of inlining identical date-difference loops.
             var gaps = new List<double>();
-            foreach (var group in repeatCustomers)
+            foreach (var kv in repeatCustomers)
             {
-                var dates = group.OrderBy(r => r.RentalDate).Select(r => r.RentalDate).ToList();
-                for (int i = 1; i < dates.Count; i++)
-                    gaps.Add((dates[i] - dates[i - 1]).TotalDays);
+                var sorted = kv.Value.OrderBy(r => r.RentalDate).ToList();
+                gaps.AddRange(CustomerRentalAnalytics.ComputeRentalGaps(sorted));
             }
-            metrics.AverageGapDays = gaps.Any() ? gaps.Average() : 0;
+            metrics.AverageGapDays = gaps.Count > 0 ? gaps.Average() : 0;
 
             // Churn risk
             var customerLookup = customers.ToDictionary(c => c.Id);
-            foreach (var group in byCustomer)
+            foreach (var kv in byCustomer)
             {
+                var group = kv.Value;
                 var lastRental = group.Max(r => r.RentalDate);
                 var daysSince = (_clock.Today - lastRental).TotalDays;
-                var name = customerLookup.ContainsKey(group.Key) ? customerLookup[group.Key].Name : "Unknown";
+                var name = customerLookup.ContainsKey(kv.Key) ? customerLookup[kv.Key].Name : "Unknown";
 
                 string risk;
                 if (daysSince > 90) risk = "High";
@@ -293,9 +301,9 @@ namespace Vidly.Services
 
                 metrics.ChurnRisks.Add(new CustomerChurnRisk
                 {
-                    CustomerId = group.Key,
+                    CustomerId = kv.Key,
                     CustomerName = name,
-                    TotalRentals = group.Count(),
+                    TotalRentals = group.Count,
                     DaysSinceLastRental = daysSince,
                     RiskLevel = risk
                 });

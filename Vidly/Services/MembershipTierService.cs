@@ -351,8 +351,9 @@ namespace Vidly.Services
             var allRentals = _rentalRepo.GetAll()
                 .Where(r => r.CustomerId == customerId)
                 .ToList();
-            var returned = allRentals.Where(r => r.Status == RentalStatus.Returned).ToList();
-            var lateCount = returned.Count(r => r.ReturnDate.HasValue && r.ReturnDate.Value > r.DueDate);
+            // Delegate late-return-rate computation to shared utility
+            // instead of inlining the same HasValue/DueDate comparison.
+            var lifetimeLateRate = CustomerRentalAnalytics.LateReturnRate(allRentals);
 
             var eval = EvaluateCustomer(customerId);
 
@@ -366,7 +367,7 @@ namespace Vidly.Services
                 History = GetCustomerHistory(customerId),
                 TotalRentals = allRentals.Count,
                 TotalSpend = allRentals.Sum(r => r.TotalCost),
-                LifetimeLatePercentage = returned.Count > 0 ? (double)lateCount / returned.Count : 0,
+                LifetimeLatePercentage = lifetimeLateRate,
                 MemberSince = customer.MemberSince,
                 MembershipDays = customer.MemberSince.HasValue
                     ? (int)(_clock.Today - customer.MemberSince.Value).TotalDays
