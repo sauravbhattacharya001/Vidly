@@ -1,0 +1,181 @@
+@model Vidly.Services.ShelfPlan
+@{
+    ViewBag.Title = "Smart Shelf Optimizer";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Smart Shelf Optimizer — Vidly</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f1117;color:#e4e4e7}
+.header{background:linear-gradient(135deg,#1a1a2e,#16213e);padding:2rem;text-align:center;border-bottom:2px solid #e67e22}
+.header h1{font-size:2rem;color:#e67e22}
+.header p{color:#9ca3af;margin-top:.5rem}
+.staleness-bar{margin:1.5rem auto;max-width:400px}
+.staleness-bar label{display:block;margin-bottom:.3rem;font-size:.85rem;color:#9ca3af}
+.staleness-track{height:12px;background:#1e293b;border-radius:6px;overflow:hidden}
+.staleness-fill{height:100%;border-radius:6px;transition:width .6s}
+.container{max-width:1400px;margin:0 auto;padding:1.5rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.5rem;margin-bottom:2rem}
+.zone-card{background:#1a1a2e;border-radius:12px;padding:1.5rem;border-left:4px solid}
+.zone-card.prime{border-color:#f59e0b}
+.zone-card.discovery{border-color:#8b5cf6}
+.zone-card.cluster{border-color:#3b82f6}
+.zone-card.seasonal{border-color:#10b981}
+.zone-card.archive{border-color:#6b7280}
+.zone-card h2{font-size:1.1rem;margin-bottom:1rem;display:flex;align-items:center;gap:.5rem}
+.zone-card h2 .count{background:#ffffff15;padding:.15rem .5rem;border-radius:99px;font-size:.75rem;color:#9ca3af}
+.movie-item{display:flex;justify-content:space-between;align-items:center;padding:.5rem 0;border-bottom:1px solid #ffffff10}
+.movie-item:last-child{border-bottom:none}
+.movie-name{font-size:.9rem;flex:1}
+.movie-score{background:#ffffff10;padding:.15rem .5rem;border-radius:4px;font-size:.75rem;font-weight:600;min-width:3rem;text-align:center}
+.movie-genre{font-size:.7rem;color:#9ca3af;margin-left:.5rem}
+.section-title{font-size:1.3rem;margin:2rem 0 1rem;color:#e67e22;border-bottom:1px solid #ffffff15;padding-bottom:.5rem}
+.recs{display:grid;gap:1rem}
+.rec{background:#1a1a2e;border-radius:10px;padding:1.2rem;display:flex;gap:1rem;align-items:flex-start}
+.rec .badge{padding:.25rem .6rem;border-radius:6px;font-size:.7rem;font-weight:700;text-transform:uppercase;white-space:nowrap}
+.badge.high{background:#dc262620;color:#f87171}
+.badge.medium{background:#f59e0b20;color:#fbbf24}
+.badge.low{background:#6b728020;color:#9ca3af}
+.rec .body{flex:1}
+.rec .body .msg{font-size:.9rem;margin-bottom:.3rem}
+.rec .body .impact{font-size:.75rem;color:#9ca3af}
+.type-tag{font-size:.65rem;background:#ffffff10;padding:.1rem .4rem;border-radius:3px;margin-left:.5rem}
+.clusters-section{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.5rem}
+.cluster-card{background:#1a1a2e;border-radius:12px;padding:1.5rem;border:1px solid #3b82f640}
+.cluster-card h3{color:#60a5fa;margin-bottom:.8rem;display:flex;align-items:center;gap:.5rem}
+.cluster-card .score-ring{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;border:3px solid #3b82f6;float:right}
+.cluster-movies{list-style:none}
+.cluster-movies li{padding:.3rem 0;font-size:.85rem;border-bottom:1px solid #ffffff08}
+.cluster-movies li:last-child{border-bottom:none}
+.floor-map{margin:2rem 0;background:#1a1a2e;border-radius:12px;padding:2rem}
+.floor-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;max-width:800px;margin:1rem auto}
+.floor-cell{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.65rem;text-align:center;padding:4px;cursor:default;transition:transform .2s}
+.floor-cell:hover{transform:scale(1.1);z-index:1}
+.floor-cell.z-prime{background:linear-gradient(135deg,#f59e0b40,#f59e0b20)}
+.floor-cell.z-discovery{background:linear-gradient(135deg,#8b5cf640,#8b5cf620)}
+.floor-cell.z-cluster{background:linear-gradient(135deg,#3b82f640,#3b82f620)}
+.floor-cell.z-seasonal{background:linear-gradient(135deg,#10b98140,#10b98120)}
+.floor-cell.z-archive{background:linear-gradient(135deg,#6b728040,#6b728020)}
+.legend{display:flex;gap:1.5rem;justify-content:center;margin-top:1rem;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:.4rem;font-size:.8rem}
+.legend-dot{width:12px;height:12px;border-radius:3px}
+.footer{text-align:center;padding:2rem;color:#6b7280;font-size:.8rem}
+</style>
+</head>
+<body>
+<div class="header">
+    <h1>🗄️ Smart Shelf Optimizer</h1>
+    <p>Autonomous layout engine — co-rental analysis · genre heat · hidden gems</p>
+    <div class="staleness-bar">
+        <label>Arrangement Staleness: @Model.StalenessScore.ToString("F0")%
+            @if(Model.StalenessScore < 30) { <text>— ✅ Fresh</text> }
+            else if(Model.StalenessScore < 60) { <text>— ⚠️ Consider rotating</text> }
+            else { <text>— 🔴 Stale — rotation needed</text> }
+        </label>
+        <div class="staleness-track">
+            <div class="staleness-fill" style="width:@Model.StalenessScore%;background:@(Model.StalenessScore < 30 ? "#10b981" : Model.StalenessScore < 60 ? "#f59e0b" : "#ef4444")"></div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <!-- Floor Map Visualization -->
+    <h2 class="section-title">📐 Store Floor Map</h2>
+    <div class="floor-map">
+        <div class="floor-grid">
+            @foreach(var a in Model.Assignments.Take(25)) {
+                var zClass = a.Zone == Vidly.Services.ShelfZone.PrimeShelf ? "z-prime"
+                    : a.Zone == Vidly.Services.ShelfZone.DiscoveryZone ? "z-discovery"
+                    : a.Zone == Vidly.Services.ShelfZone.GenreCluster ? "z-cluster"
+                    : a.Zone == Vidly.Services.ShelfZone.SeasonalSpotlight ? "z-seasonal"
+                    : "z-archive";
+                <div class="floor-cell @zClass" title="@a.Reason">
+                    @(a.MovieTitle.Length > 18 ? a.MovieTitle.Substring(0, 16) + "…" : a.MovieTitle)
+                </div>
+            }
+        </div>
+        <div class="legend">
+            <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>Prime Shelf</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#8b5cf6"></div>Discovery Zone</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div>Genre Cluster</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div>Seasonal Spotlight</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#6b7280"></div>Archive</div>
+        </div>
+    </div>
+
+    <!-- Zone Cards -->
+    <h2 class="section-title">📦 Zone Assignments</h2>
+    <div class="grid">
+        @{
+            var zones = new[] {
+                new { Zone = Vidly.Services.ShelfZone.PrimeShelf, Label = "🔥 Prime Shelf", Css = "prime" },
+                new { Zone = Vidly.Services.ShelfZone.DiscoveryZone, Label = "💎 Discovery Zone", Css = "discovery" },
+                new { Zone = Vidly.Services.ShelfZone.GenreCluster, Label = "📚 Genre Clusters", Css = "cluster" },
+                new { Zone = Vidly.Services.ShelfZone.SeasonalSpotlight, Label = "🌟 Seasonal Spotlight", Css = "seasonal" },
+                new { Zone = Vidly.Services.ShelfZone.Archive, Label = "📦 Archive", Css = "archive" }
+            };
+        }
+        @foreach(var z in zones) {
+            var items = Model.Assignments.Where(a => a.Zone == z.Zone).OrderByDescending(a => a.Score).ToList();
+            <div class="zone-card @z.Css">
+                <h2>@z.Label <span class="count">@items.Count</span></h2>
+                @foreach(var item in items.Take(8)) {
+                    <div class="movie-item">
+                        <span class="movie-name">@item.MovieTitle<span class="movie-genre">@item.GenreName</span></span>
+                        <span class="movie-score">@item.Score.ToString("F2")</span>
+                    </div>
+                }
+                @if(items.Count > 8) {
+                    <div style="text-align:center;color:#6b7280;font-size:.75rem;padding-top:.5rem">+@(items.Count - 8) more</div>
+                }
+            </div>
+        }
+    </div>
+
+    <!-- Co-Rental Clusters -->
+    @if(Model.Clusters.Any()) {
+        <h2 class="section-title">🔗 Co-Rental Clusters</h2>
+        <div class="clusters-section">
+            @foreach(var c in Model.Clusters) {
+                <div class="cluster-card">
+                    <div class="score-ring">@c.CoRentalScore.ToString("F0")%</div>
+                    <h3>@c.Name</h3>
+                    <ul class="cluster-movies">
+                        @foreach(var t in c.MovieTitles) {
+                            <li>🎬 @t</li>
+                        }
+                    </ul>
+                </div>
+            }
+        </div>
+    }
+
+    <!-- Proactive Recommendations -->
+    @if(Model.Recommendations.Any()) {
+        <h2 class="section-title">🧠 Proactive Recommendations</h2>
+        <div class="recs">
+            @foreach(var r in Model.Recommendations) {
+                var badgeCss = r.Priority == Vidly.Services.RecommendationPriority.High ? "high"
+                    : r.Priority == Vidly.Services.RecommendationPriority.Medium ? "medium" : "low";
+                <div class="rec">
+                    <span class="badge @badgeCss">@r.Priority</span>
+                    <div class="body">
+                        <div class="msg">@r.Message<span class="type-tag">@r.Type</span></div>
+                        <div class="impact">📈 @r.ImpactEstimate</div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<div class="footer">
+    Generated @Model.GeneratedAt.ToString("yyyy-MM-dd HH:mm:ss") UTC · Smart Shelf Optimizer · Vidly
+</div>
+</body>
+</html>
