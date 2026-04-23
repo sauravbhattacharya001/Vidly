@@ -262,14 +262,34 @@ namespace Vidly.Services
                     })
                     .ToList();
 
-            var dateRange = rentals.Max(r => r.RentalDate) - rentals.Min(r => r.RentalDate);
+            // Single pass: compute min/max dates, day-of-week counts,
+            // and recent-30-day count simultaneously.  Previously this
+            // was 4 separate O(N) passes (Min, Max, GroupBy, Count).
+            var minDate = rentals[0].RentalDate;
+            var maxDate = rentals[0].RentalDate;
+            var dayCounts = new int[7];
+            var recentCutoff = _clock.Today.AddDays(-30);
+            var last30 = 0;
+
+            for (int i = 0; i < rentals.Count; i++)
+            {
+                var rd = rentals[i].RentalDate;
+                if (rd < minDate) minDate = rd;
+                if (rd > maxDate) maxDate = rd;
+                dayCounts[(int)rd.DayOfWeek]++;
+                if (rd >= recentCutoff) last30++;
+            }
+
+            var dateRange = maxDate - minDate;
             var totalWeeks = Math.Max(1, dateRange.TotalDays / 7.0);
 
-            var dayAvgs = rentals
-                .GroupBy(r => r.RentalDate.DayOfWeek)
-                .ToDictionary(g => g.Key, g => g.Count() / totalWeeks);
+            var dayAvgs = new Dictionary<DayOfWeek, double>();
+            for (int d = 0; d < 7; d++)
+            {
+                if (dayCounts[d] > 0)
+                    dayAvgs[(DayOfWeek)d] = dayCounts[d] / totalWeeks;
+            }
 
-            var last30 = rentals.Count(r => r.RentalDate >= _clock.Today.AddDays(-30));
             var overallDailyAvg = rentals.Count / Math.Max(1, dateRange.TotalDays);
             var recentDailyAvg = last30 / 30.0;
             var trendMultiplier = overallDailyAvg > 0
