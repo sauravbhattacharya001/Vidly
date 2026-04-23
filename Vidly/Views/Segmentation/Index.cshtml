@@ -1,0 +1,237 @@
+@model Vidly.Models.SegmentationFleet
+@{
+    ViewBag.Title = "Customer Segmentation";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div id="seg-app" style="max-width:1200px;margin:0 auto;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#e2e8f0">
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+    <div>
+        <h1 style="margin:0;font-size:28px;color:#f8fafc">🎯 Customer Segmentation</h1>
+        <p style="margin:4px 0 0;color:#94a3b8;font-size:14px">
+            RFM-based autonomous segmentation &bull; @Model.TotalCustomers customers analyzed
+        </p>
+    </div>
+    <button onclick="exportJson()" style="background:#3b82f6;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px">
+        📥 Export JSON
+    </button>
+</div>
+
+<!-- Health Gauge + Segment Distribution -->
+<div style="display:grid;grid-template-columns:280px 1fr;gap:20px;margin-bottom:24px">
+    <!-- Health Gauge -->
+    <div style="background:#1e293b;border-radius:12px;padding:20px;text-align:center">
+        <h3 style="margin:0 0 12px;font-size:15px;color:#94a3b8">Health Score</h3>
+        <canvas id="gaugeCanvas" width="220" height="130"></canvas>
+        <div style="font-size:32px;font-weight:700;color:@(Model.OverallHealthScore >= 60 ? "#22c55e" : Model.OverallHealthScore >= 35 ? "#f59e0b" : "#ef4444");margin-top:4px">
+            @Model.OverallHealthScore%
+        </div>
+        <div style="font-size:12px;color:#64748b">Champions + Loyal</div>
+    </div>
+
+    <!-- Donut Chart -->
+    <div style="background:#1e293b;border-radius:12px;padding:20px;display:flex;align-items:center;gap:24px">
+        <canvas id="donutCanvas" width="220" height="220"></canvas>
+        <div id="legend" style="flex:1"></div>
+    </div>
+</div>
+
+<!-- Proactive Insights -->
+<div style="background:#1e293b;border-radius:12px;padding:20px;margin-bottom:24px">
+    <h3 style="margin:0 0 12px;font-size:15px;color:#94a3b8">🧠 Proactive Insights</h3>
+    @foreach (var insight in Model.ProactiveInsights)
+    {
+        <div style="padding:8px 12px;margin-bottom:6px;background:#0f172a;border-radius:6px;font-size:14px;color:#cbd5e1">
+            @insight
+        </div>
+    }
+</div>
+
+<!-- Segment Filter Pills -->
+<div style="margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap">
+    <button class="seg-pill active" onclick="filterSeg('All')" style="background:#334155;color:#f8fafc;border:none;padding:6px 14px;border-radius:20px;cursor:pointer;font-size:13px">
+        All (@Model.TotalCustomers)
+    </button>
+    @foreach (var s in Model.Summaries)
+    {
+        <button class="seg-pill" onclick="filterSeg('@s.Segment')"
+                style="background:@(s.Color)22;color:@s.Color;border:1px solid @(s.Color)44;padding:6px 14px;border-radius:20px;cursor:pointer;font-size:13px">
+            @s.Segment (@s.Count)
+        </button>
+    }
+</div>
+
+<!-- Customer Table -->
+<div style="background:#1e293b;border-radius:12px;overflow:hidden;margin-bottom:24px">
+    <table id="custTable" style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead>
+            <tr style="background:#0f172a;color:#94a3b8;text-align:left">
+                <th style="padding:10px 12px;cursor:pointer" onclick="sortTable(0)">Customer ↕</th>
+                <th style="padding:10px 12px;cursor:pointer;text-align:right" onclick="sortTable(1)">Rentals ↕</th>
+                <th style="padding:10px 12px;cursor:pointer;text-align:right" onclick="sortTable(2)">RFM Score ↕</th>
+                <th style="padding:10px 12px;cursor:pointer" onclick="sortTable(3)">Segment ↕</th>
+                <th style="padding:10px 12px;cursor:pointer" onclick="sortTable(4)">Migration ↕</th>
+                <th style="padding:10px 12px">R / F / M</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var c in Model.Customers)
+            {
+                var segColor = Model.Summaries.FirstOrDefault(s => s.Segment == c.Segment)?.Color ?? "#64748b";
+                var migIcon = c.MigrationDirection == "Upgraded" ? "🔺" : c.MigrationDirection == "Downgraded" ? "🔻" : c.MigrationDirection == "New" ? "🆕" : "➡️";
+                <tr class="cust-row" data-segment="@c.Segment" style="border-top:1px solid #1e293b">
+                    <td style="padding:8px 12px;color:#f1f5f9">@c.CustomerName</td>
+                    <td style="padding:8px 12px;text-align:right;color:#cbd5e1">@c.TotalRentals</td>
+                    <td style="padding:8px 12px;text-align:right">
+                        <span style="background:@(segColor)22;color:@segColor;padding:2px 8px;border-radius:10px;font-weight:600">@c.RfmScore</span>
+                    </td>
+                    <td style="padding:8px 12px">
+                        <span style="color:@segColor;font-weight:500">@c.Segment</span>
+                    </td>
+                    <td style="padding:8px 12px;font-size:12px">
+                        @migIcon @c.MigrationDirection
+                        @if (c.PreviousSegment != c.Segment && c.PreviousSegment != "New")
+                        {
+                            <span style="color:#64748b">(@c.PreviousSegment → @c.Segment)</span>
+                        }
+                    </td>
+                    <td style="padding:8px 12px;font-size:12px;color:#64748b">
+                        @c.Recency / @c.Frequency / @c.Monetary
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<!-- Migration Matrix -->
+@if (Model.Migrations.Any())
+{
+    <div style="background:#1e293b;border-radius:12px;padding:20px;margin-bottom:24px">
+        <h3 style="margin:0 0 12px;font-size:15px;color:#94a3b8">📊 Segment Migration Flows</h3>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead>
+                <tr style="color:#94a3b8">
+                    <th style="padding:6px 10px;text-align:left">From</th>
+                    <th style="padding:6px 10px;text-align:left">To</th>
+                    <th style="padding:6px 10px;text-align:right">Count</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var m in Model.Migrations)
+                {
+                    <tr style="border-top:1px solid #334155">
+                        <td style="padding:6px 10px;color:#cbd5e1">@m.FromSegment</td>
+                        <td style="padding:6px 10px;color:#cbd5e1">@m.ToSegment</td>
+                        <td style="padding:6px 10px;text-align:right;font-weight:600;color:#f1f5f9">@m.Count</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<!-- Campaign Recommendations -->
+<div style="background:#1e293b;border-radius:12px;padding:20px">
+    <h3 style="margin:0 0 16px;font-size:15px;color:#94a3b8">🎯 Campaign Recommendations by Segment</h3>
+    @foreach (var s in Model.Summaries.Where(x => x.Count > 0))
+    {
+        <div style="margin-bottom:16px">
+            <div style="color:@s.Color;font-weight:600;margin-bottom:6px;font-size:14px">
+                @s.Segment (@s.Count customers)
+            </div>
+            @{
+                var sample = Model.Customers.First(c => c.Segment == s.Segment);
+            }
+            @foreach (var rec in sample.CampaignRecommendations)
+            {
+                <div style="padding:4px 0 4px 16px;font-size:13px;color:#94a3b8">• @rec</div>
+            }
+        </div>
+    }
+</div>
+
+</div>
+
+<script>
+// ── Donut Chart ────────────────────────────────────────────
+(function() {
+    var data = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(
+        Model.Summaries.Select(s => new { s.Segment, s.Count, s.Percentage, s.Color })));
+    var c = document.getElementById('donutCanvas');
+    var ctx = c.getContext('2d');
+    var cx = 110, cy = 110, r = 90, ir = 55;
+    var total = data.reduce(function(a,b){return a+b.Count},0);
+    var angle = -Math.PI/2;
+    var legend = document.getElementById('legend');
+    legend.innerHTML = '';
+    data.forEach(function(d){
+        if(d.Count===0) return;
+        var slice = (d.Count/total)*Math.PI*2;
+        ctx.beginPath();
+        ctx.arc(cx,cy,r,angle,angle+slice);
+        ctx.arc(cx,cy,ir,angle+slice,angle,true);
+        ctx.closePath();
+        ctx.fillStyle=d.Color;
+        ctx.fill();
+        angle+=slice;
+        legend.innerHTML += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'+
+            '<div style="width:12px;height:12px;border-radius:3px;background:'+d.Color+'"></div>'+
+            '<span style="font-size:13px;color:#cbd5e1">'+d.Segment+' — '+d.Count+' ('+d.Percentage+'%)</span></div>';
+    });
+})();
+
+// ── Health Gauge ───────────────────────────────────────────
+(function() {
+    var c = document.getElementById('gaugeCanvas');
+    var ctx = c.getContext('2d');
+    var cx=110,cy=120,r=85;
+    var health = @Model.OverallHealthScore;
+    ctx.lineWidth=18;ctx.lineCap='round';
+    ctx.beginPath();ctx.arc(cx,cy,r,Math.PI,2*Math.PI);ctx.strokeStyle='#334155';ctx.stroke();
+    var end = Math.PI + (health/100)*Math.PI;
+    ctx.beginPath();ctx.arc(cx,cy,r,Math.PI,end);
+    ctx.strokeStyle = health>=60?'#22c55e':health>=35?'#f59e0b':'#ef4444';
+    ctx.stroke();
+})();
+
+// ── Table Sort ─────────────────────────────────────────────
+var sortDir = [1,1,-1,1,1,1];
+function sortTable(col) {
+    var tbody = document.querySelector('#custTable tbody');
+    var rows = Array.from(tbody.querySelectorAll('tr'));
+    sortDir[col] *= -1;
+    rows.sort(function(a,b){
+        var av = a.children[col].textContent.trim();
+        var bv = b.children[col].textContent.trim();
+        var an = parseFloat(av), bn = parseFloat(bv);
+        if(!isNaN(an)&&!isNaN(bn)) return (an-bn)*sortDir[col];
+        return av.localeCompare(bv)*sortDir[col];
+    });
+    rows.forEach(function(r){tbody.appendChild(r)});
+}
+
+// ── Segment Filter ─────────────────────────────────────────
+function filterSeg(seg) {
+    document.querySelectorAll('.seg-pill').forEach(function(b){b.classList.remove('active')});
+    event.target.classList.add('active');
+    document.querySelectorAll('.cust-row').forEach(function(r){
+        r.style.display = (seg==='All'||r.dataset.segment===seg)?'':'none';
+    });
+}
+
+// ── JSON Export ────────────────────────────────────────────
+function exportJson() {
+    fetch('@Url.Action("FleetJson")').then(function(r){return r.json()}).then(function(d){
+        var blob = new Blob([JSON.stringify(d,null,2)],{type:'application/json'});
+        var a = document.createElement('a');
+        a.href=URL.createObjectURL(blob);a.download='segmentation.json';a.click();
+    });
+}
+</script>
+
+<style>
+    .seg-pill.active { outline: 2px solid #3b82f6; outline-offset: 1px; }
+    .cust-row:hover { background: #334155 !important; }
+</style>
