@@ -1,0 +1,240 @@
+@model Vidly.Models.NegotiationViewModel
+@{
+    ViewBag.Title = "Rental Negotiator";
+    var session = Model.Session;
+    var offer = session?.FinalOffer;
+    var error = TempData["NegotiationError"] as string ?? Model.ErrorMessage;
+}
+
+<div class="container" style="max-width:900px;margin-top:20px">
+    <h2><span style="font-size:1.3em">🤝</span> Rental Negotiator</h2>
+    <p class="text-muted">Negotiate your rental terms! The system autonomously evaluates your loyalty, history, and arguments to offer personalized deals.</p>
+
+    @if (!string.IsNullOrEmpty(error))
+    {
+        <div class="alert alert-danger">@error</div>
+    }
+
+    @* --- Selection Panel --- *@
+    @if (session == null || session.Status != NegotiationStatus.Negotiating)
+    {
+        using (Html.BeginForm("Start", "Negotiator", FormMethod.Post))
+        {
+            @Html.AntiForgeryToken()
+            <div class="panel panel-default">
+                <div class="panel-heading"><strong>Start a Negotiation</strong></div>
+                <div class="panel-body">
+                    <div class="row">
+                        <div class="col-md-5">
+                            <div class="form-group">
+                                <label>Customer</label>
+                                <select name="customerId" class="form-control" required>
+                                    <option value="">-- Select Customer --</option>
+                                    @foreach (var c in Model.Customers)
+                                    {
+                                        <option value="@c.Id" @(Model.SelectedCustomerId == c.Id ? "selected" : "")>@c.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <div class="form-group">
+                                <label>Movie</label>
+                                <select name="movieId" class="form-control" required>
+                                    <option value="">-- Select Movie --</option>
+                                    @foreach (var m in Model.AvailableMovies)
+                                    {
+                                        <option value="@m.Id" @(Model.SelectedMovieId == m.Id ? "selected" : "")>@m.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <label>&nbsp;</label>
+                            <button type="submit" class="btn btn-primary btn-block" style="margin-top:0">Negotiate</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (session != null && session.Status == NegotiationStatus.Accepted)
+        {
+            <div class="alert alert-success" style="font-size:1.1em">
+                <strong>🎉 Deal Accepted!</strong> You got <strong>@offer.MovieName</strong> at
+                <strong>$@offer.OfferedRate/day</strong> (@offer.DiscountPct% off) with @offer.ExtendedDays bonus day(s)
+                and @offer.BonusPerks.Count perk(s). Enjoy your rental!
+            </div>
+        }
+        @if (session != null && session.Status == NegotiationStatus.Rejected)
+        {
+            <div class="alert alert-warning">
+                <strong>👋 You walked away.</strong> No deal this time. Come back anytime to negotiate again!
+            </div>
+        }
+        @if (session != null && session.Status == NegotiationStatus.Expired)
+        {
+            <div class="alert alert-info">
+                <strong>⏰ Negotiation expired.</strong> Maximum rounds reached. Start a new negotiation to try again.
+            </div>
+        }
+    }
+
+    @* --- Active Negotiation --- *@
+    @if (session != null && session.Status == NegotiationStatus.Negotiating)
+    {
+        <div class="row">
+            @* Left: Chat + Input *@
+            <div class="col-md-7">
+                <div class="panel panel-primary">
+                    <div class="panel-heading">
+                        <strong>Negotiation with @session.CustomerName</strong>
+                        <span class="pull-right">Round @(session.Rounds.Count)/5</span>
+                    </div>
+                    <div class="panel-body" style="max-height:350px;overflow-y:auto;background:#f9f9f9">
+                        @* Initial system message *@
+                        <div style="margin-bottom:12px">
+                            <div style="background:#d9edf7;padding:10px 14px;border-radius:12px;max-width:85%;display:inline-block">
+                                <small class="text-muted">🤖 System</small><br/>
+                                Welcome, @session.CustomerName! Based on your profile
+                                (<strong>@session.Strategy</strong> customer, loyalty score <strong>@session.LoyaltyScore</strong>/100),
+                                here's my opening offer for <em>@offer.MovieName</em>:
+                                <strong>$@session.InitialOffer.OfferedRate/day</strong> (@session.InitialOffer.DiscountPct% off).
+                                Think you deserve better? Make your case!
+                            </div>
+                        </div>
+
+                        @foreach (var round in session.Rounds)
+                        {
+                            @* Customer message - right *@
+                            <div style="margin-bottom:12px;text-align:right">
+                                <div style="background:#dff0d8;padding:10px 14px;border-radius:12px;max-width:85%;display:inline-block;text-align:left">
+                                    <small class="text-muted">👤 You</small><br/>
+                                    @round.CustomerArgument
+                                </div>
+                            </div>
+                            @* System response - left *@
+                            <div style="margin-bottom:12px">
+                                <div style="background:#d9edf7;padding:10px 14px;border-radius:12px;max-width:85%;display:inline-block">
+                                    <small class="text-muted">🤖 System (Round @round.RoundNumber)</small><br/>
+                                    @round.SystemResponse
+                                    @if (round.OfferAdjustment > 0)
+                                    {
+                                        <br/><span class="text-success">💰 Saved you an extra $@round.OfferAdjustment.ToString("F2")/day!</span>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    @* Input *@
+                    <div class="panel-footer">
+                        @if (session.Rounds.Count < 5)
+                        {
+                            using (Html.BeginForm("Counter", "Negotiator", new { customerId = session.CustomerId, movieId = offer.MovieId }, FormMethod.Post))
+                            {
+                                @Html.AntiForgeryToken()
+                                <div class="input-group">
+                                    <input type="text" name="argument" class="form-control"
+                                           placeholder="Make your case... (e.g. 'I've been a loyal customer for years')" required />
+                                    <span class="input-group-btn">
+                                        <button type="submit" class="btn btn-warning">Counter</button>
+                                    </span>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <p class="text-muted text-center" style="margin:0">Maximum rounds reached. Accept or reject the offer.</p>
+                        }
+                        <div style="margin-top:10px;text-align:center">
+                            @using (Html.BeginForm("Accept", "Negotiator", new { customerId = session.CustomerId, movieId = offer.MovieId }, FormMethod.Post, new { style = "display:inline" }))
+                            {
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-success">✅ Accept Deal</button>
+                            }
+                            @using (Html.BeginForm("Reject", "Negotiator", new { customerId = session.CustomerId, movieId = offer.MovieId }, FormMethod.Post, new { style = "display:inline" }))
+                            {
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-danger">❌ Walk Away</button>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* Right: Offer Card + Insights *@
+            <div class="col-md-5">
+                @* Current Offer *@
+                <div class="panel panel-success">
+                    <div class="panel-heading"><strong>Current Offer</strong></div>
+                    <div class="panel-body">
+                        <h4 style="margin-top:0">@offer.MovieName</h4>
+                        <table class="table table-condensed" style="margin-bottom:8px">
+                            <tr><td>Original Rate</td><td><del>$@offer.OriginalRate/day</del></td></tr>
+                            <tr class="success"><td><strong>Your Rate</strong></td><td><strong>$@offer.OfferedRate/day</strong></td></tr>
+                            <tr><td>Discount</td><td><span class="label label-success">@offer.DiscountPct% OFF</span></td></tr>
+                            <tr><td>Bonus Days</td><td>+@offer.ExtendedDays day(s)</td></tr>
+                            <tr><td>Confidence</td><td>
+                                <div class="progress" style="margin:0;height:18px">
+                                    <div class="progress-bar @(offer.Confidence > 0.6 ? "progress-bar-success" : "progress-bar-warning")"
+                                         style="width:@((int)(offer.Confidence * 100))%">
+                                        @((int)(offer.Confidence * 100))%
+                                    </div>
+                                </div>
+                            </td></tr>
+                        </table>
+                        @if (offer.BonusPerks.Any())
+                        {
+                            <strong>Perks:</strong>
+                            <ul style="padding-left:18px;margin-bottom:0">
+                                @foreach (var perk in offer.BonusPerks)
+                                {
+                                    <li>🎁 @perk</li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                </div>
+
+                @* Loyalty Score *@
+                <div class="panel panel-info">
+                    <div class="panel-heading"><strong>Your Profile</strong></div>
+                    <div class="panel-body text-center">
+                        <div style="position:relative;width:80px;height:80px;margin:0 auto 8px">
+                            <svg viewBox="0 0 36 36" style="width:80px;height:80px;transform:rotate(-90deg)">
+                                <circle cx="18" cy="18" r="15.9" fill="none" stroke="#eee" stroke-width="3"/>
+                                <circle cx="18" cy="18" r="15.9" fill="none" stroke="@(session.LoyaltyScore > 60 ? "#5cb85c" : session.LoyaltyScore > 30 ? "#f0ad4e" : "#d9534f")"
+                                        stroke-width="3" stroke-dasharray="@session.LoyaltyScore 100" stroke-linecap="round"/>
+                            </svg>
+                            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:16px;font-weight:bold">
+                                @session.LoyaltyScore
+                            </div>
+                        </div>
+                        <div>Loyalty Score</div>
+                        <span class="label @(session.Strategy == NegotiationStrategy.Loyal ? "label-success" :
+                            session.Strategy == NegotiationStrategy.Premium ? "label-primary" :
+                            session.Strategy == NegotiationStrategy.Bulk ? "label-info" :
+                            session.Strategy == NegotiationStrategy.FirstTime ? "label-warning" : "label-default")">
+                            @session.Strategy
+                        </span>
+                    </div>
+                </div>
+
+                @* Proactive Insights *@
+                @if (session.ProactiveInsights.Any())
+                {
+                    <div class="panel panel-warning">
+                        <div class="panel-heading"><strong>💡 Insights</strong></div>
+                        <ul class="list-group">
+                            @foreach (var insight in session.ProactiveInsights)
+                            {
+                                <li class="list-group-item" style="font-size:0.9em">@insight</li>
+                            }
+                        </ul>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
