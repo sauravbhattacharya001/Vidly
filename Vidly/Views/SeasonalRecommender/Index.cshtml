@@ -1,0 +1,223 @@
+@model Vidly.Services.SeasonalProfile
+@{
+    ViewBag.Title = "Seasonal Recommender";
+    Layout = null;
+
+    var seasonColors = new System.Collections.Generic.Dictionary<string, string> {
+        {"Spring", "#4caf50"}, {"Summer", "#ffc107"}, {"Fall", "#ff9800"}, {"Winter", "#42a5f5"}
+    };
+    var seasonIcons = new System.Collections.Generic.Dictionary<string, string> {
+        {"Spring", "🌸"}, {"Summer", "🌞"}, {"Fall", "🍂"}, {"Winter", "❄️"}
+    };
+    var accent = seasonColors.ContainsKey(Model.CurrentSeason) ? seasonColors[Model.CurrentSeason] : "#888";
+    var icon = seasonIcons.ContainsKey(Model.CurrentSeason) ? seasonIcons[Model.CurrentSeason] : "📅";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Smart Seasonal Recommender — Vidly</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { background:#0f1118; color:#e0e0e0; font-family:'Segoe UI',system-ui,sans-serif; }
+        .container { max-width:1200px; margin:0 auto; padding:24px; }
+
+        /* Banner */
+        .banner { text-align:center; padding:48px 24px 32px; background:linear-gradient(135deg, #1a1d2e 0%, #0f1118 100%); border-bottom:3px solid @accent; }
+        .banner .icon { font-size:72px; }
+        .banner h1 { font-size:2.4rem; margin:12px 0 4px; color:@accent; }
+        .banner .sub { color:#999; font-size:1.1rem; }
+
+        /* Season Selector */
+        .season-nav { display:flex; justify-content:center; gap:12px; margin:28px 0; flex-wrap:wrap; }
+        .season-btn { padding:10px 22px; border:2px solid #333; border-radius:8px; background:#1a1d2e;
+                       color:#ccc; cursor:pointer; font-size:.95rem; transition:.2s; text-decoration:none; }
+        .season-btn:hover { border-color:@accent; color:#fff; }
+        .season-btn.active { background:@accent; color:#000; border-color:@accent; font-weight:600; }
+
+        /* Cards grid */
+        .grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin:24px 0; }
+        @@media(max-width:768px) { .grid { grid-template-columns:1fr; } }
+        .card { background:#1a1d2e; border-radius:12px; padding:24px; border:1px solid #2a2d3e; }
+        .card h2 { font-size:1.2rem; margin-bottom:16px; color:@accent; }
+
+        /* Activity bars */
+        .bar-row { display:flex; align-items:center; margin:8px 0; }
+        .bar-label { width:70px; font-size:.9rem; }
+        .bar-track { flex:1; height:28px; background:#252838; border-radius:6px; overflow:hidden; position:relative; }
+        .bar-fill { height:100%; border-radius:6px; transition:width .6s; display:flex; align-items:center; padding-left:8px; font-size:.8rem; color:#000; font-weight:600; }
+        .bar-current .bar-fill { box-shadow:0 0 12px rgba(255,255,255,.15); }
+
+        /* Heatmap */
+        .heatmap { width:100%; border-collapse:collapse; font-size:.85rem; }
+        .heatmap th { padding:8px; text-align:center; color:#999; font-weight:500; }
+        .heatmap td { padding:8px 12px; text-align:center; border-radius:4px; }
+        .heatmap .genre-name { text-align:left; color:#ccc; font-weight:500; }
+
+        /* Recommendations */
+        .rec-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:16px; }
+        .rec-card { background:#252838; border-radius:10px; padding:18px; border:1px solid #333; transition:.2s; }
+        .rec-card:hover { border-color:@accent; transform:translateY(-2px); }
+        .rec-card .title { font-weight:600; font-size:1rem; margin-bottom:6px; color:#fff; }
+        .rec-card .genre-badge { display:inline-block; padding:2px 10px; border-radius:12px; font-size:.75rem;
+                                  background:@accent; color:#000; font-weight:600; margin-right:6px; }
+        .rec-card .score { float:right; font-size:1.4rem; font-weight:700; color:@accent; }
+        .rec-card .stars { color:#ffc107; font-size:.9rem; margin:4px 0; }
+        .rec-card .reason { color:#999; font-size:.82rem; margin-top:6px; }
+
+        /* Insights */
+        .insight { display:flex; gap:14px; padding:14px; margin:8px 0; border-radius:8px; border-left:4px solid; }
+        .insight.info { border-color:#42a5f5; background:rgba(66,165,245,.08); }
+        .insight.success { border-color:#4caf50; background:rgba(76,175,80,.08); }
+        .insight.warning { border-color:#ff9800; background:rgba(255,152,0,.08); }
+        .insight .i-icon { font-size:1.5rem; }
+        .insight .i-title { font-weight:600; color:#fff; }
+        .insight .i-desc { color:#bbb; font-size:.9rem; margin-top:2px; }
+
+        /* Export */
+        .export-btn { display:inline-block; margin:20px 0; padding:10px 24px; background:@accent; color:#000;
+                       border:none; border-radius:8px; cursor:pointer; font-weight:600; font-size:.95rem; }
+        .export-btn:hover { opacity:.85; }
+
+        .full-width { grid-column: 1 / -1; }
+        canvas { max-width:100%; }
+    </style>
+</head>
+<body>
+
+<div class="banner">
+    <div class="icon">@icon</div>
+    <h1>Smart Seasonal Recommender</h1>
+    <div class="sub">@Model.CurrentSeason @DateTime.Today.Year — Personalized picks based on rental patterns</div>
+</div>
+
+<div class="container">
+
+    <!-- Season Selector -->
+    <div class="season-nav">
+        @foreach (var s in new[] { "Spring", "Summer", "Fall", "Winter" })
+        {
+            var cls = s == Model.CurrentSeason ? "season-btn active" : "season-btn";
+            <a href="@Url.Action("Season", "SeasonalRecommender", new { id = s })" class="@cls">
+                @(seasonIcons.ContainsKey(s) ? seasonIcons[s] : "") @s
+            </a>
+        }
+    </div>
+
+    <div class="grid">
+
+        <!-- Activity Chart -->
+        <div class="card">
+            <h2>📊 Seasonal Activity</h2>
+            @{
+                var maxAct = Model.SeasonalActivity.Values.Any() ? Model.SeasonalActivity.Values.Max() : 1;
+            }
+            @foreach (var kv in Model.SeasonalActivity)
+            {
+                var pct = maxAct > 0 ? (kv.Value / maxAct * 100) : 0;
+                var color = seasonColors.ContainsKey(kv.Key) ? seasonColors[kv.Key] : "#888";
+                var isCurrent = kv.Key == Model.CurrentSeason;
+                <div class="bar-row @(isCurrent ? "bar-current" : "")">
+                    <span class="bar-label">@(seasonIcons.ContainsKey(kv.Key) ? seasonIcons[kv.Key] : "") @kv.Key</span>
+                    <div class="bar-track">
+                        <div class="bar-fill" style="width:@pct%;background:@color;">@((int)kv.Value)</div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Insights -->
+        <div class="card">
+            <h2>💡 Proactive Insights</h2>
+            @foreach (var ins in Model.Insights)
+            {
+                <div class="insight @ins.Severity">
+                    <div class="i-icon">@ins.Icon</div>
+                    <div>
+                        <div class="i-title">@ins.Title</div>
+                        <div class="i-desc">@ins.Description</div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Genre Heatmap -->
+        <div class="card full-width">
+            <h2>🗺️ Genre × Season Heatmap</h2>
+            <table class="heatmap">
+                <thead>
+                    <tr>
+                        <th style="text-align:left">Genre</th>
+                        @foreach (var s in new[] { "Spring", "Summer", "Fall", "Winter" })
+                        {
+                            <th>@(seasonIcons.ContainsKey(s) ? seasonIcons[s] : "") @s</th>
+                        }
+                        <th>Peak</th>
+                        <th>Seasonality</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var g in Model.GenreTrends)
+                    {
+                        <tr>
+                            <td class="genre-name">@g.Genre</td>
+                            @foreach (var s in new[] { "Spring", "Summer", "Fall", "Winter" })
+                            {
+                                var val = g.SeasonScores.ContainsKey(s) ? g.SeasonScores[s] : 0;
+                                var opacity = Math.Max(0.1, val * 2.5);
+                                var color = seasonColors.ContainsKey(s) ? seasonColors[s] : "#888";
+                                <td style="background:rgba(@(color == "#4caf50" ? "76,175,80" : color == "#ffc107" ? "255,193,7" : color == "#ff9800" ? "255,152,0" : "66,165,245"),@opacity.ToString("F2")); font-weight:@(s == g.PeakSeason ? "700" : "400")">
+                                    @val.ToString("P0")
+                                </td>
+                            }
+                            <td style="color:@(seasonColors.ContainsKey(g.PeakSeason) ? seasonColors[g.PeakSeason] : "#888"); font-weight:600">@g.PeakSeason</td>
+                            <td>@g.Seasonality.ToString("F2")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Recommendations -->
+        <div class="card full-width">
+            <h2>🎬 Top Picks for @Model.CurrentSeason</h2>
+            <div class="rec-grid">
+                @foreach (var rec in Model.Recommendations)
+                {
+                    <div class="rec-card">
+                        <div class="score">@rec.SeasonalScore</div>
+                        <div class="title">@rec.MovieName</div>
+                        <span class="genre-badge">@rec.Genre</span>
+                        <div class="stars">
+                            @for (int i = 0; i < (rec.Rating ?? 0); i++) { <text>★</text> }
+                            @for (int i = (rec.Rating ?? 0); i < 5; i++) { <text>☆</text> }
+                        </div>
+                        <div class="reason">@rec.Reason</div>
+                    </div>
+                }
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Export -->
+    <button class="export-btn" onclick="exportJson()">⬇ Export JSON</button>
+
+</div>
+
+<script>
+function exportJson(){
+    fetch('@Url.Action("Json","SeasonalRecommender")')
+        .then(r=>r.json())
+        .then(d=>{
+            var b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});
+            var a=document.createElement('a');
+            a.href=URL.createObjectURL(b);
+            a.download='seasonal-recommender.json';
+            a.click();
+        });
+}
+</script>
+</body>
+</html>
