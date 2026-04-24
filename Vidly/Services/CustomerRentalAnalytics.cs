@@ -57,15 +57,20 @@ namespace Vidly.Services
 
         /// <summary>
         /// Computes the number of distinct genres rented by a customer.
+        /// Single-pass with O(1) HashSet lookups instead of chained LINQ
+        /// (Where → Select → Distinct → Count was 4 iterations + allocations).
         /// </summary>
         public static int CountDistinctGenres(
             IEnumerable<Rental> rentals, Dictionary<int, Movie> movieLookup)
         {
-            return rentals
-                .Where(r => movieLookup.ContainsKey(r.MovieId) && movieLookup[r.MovieId].Genre.HasValue)
-                .Select(r => movieLookup[r.MovieId].Genre.Value)
-                .Distinct()
-                .Count();
+            var genres = new HashSet<Genre>();
+            foreach (var r in rentals)
+            {
+                Movie movie;
+                if (movieLookup.TryGetValue(r.MovieId, out movie) && movie.Genre.HasValue)
+                    genres.Add(movie.Genre.Value);
+            }
+            return genres.Count;
         }
 
         /// <summary>
@@ -111,13 +116,23 @@ namespace Vidly.Services
 
         /// <summary>
         /// Computes the late return rate: fraction of returned rentals that were late.
+        /// Single pass — counts returned and late simultaneously instead of
+        /// filtering to a list then scanning again.
         /// </summary>
         public static double LateReturnRate(IEnumerable<Rental> rentals)
         {
-            var returned = rentals.Where(r => r.ReturnDate.HasValue).ToList();
-            if (returned.Count == 0) return 0;
-            var lateCount = returned.Count(r => r.ReturnDate.Value > r.DueDate);
-            return (double)lateCount / returned.Count;
+            int returnedCount = 0;
+            int lateCount = 0;
+            foreach (var r in rentals)
+            {
+                if (r.ReturnDate.HasValue)
+                {
+                    returnedCount++;
+                    if (r.ReturnDate.Value > r.DueDate)
+                        lateCount++;
+                }
+            }
+            return returnedCount == 0 ? 0 : (double)lateCount / returnedCount;
         }
 
         /// <summary>
