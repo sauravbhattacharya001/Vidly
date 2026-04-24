@@ -181,6 +181,13 @@ namespace Vidly.Controllers
             if (disputedAmount <= 0)
                 return RedirectToAction("Index", new { message = "Disputed amount must be greater than zero.", error = true });
 
+            // Validate disputed amount does not exceed actual rental charges (CWE-20)
+            // Without this check, a customer could dispute an arbitrarily large amount
+            // (e.g. $10,000 on a $5 rental) and receive a fraudulent refund if approved.
+            var maxDisputableAmount = rental.TotalCost + rental.LateFee;
+            if (disputedAmount > maxDisputableAmount)
+                return RedirectToAction("Index", new { message = $"Disputed amount (${disputedAmount:F2}) exceeds total rental charges (${maxDisputableAmount:F2}).", error = true });
+
             // Check for duplicate open disputes on same rental
             var existing = _repository.GetByRental(rentalId)
                 .Any(d => d.CustomerId == customerId && d.IsOpen);
