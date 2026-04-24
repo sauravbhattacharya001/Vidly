@@ -221,42 +221,83 @@ namespace Vidly.Services
                 return report;
             }
 
+            // Single pass: accumulate all metrics instead of 13+ separate
+            // LINQ scans over the same list (was O(13N), now O(N)).
+            decimal totalRevenue = 0m;
+            int rentalCount = 0, returnCount = 0, reservationCount = 0,
+                giftCardCount = 0, upgradeCount = 0;
+            int upsellAttempts = 0, upsellSuccesses = 0;
+            long durationSum = 0;
+            int durationCount = 0, fastestDuration = int.MaxValue, slowestDuration = 0;
+            int ratedCount = 0, ratingSum = 0, fiveStarCount = 0, oneStarCount = 0;
+
+            foreach (var t in txns)
+            {
+                totalRevenue += t.Revenue;
+
+                switch (t.Type)
+                {
+                    case StaffTransactionType.Rental:            rentalCount++; break;
+                    case StaffTransactionType.Return:            returnCount++; break;
+                    case StaffTransactionType.Reservation:       reservationCount++; break;
+                    case StaffTransactionType.GiftCardSale:      giftCardCount++; break;
+                    case StaffTransactionType.MembershipUpgrade: upgradeCount++; break;
+                }
+
+                if (t.DurationSeconds > 0)
+                {
+                    durationSum += t.DurationSeconds;
+                    durationCount++;
+                    if (t.DurationSeconds < fastestDuration) fastestDuration = t.DurationSeconds;
+                    if (t.DurationSeconds > slowestDuration) slowestDuration = t.DurationSeconds;
+                }
+
+                if (t.UpsellAttempted) { upsellAttempts++; if (t.UpsellAccepted) upsellSuccesses++; }
+
+                if (t.SatisfactionRating.HasValue)
+                {
+                    var rating = t.SatisfactionRating.Value;
+                    ratedCount++;
+                    ratingSum += rating;
+                    if (rating == 5) fiveStarCount++;
+                    else if (rating == 1) oneStarCount++;
+                }
+            }
+
             // Volume
             report.TotalTransactions = txns.Count;
-            report.RentalCount = txns.Count(t => t.Type == StaffTransactionType.Rental);
-            report.ReturnCount = txns.Count(t => t.Type == StaffTransactionType.Return);
-            report.ReservationCount = txns.Count(t => t.Type == StaffTransactionType.Reservation);
-            report.GiftCardSaleCount = txns.Count(t => t.Type == StaffTransactionType.GiftCardSale);
-            report.MembershipUpgradeCount = txns.Count(t => t.Type == StaffTransactionType.MembershipUpgrade);
+            report.RentalCount = rentalCount;
+            report.ReturnCount = returnCount;
+            report.ReservationCount = reservationCount;
+            report.GiftCardSaleCount = giftCardCount;
+            report.MembershipUpgradeCount = upgradeCount;
 
             // Revenue
-            report.TotalRevenue = txns.Sum(t => t.Revenue);
-            report.AverageRevenuePerTransaction = report.TotalRevenue / txns.Count;
+            report.TotalRevenue = totalRevenue;
+            report.AverageRevenuePerTransaction = totalRevenue / txns.Count;
 
             // Speed
-            var durations = txns.Where(t => t.DurationSeconds > 0).Select(t => t.DurationSeconds).ToList();
-            if (durations.Count > 0)
+            if (durationCount > 0)
             {
-                report.AverageTransactionSeconds = durations.Average();
-                report.FastestTransactionSeconds = durations.Min();
-                report.SlowestTransactionSeconds = durations.Max();
+                report.AverageTransactionSeconds = (double)durationSum / durationCount;
+                report.FastestTransactionSeconds = fastestDuration;
+                report.SlowestTransactionSeconds = slowestDuration;
             }
 
             // Upsell
-            report.UpsellAttempts = txns.Count(t => t.UpsellAttempted);
-            report.UpsellSuccesses = txns.Count(t => t.UpsellAccepted);
-            report.UpsellConversionRate = report.UpsellAttempts > 0
-                ? (double)report.UpsellSuccesses / report.UpsellAttempts
+            report.UpsellAttempts = upsellAttempts;
+            report.UpsellSuccesses = upsellSuccesses;
+            report.UpsellConversionRate = upsellAttempts > 0
+                ? (double)upsellSuccesses / upsellAttempts
                 : 0;
 
             // Satisfaction
-            var rated = txns.Where(t => t.SatisfactionRating.HasValue).ToList();
-            report.TotalRatings = rated.Count;
-            if (rated.Count > 0)
+            report.TotalRatings = ratedCount;
+            if (ratedCount > 0)
             {
-                report.AverageSatisfactionRating = rated.Average(t => t.SatisfactionRating.Value);
-                report.FiveStarCount = rated.Count(t => t.SatisfactionRating.Value == 5);
-                report.OneStarCount = rated.Count(t => t.SatisfactionRating.Value == 1);
+                report.AverageSatisfactionRating = (double)ratingSum / ratedCount;
+                report.FiveStarCount = fiveStarCount;
+                report.OneStarCount = oneStarCount;
             }
 
             // Composite score
@@ -331,10 +372,43 @@ namespace Vidly.Services
                 .Where(t => t.Timestamp >= periodStart && t.Timestamp < periodEnd)
                 .ToList();
 
-            var activeStaffInPeriod = txns.Select(t => t.StaffId).Distinct().Count();
             var rankings = GetLeaderboard(periodStart, periodEnd);
-            var rated = txns.Where(t => t.SatisfactionRating.HasValue).ToList();
-            var upsellAttempts = txns.Count(t => t.UpsellAttempted);
+
+            // Single pass: accumulate team stats instead of 8+ separate LINQ
+            // scans over the same list (was O(8N + T×N), now O(N)).
+            var staffIds = new HashSet<int>();
+            decimal teamRevenue = 0m;
+            int teamRatingSum = 0, teamRatedCount = 0;
+            int teamUpsellAttempts = 0, teamUpsellSuccesses = 0;
+            long teamDurationSum = 0;
+            int teamDurationCount = 0;
+            var typeCounts = new Dictionary<StaffTransactionType, int>();
+
+            foreach (var t in txns)
+            {
+                staffIds.Add(t.StaffId);
+                teamRevenue += t.Revenue;
+
+                if (t.SatisfactionRating.HasValue)
+                {
+                    teamRatedCount++;
+                    teamRatingSum += t.SatisfactionRating.Value;
+                }
+
+                if (t.UpsellAttempted) { teamUpsellAttempts++; if (t.UpsellAccepted) teamUpsellSuccesses++; }
+
+                if (t.DurationSeconds > 0)
+                {
+                    teamDurationSum += t.DurationSeconds;
+                    teamDurationCount++;
+                }
+
+                if (!typeCounts.TryGetValue(t.Type, out var cnt))
+                    cnt = 0;
+                typeCounts[t.Type] = cnt + 1;
+            }
+
+            var activeStaffInPeriod = staffIds.Count;
 
             var summary = new TeamPerformanceSummary
             {
@@ -342,25 +416,18 @@ namespace Vidly.Services
                 PeriodEnd = periodEnd,
                 ActiveStaffCount = activeStaffInPeriod,
                 TotalTransactions = txns.Count,
-                TotalRevenue = txns.Sum(t => t.Revenue),
+                TotalRevenue = teamRevenue,
                 AvgTransactionsPerStaff = activeStaffInPeriod > 0 ? (double)txns.Count / activeStaffInPeriod : 0,
-                AvgRevenuePerStaff = activeStaffInPeriod > 0 ? (double)(txns.Sum(t => t.Revenue) / activeStaffInPeriod) : 0,
-                TeamSatisfactionAvg = rated.Count > 0 ? Math.Round(rated.Average(t => t.SatisfactionRating.Value), 2) : 0,
-                TeamUpsellRate = upsellAttempts > 0
-                    ? (double)txns.Count(t => t.UpsellAccepted) / upsellAttempts : 0,
-                AvgTransactionSeconds = txns.Where(t => t.DurationSeconds > 0).Any()
-                    ? txns.Where(t => t.DurationSeconds > 0).Average(t => t.DurationSeconds) : 0,
+                AvgRevenuePerStaff = activeStaffInPeriod > 0 ? (double)(teamRevenue / activeStaffInPeriod) : 0,
+                TeamSatisfactionAvg = teamRatedCount > 0 ? Math.Round((double)teamRatingSum / teamRatedCount, 2) : 0,
+                TeamUpsellRate = teamUpsellAttempts > 0
+                    ? (double)teamUpsellSuccesses / teamUpsellAttempts : 0,
+                AvgTransactionSeconds = teamDurationCount > 0
+                    ? (double)teamDurationSum / teamDurationCount : 0,
                 Rankings = rankings,
                 TopPerformer = rankings.FirstOrDefault(),
+                TransactionBreakdown = typeCounts
             };
-
-            // Transaction breakdown
-            foreach (StaffTransactionType type in Enum.GetValues(typeof(StaffTransactionType)))
-            {
-                var count = txns.Count(t => t.Type == type);
-                if (count > 0)
-                    summary.TransactionBreakdown[type] = count;
-            }
 
             return summary;
         }
@@ -518,15 +585,28 @@ namespace Vidly.Services
         public List<KeyValuePair<DateTime, int>> GetDailyTrend(int staffId,
             DateTime from, DateTime to)
         {
-            var trend = new List<KeyValuePair<DateTime, int>>();
-            var date = from.Date;
+            var startDate = from.Date;
             var endDate = to.Date;
 
+            // Single pass O(T) to bucket counts by day, replacing O(D×T)
+            // nested scan that re-iterated all transactions per day.
+            var dayCounts = new Dictionary<DateTime, int>();
+            foreach (var t in _transactions)
+            {
+                if (t.StaffId != staffId) continue;
+                var day = t.Timestamp.Date;
+                if (day < startDate || day > endDate) continue;
+                if (!dayCounts.TryGetValue(day, out var c))
+                    c = 0;
+                dayCounts[day] = c + 1;
+            }
+
+            // Emit contiguous day entries (including zero-count days)
+            var trend = new List<KeyValuePair<DateTime, int>>();
+            var date = startDate;
             while (date <= endDate)
             {
-                var count = _transactions.Count(t =>
-                    t.StaffId == staffId &&
-                    t.Timestamp >= date && t.Timestamp < date.AddDays(1));
+                dayCounts.TryGetValue(date, out var count);
                 trend.Add(new KeyValuePair<DateTime, int>(date, count));
                 date = date.AddDays(1);
             }
