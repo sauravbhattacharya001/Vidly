@@ -43,70 +43,30 @@ namespace Vidly.Services
             if (customer == null)
                 throw new ArgumentException($"Customer {customerId} not found.");
 
-            var allRentals = _rentalRepo.GetByCustomer(customerId)
-                .OrderBy(r => r.RentalDate)
-                .ToList();
-            var activeRentals = _rentalRepo.GetActiveByCustomer(customerId);
-
-            var signals = new List<FraudSignal>();
-
-            // Rule 1: Velocity Check
-            CheckVelocity(allRentals, asOfDate, signals);
-
-            // Rule 2: Late Return Pattern
-            CheckLatePattern(allRentals, signals);
-
-            // Rule 3: New Account Burst
-            CheckNewAccountBurst(customer, allRentals, asOfDate, signals);
-
-            // Rule 4: High-Value Targeting
-            CheckHighValueTargeting(allRentals, signals);
-
-            // Rule 5: Concurrent Overload
-            CheckConcurrentOverload(customer, activeRentals, signals);
-
-            // Rule 6: Damage Pattern
-            CheckDamagePattern(allRentals, signals);
-
-            // Rule 7: Weekend Surge
-            CheckWeekendSurge(allRentals, signals);
-
-            double riskScore = Math.Min(100.0,
-                signals.Sum(s => (int)s.Severity * s.Confidence * 15.0));
-
-            string riskTier = riskScore < 20 ? "Clean"
-                : riskScore < 50 ? "Watch"
-                : riskScore < 80 ? "Suspect"
-                : "Blocked";
-
-            return new FraudProfile
-            {
-                CustomerId = customer.Id,
-                CustomerName = customer.Name,
-                MembershipType = customer.MembershipType.ToString(),
-                RiskScore = Math.Round(riskScore, 1),
-                RiskTier = riskTier,
-                Signals = signals,
-                TotalRentals = allRentals.Count,
-                ActiveRentals = activeRentals.Count,
-                LastRentalDate = allRentals.LastOrDefault()?.RentalDate,
-                AnalyzedAt = asOfDate
-            };
+            var allRentals = _rentalRepo.GetByCustomer(customerId).ToList();
+            return AnalyzeInternal(customer, allRentals, asOfDate);
         }
 
         // ── Summary ─────────────────────────────────────────────────
 
         /// <summary>
         /// Analyze all customers and produce a fraud summary.
+        /// Batch-fetches all rentals once and groups by customer to avoid
+        /// N+1 repository queries (previously 2 queries per customer).
         /// </summary>
         public FraudSummary GetSummary(DateTime asOfDate, int topN = 10)
         {
             var customers = _customerRepo.GetAll();
+            var allRentals = _rentalRepo.GetAll();
+            var rentalsByCustomer = CustomerRentalAnalytics.BuildRentalsByCustomer(allRentals);
+
             var profiles = new List<FraudProfile>();
 
             foreach (var c in customers)
             {
-                profiles.Add(Analyze(c.Id, asOfDate));
+                List<Rental> customerRentals;
+                rentalsByCustomer.TryGetValue(c.Id, out customerRentals);
+                profiles.Add(AnalyzeInternal(c, customerRentals, asOfDate));
             }
 
             var flagged = profiles.Where(p => p.Signals.Count > 0).ToList();
@@ -132,6 +92,50 @@ namespace Vidly.Services
                 TopRisks = profiles.OrderByDescending(p => p.RiskScore).Take(topN).ToList(),
                 AllProfiles = profiles.OrderByDescending(p => p.RiskScore).ToList(),
                 GeneratedAt = asOfDate
+            };
+        }
+
+        /// <summary>
+        /// Internal analysis that accepts pre-fetched customer and rental data,
+        /// avoiding per-customer repository queries when called from batch methods.
+        /// </summary>
+        private FraudProfile AnalyzeInternal(Customer customer, List<Rental> customerRentals, DateTime asOfDate)
+        {
+            var allRentals = customerRentals != null
+                ? customerRentals.OrderBy(r => r.RentalDate).ToList()
+                : new List<Rental>();
+            var activeRentals = allRentals.Where(r => r.Status != RentalStatus.Returned).ToList();
+
+            var signals = new List<FraudSignal>();
+
+            CheckVelocity(allRentals, asOfDate, signals);
+            CheckLatePattern(allRentals, signals);
+            CheckNewAccountBurst(customer, allRentals, asOfDate, signals);
+            CheckHighValueTargeting(allRentals, signals);
+            CheckConcurrentOverload(customer, activeRentals, signals);
+            CheckDamagePattern(allRentals, signals);
+            CheckWeekendSurge(allRentals, signals);
+
+            double riskScore = Math.Min(100.0,
+                signals.Sum(s => (int)s.Severity * s.Confidence * 15.0));
+
+            string riskTier = riskScore < 20 ? "Clean"
+                : riskScore < 50 ? "Watch"
+                : riskScore < 80 ? "Suspect"
+                : "Blocked";
+
+            return new FraudProfile
+            {
+                CustomerId = customer.Id,
+                CustomerName = customer.Name,
+                MembershipType = customer.MembershipType.ToString(),
+                RiskScore = Math.Round(riskScore, 1),
+                RiskTier = riskTier,
+                Signals = signals,
+                TotalRentals = allRentals.Count,
+                ActiveRentals = activeRentals.Count,
+                LastRentalDate = allRentals.LastOrDefault()?.RentalDate,
+                AnalyzedAt = asOfDate
             };
         }
 
