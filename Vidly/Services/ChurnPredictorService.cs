@@ -124,26 +124,52 @@ namespace Vidly.Services
             var summary = new ChurnSummary
             {
                 TotalCustomersAnalyzed = profiles.Count,
-                LowRiskCount = profiles.Count(p => p.RiskLevel == ChurnRisk.Low),
-                MediumRiskCount = profiles.Count(p => p.RiskLevel == ChurnRisk.Medium),
-                HighRiskCount = profiles.Count(p => p.RiskLevel == ChurnRisk.High),
-                CriticalRiskCount = profiles.Count(p => p.RiskLevel == ChurnRisk.Critical),
-                AverageRiskScore = Math.Round(profiles.Average(p => p.RiskScore), 2),
                 TopAtRisk = profiles.Take(topN).ToList(),
-                RevenueAtRisk = profiles
-                    .Where(p => p.RiskLevel >= ChurnRisk.High)
-                    .Sum(p => p.TotalSpend)
             };
 
-            // Per-tier breakdown
-            foreach (var tier in profiles.GroupBy(p => p.MembershipType))
+            // Single pass: count risk levels, sum revenue-at-risk, and accumulate
+            // per-tier stats instead of 4 separate .Count() + .Sum() + .GroupBy()
+            // scans over the same list (was O(7N), now O(N)).
+            double totalRiskScore = 0;
+            foreach (var p in profiles)
             {
-                summary.ByTier[tier.Key] = new TierChurnStats
+                totalRiskScore += p.RiskScore;
+
+                switch (p.RiskLevel)
                 {
-                    Count = tier.Count(),
-                    AverageRiskScore = Math.Round(tier.Average(p => p.RiskScore), 2),
-                    HighRiskCount = tier.Count(p => p.RiskLevel >= ChurnRisk.High)
-                };
+                    case ChurnRisk.Low:      summary.LowRiskCount++; break;
+                    case ChurnRisk.Medium:   summary.MediumRiskCount++; break;
+                    case ChurnRisk.High:
+                        summary.HighRiskCount++;
+                        summary.RevenueAtRisk += p.TotalSpend;
+                        break;
+                    case ChurnRisk.Critical:
+                        summary.CriticalRiskCount++;
+                        summary.RevenueAtRisk += p.TotalSpend;
+                        break;
+                }
+
+                TierChurnStats tierStats;
+                if (!summary.ByTier.TryGetValue(p.MembershipType, out tierStats))
+                {
+                    tierStats = new TierChurnStats();
+                    summary.ByTier[p.MembershipType] = tierStats;
+                }
+                tierStats.Count++;
+                tierStats.AverageRiskScore += p.RiskScore; // running sum, averaged below
+                if (p.RiskLevel >= ChurnRisk.High)
+                    tierStats.HighRiskCount++;
+            }
+
+            summary.AverageRiskScore = profiles.Count > 0
+                ? Math.Round(totalRiskScore / profiles.Count, 2)
+                : 0;
+
+            // Convert per-tier sums to averages
+            foreach (var tierStats in summary.ByTier.Values)
+            {
+                if (tierStats.Count > 0)
+                    tierStats.AverageRiskScore = Math.Round(tierStats.AverageRiskScore / tierStats.Count, 2);
             }
 
             return summary;
