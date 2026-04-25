@@ -317,21 +317,45 @@ namespace Vidly.Services
                     $"Audit #{auditId} is not completed.");
 
             var allMovies = _movieRepository.GetAll();
-            var shortages = audit.Discrepancies
-                .Where(d => d.Type == DiscrepancyType.Shortage)
-                .ToList();
-            var surpluses = audit.Discrepancies
-                .Where(d => d.Type == DiscrepancyType.Surplus)
-                .ToList();
-            var matches = audit.Discrepancies
-                .Where(d => d.Type == DiscrepancyType.Match)
-                .ToList();
-            var mislocated = audit.Discrepancies
-                .Where(d => d.IsMislocated)
-                .ToList();
 
-            var shrinkageUnits = shortages.Sum(s => Math.Abs(s.Variance));
-            var totalSystemCopies = audit.Discrepancies.Sum(d => d.ExpectedOnShelf);
+            // Single-pass classification of discrepancies instead of 4
+            // separate .Where() iterations over the same list.
+            var shortages = new List<AuditDiscrepancy>();
+            var surpluses = new List<AuditDiscrepancy>();
+            var matches = new List<AuditDiscrepancy>();
+            var mislocated = new List<AuditDiscrepancy>();
+            int shrinkageUnits = 0;
+            int totalSystemCopies = 0;
+            int notScannedCount = 0;
+            int totalActiveRentals = 0;
+
+            foreach (var d in audit.Discrepancies)
+            {
+                totalSystemCopies += d.ExpectedOnShelf;
+                totalActiveRentals += d.ActiveRentals;
+
+                switch (d.Type)
+                {
+                    case DiscrepancyType.Shortage:
+                        shortages.Add(d);
+                        shrinkageUnits += Math.Abs(d.Variance);
+                        break;
+                    case DiscrepancyType.Surplus:
+                        surpluses.Add(d);
+                        break;
+                    case DiscrepancyType.Match:
+                        matches.Add(d);
+                        break;
+                    case DiscrepancyType.NotScanned:
+                        notScannedCount++;
+                        break;
+                }
+
+                if (d.IsMislocated)
+                    mislocated.Add(d);
+            }
+
+            var scoredCount = audit.Discrepancies.Count - notScannedCount;
 
             var report = new AuditReport
             {
@@ -341,11 +365,10 @@ namespace Vidly.Services
                 Duration = audit.Duration,
                 TotalTitles = allMovies.Count,
                 TitlesScanned = audit.TitlesScanned,
-                TitlesNotScanned = audit.Discrepancies
-                    .Count(d => d.Type == DiscrepancyType.NotScanned),
+                TitlesNotScanned = notScannedCount,
                 TotalSystemCopies = totalSystemCopies,
                 TotalPhysicalCopies = audit.TotalCounted,
-                TotalActiveRentals = audit.Discrepancies.Sum(d => d.ActiveRentals),
+                TotalActiveRentals = totalActiveRentals,
                 MatchCount = matches.Count,
                 ShortageCount = shortages.Count,
                 SurplusCount = surpluses.Count,
@@ -355,9 +378,8 @@ namespace Vidly.Services
                     ? (double)shrinkageUnits / totalSystemCopies
                     : 0.0,
                 EstimatedShrinkageCost = shrinkageUnits * DefaultDiscCost,
-                AccuracyRate = audit.Discrepancies.Count > 0
-                    ? (double)matches.Count / audit.Discrepancies.Count(d =>
-                        d.Type != DiscrepancyType.NotScanned)
+                AccuracyRate = scoredCount > 0
+                    ? (double)matches.Count / scoredCount
                     : 1.0,
                 TopShortages = shortages
                     .OrderByDescending(s => Math.Abs(s.Variance))
@@ -373,20 +395,58 @@ namespace Vidly.Services
 
         private List<ZoneAuditSummary> BuildZoneBreakdown(InventoryAudit audit)
         {
+            // Pre-compute active rental counts per movie in a single pass
+            // instead of calling CountActiveRentals (→ GetAll()) per shelf
+            // location. Reduces O(L×R) to O(R + L).
+            var allRentals = _rentalRepository.GetAll();
+            var activeRentalCounts = new Dictionary<int, int>();
+            foreach (var r in allRentals)
+            {
+                if (r.Status != RentalStatus.Returned)
+                {
+                    activeRentalCounts.TryGetValue(r.MovieId, out var c);
+                    activeRentalCounts[r.MovieId] = c + 1;
+                }
+            }
+
+            // Pre-group shelf locations by zone to avoid scanning all
+            // locations once per zone.
+            var locationsByZone = new Dictionary<ShelfZone, List<ShelfLocation>>();
+            foreach (var loc in _shelfLocations.Values)
+            {
+                if (!locationsByZone.TryGetValue(loc.Zone, out var list))
+                {
+                    list = new List<ShelfLocation>();
+                    locationsByZone[loc.Zone] = list;
+                }
+                list.Add(loc);
+            }
+
             var scansByZone = audit.Scans
                 .GroupBy(s => s.ScannedZone)
-                .Select(g => new ZoneAuditSummary
+                .Select(g =>
                 {
-                    Zone = g.Key,
-                    TitlesScanned = g.Select(s => s.MovieId).Distinct().Count(),
-                    PhysicalCopies = g.Sum(s => s.PhysicalCount),
-                    TitlesExpected = _shelfLocations.Values
-                        .Count(l => l.Zone == g.Key),
-                    ExpectedCopies = _shelfLocations.Values
-                        .Where(l => l.Zone == g.Key)
-                        .Sum(l => Math.Max(0,
-                            _inventoryService.GetStockCount(l.MovieId)
-                            - CountActiveRentals(l.MovieId)))
+                    locationsByZone.TryGetValue(g.Key, out var zoneLocs);
+                    var expectedCopies = 0;
+                    var titlesExpected = zoneLocs?.Count ?? 0;
+                    if (zoneLocs != null)
+                    {
+                        foreach (var loc in zoneLocs)
+                        {
+                            activeRentalCounts.TryGetValue(loc.MovieId, out var rented);
+                            expectedCopies += Math.Max(0,
+                                _inventoryService.GetStockCount(loc.MovieId) - rented);
+                        }
+                    }
+
+                    return new ZoneAuditSummary
+                    {
+                        Zone = g.Key,
+                        TitlesScanned = g.Select(s => s.MovieId).Distinct().Count(),
+                        PhysicalCopies = g.Sum(s => s.PhysicalCount),
+                        TitlesExpected = titlesExpected,
+                        ExpectedCopies = expectedCopies
+                    };
                 })
                 .OrderBy(z => z.Zone)
                 .ToList();
