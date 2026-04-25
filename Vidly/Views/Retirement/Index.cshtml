@@ -1,0 +1,200 @@
+@model Vidly.Models.RetirementPlan
+@{ ViewBag.Title = "Movie Retirement Planner"; }
+
+<style>
+    .ret-wrap{font-family:'Segoe UI',sans-serif;background:#0d1117;color:#c9d1d9;padding:24px;min-height:100vh}
+    .ret-hdr{text-align:center;margin-bottom:32px}
+    .ret-hdr h1{font-size:28px;color:#58a6ff;margin:0 0 6px}
+    .ret-hdr p{color:#8b949e;margin:0}
+    .ret-cards{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-bottom:32px}
+    .ret-card{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:20px 28px;text-align:center;min-width:140px}
+    .ret-card .num{font-size:32px;font-weight:700}
+    .ret-card .lbl{font-size:13px;color:#8b949e;margin-top:4px}
+    .ret-imm .num{color:#f85149} .ret-soon .num{color:#d29922} .ret-mon .num{color:#58a6ff} .ret-ok .num{color:#3fb950}
+    .ret-chart-row{display:flex;gap:24px;flex-wrap:wrap;margin-bottom:32px}
+    .ret-chart-box{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:20px;flex:1;min-width:320px}
+    .ret-chart-box h3{color:#58a6ff;margin:0 0 12px;font-size:16px}
+    .ret-insights{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:20px;margin-bottom:32px}
+    .ret-insights h3{color:#58a6ff;margin:0 0 12px;font-size:16px}
+    .ret-insights ul{list-style:none;padding:0;margin:0}
+    .ret-insights li{padding:8px 0;border-bottom:1px solid #21262d;font-size:14px}
+    .ret-insights li:last-child{border:none}
+    .ret-insights li::before{content:'💡 '}
+    .ret-filters{text-align:center;margin-bottom:16px}
+    .ret-filters button{background:#21262d;color:#c9d1d9;border:1px solid #30363d;border-radius:8px;padding:8px 16px;margin:0 4px;cursor:pointer;font-size:13px}
+    .ret-filters button:hover,.ret-filters button.active{background:#58a6ff;color:#0d1117;border-color:#58a6ff}
+    .ret-tbl{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:32px}
+    .ret-tbl th{background:#161b22;color:#8b949e;padding:10px 8px;text-align:left;border-bottom:2px solid #30363d;cursor:pointer}
+    .ret-tbl th:hover{color:#58a6ff}
+    .ret-tbl td{padding:10px 8px;border-bottom:1px solid #21262d}
+    .ret-tbl tr:hover{background:#161b22}
+    .badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600}
+    .badge-imm{background:#f8514933;color:#f85149} .badge-soon{background:#d2992233;color:#d29922}
+    .badge-mon{background:#58a6ff33;color:#58a6ff} .badge-ok{background:#3fb95033;color:#3fb950}
+    .ret-repl{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:20px;margin-bottom:32px}
+    .ret-repl h3{color:#58a6ff;margin:0 0 12px;font-size:16px}
+    .ret-repl-item{padding:8px 0;border-bottom:1px solid #21262d;font-size:14px}
+    .ret-repl-item:last-child{border:none}
+    .ret-exp{text-align:center;margin-bottom:32px}
+    .ret-exp button{background:#238636;color:#fff;border:none;border-radius:8px;padding:10px 24px;cursor:pointer;font-size:14px}
+    .ret-exp button:hover{background:#2ea043}
+</style>
+
+<div class="ret-wrap">
+    <div class="ret-hdr">
+        <h1>📦 Movie Retirement Planner</h1>
+        <p>Autonomous end-of-life analysis — @Model.Summary.TotalMoviesAnalyzed movies analyzed</p>
+    </div>
+
+    <div class="ret-cards">
+        <div class="ret-card ret-imm"><div class="num">@Model.Summary.ImmediateRetirements</div><div class="lbl">Immediate</div></div>
+        <div class="ret-card ret-soon"><div class="num">@Model.Summary.SoonRetirements</div><div class="lbl">Soon</div></div>
+        <div class="ret-card ret-mon"><div class="num">@Model.Summary.MonitorList</div><div class="lbl">Monitor</div></div>
+        <div class="ret-card ret-ok"><div class="num">@Model.Summary.HealthyCount</div><div class="lbl">Healthy</div></div>
+        <div class="ret-card"><div class="num" style="color:#58a6ff">@Model.Summary.EstimatedShelfSpaceSavings%</div><div class="lbl">Shelf Savings</div></div>
+    </div>
+
+    <div class="ret-chart-row">
+        <div class="ret-chart-box"><h3>Urgency Distribution</h3><canvas id="donutChart" width="280" height="280"></canvas></div>
+        <div class="ret-chart-box"><h3>Genre Health</h3><canvas id="genreChart" width="500" height="280"></canvas></div>
+    </div>
+
+    <div class="ret-insights">
+        <h3>Proactive Insights</h3>
+        <ul>
+            @foreach (var insight in Model.ProactiveInsights)
+            {
+                <li>@insight</li>
+            }
+        </ul>
+    </div>
+
+    @if (Model.Summary.ReplacementSuggestions.Any())
+    {
+        <div class="ret-repl">
+            <h3>🔄 Replacement Suggestions</h3>
+            @foreach (var r in Model.Summary.ReplacementSuggestions)
+            {
+                <div class="ret-repl-item"><strong>@r.Genre</strong> — acquire ~@r.SuggestedNewTitles new title(s). @r.Rationale</div>
+            }
+        </div>
+    }
+
+    <div class="ret-filters">
+        <button class="active" onclick="filterTable('All')">All</button>
+        <button onclick="filterTable('Immediate')">🔴 Immediate</button>
+        <button onclick="filterTable('Soon')">🟠 Soon</button>
+        <button onclick="filterTable('Monitor')">🔵 Monitor</button>
+        <button onclick="filterTable('Healthy')">🟢 Healthy</button>
+    </div>
+
+    <table class="ret-tbl" id="retTable">
+        <thead>
+            <tr>
+                <th onclick="sortTable(0)">Movie</th>
+                <th onclick="sortTable(1)">Genre</th>
+                <th onclick="sortTable(2,'n')">Score</th>
+                <th onclick="sortTable(3)">Urgency</th>
+                <th onclick="sortTable(4)">Action</th>
+                <th onclick="sortTable(5,'n')">Total Rentals</th>
+                <th onclick="sortTable(6,'n')">Recent</th>
+                <th onclick="sortTable(7,'n')">Decline %</th>
+                <th onclick="sortTable(8,'n')">Days Dormant</th>
+                <th>Reasons</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var c in Model.Candidates)
+            {
+                var bc = c.RetirementUrgency == "Immediate" ? "badge-imm" : c.RetirementUrgency == "Soon" ? "badge-soon" : c.RetirementUrgency == "Monitor" ? "badge-mon" : "badge-ok";
+                <tr data-urgency="@c.RetirementUrgency">
+                    <td>@c.MovieName</td>
+                    <td>@c.Genre</td>
+                    <td>@c.RetirementScore</td>
+                    <td><span class="badge @bc">@c.RetirementUrgency</span></td>
+                    <td>@c.RecommendedAction</td>
+                    <td>@c.TotalRentals</td>
+                    <td>@c.RecentRentals</td>
+                    <td>@c.DeclineRate%</td>
+                    <td>@c.DaysSinceLastRental</td>
+                    <td>@String.Join("; ", c.Reasons)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="ret-exp">
+        <button onclick="exportJson()">📥 Export JSON</button>
+    </div>
+</div>
+
+<script>
+    // Donut chart
+    (function(){
+        var c=document.getElementById('donutChart'),ctx=c.getContext('2d');
+        var data=[@Model.Summary.ImmediateRetirements,@Model.Summary.SoonRetirements,@Model.Summary.MonitorList,@Model.Summary.HealthyCount];
+        var colors=['#f85149','#d29922','#58a6ff','#3fb950'];
+        var labels=['Immediate','Soon','Monitor','Healthy'];
+        var total=data.reduce(function(a,b){return a+b},0)||1;
+        var cx=140,cy=140,r=110,ir=60,start=-Math.PI/2;
+        data.forEach(function(v,i){
+            var angle=v/total*2*Math.PI;
+            ctx.beginPath();ctx.moveTo(cx,cy);
+            ctx.arc(cx,cy,r,start,start+angle);ctx.lineTo(cx,cy);
+            ctx.fillStyle=colors[i];ctx.fill();
+            var mid=start+angle/2;
+            if(v>0){
+                ctx.fillStyle='#c9d1d9';ctx.font='11px sans-serif';ctx.textAlign='center';
+                ctx.fillText(labels[i]+' ('+v+')',cx+Math.cos(mid)*(r-30),cy+Math.sin(mid)*(r-30));
+            }
+            start+=angle;
+        });
+        ctx.beginPath();ctx.arc(cx,cy,ir,0,2*Math.PI);ctx.fillStyle='#0d1117';ctx.fill();
+        ctx.fillStyle='#c9d1d9';ctx.font='bold 18px sans-serif';ctx.textAlign='center';ctx.fillText(total,cx,cy+6);
+    })();
+
+    // Genre bar chart
+    (function(){
+        var c=document.getElementById('genreChart'),ctx=c.getContext('2d');
+        var genres=@Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.Summary.GenreBreakdown));
+        var hc={'Thriving':'#3fb950','Stable':'#58a6ff','Aging':'#d29922','Critical':'#f85149'};
+        var y=20,bh=24;
+        genres.forEach(function(g){
+            ctx.fillStyle='#8b949e';ctx.font='12px sans-serif';ctx.textAlign='right';
+            ctx.fillText(g.Genre,90,y+16);
+            var w=Math.max(4,g.Total*8);
+            ctx.fillStyle=hc[g.Health]||'#8b949e';
+            ctx.fillRect(100,y,w,bh-4);
+            ctx.fillStyle='#c9d1d9';ctx.font='11px sans-serif';ctx.textAlign='left';
+            ctx.fillText(g.RetirementCandidates+'/'+g.Total+' ('+g.Health+')',100+w+6,y+16);
+            y+=bh+4;
+        });
+    })();
+
+    function filterTable(u){
+        document.querySelectorAll('.ret-filters button').forEach(function(b){b.classList.remove('active')});
+        event.target.classList.add('active');
+        document.querySelectorAll('#retTable tbody tr').forEach(function(r){
+            r.style.display=(u==='All'||r.dataset.urgency===u)?'':'none';
+        });
+    }
+
+    var sortDir={};
+    function sortTable(col,type){
+        var tb=document.querySelector('#retTable tbody'),rows=Array.from(tb.rows);
+        sortDir[col]=!sortDir[col];
+        rows.sort(function(a,b){
+            var av=a.cells[col].textContent.trim(),bv=b.cells[col].textContent.trim();
+            if(type==='n'){av=parseFloat(av)||0;bv=parseFloat(bv)||0;}
+            return sortDir[col]?(av>bv?1:-1):(av<bv?1:-1);
+        });
+        rows.forEach(function(r){tb.appendChild(r)});
+    }
+
+    function exportJson(){
+        var d=@Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model));
+        var b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});
+        var a=document.createElement('a');a.href=URL.createObjectURL(b);
+        a.download='retirement-plan.json';a.click();
+    }
+</script>

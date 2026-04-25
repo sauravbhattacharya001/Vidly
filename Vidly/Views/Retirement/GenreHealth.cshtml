@@ -1,0 +1,31 @@
+@model List<Vidly.Models.GenreRetirementBreakdown>
+@{ ViewBag.Title = "Genre Health Report"; }
+
+<style>
+    .gh-wrap{font-family:'Segoe UI',sans-serif;background:#0d1117;color:#c9d1d9;padding:24px;min-height:100vh}
+    .gh-wrap h1{color:#58a6ff;font-size:24px}
+    .gh-tbl{width:100%;border-collapse:collapse;font-size:13px}
+    .gh-tbl th{background:#161b22;color:#8b949e;padding:10px 8px;text-align:left;border-bottom:2px solid #30363d}
+    .gh-tbl td{padding:10px 8px;border-bottom:1px solid #21262d}
+    .gh-tbl tr:hover{background:#161b22}
+    .h-thriving{color:#3fb950} .h-stable{color:#58a6ff} .h-aging{color:#d29922} .h-critical{color:#f85149}
+    a.back{color:#58a6ff;text-decoration:none;font-size:14px}
+</style>
+
+<div class="gh-wrap">
+    <a class="back" href="@Url.Action("Index")">← Back to Full Plan</a>
+    <h1>🏥 Genre Health Report</h1>
+    <table class="gh-tbl">
+        <thead><tr><th>Genre</th><th>Total</th><th>Retirement Candidates</th><th>Avg Age (yrs)</th><th>Health</th></tr></thead>
+        <tbody>
+            @foreach (var g in Model)
+            {
+                var hc = g.Health == "Thriving" ? "h-thriving" : g.Health == "Stable" ? "h-stable" : g.Health == "Aging" ? "h-aging" : "h-critical";
+                <tr>
+                    <td>@g.Genre</td><td>@g.Total</td><td>@g.RetirementCandidates</td>
+                    <td>@g.AverageAge</td><td class="@hc"><strong>@g.Health</strong></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
