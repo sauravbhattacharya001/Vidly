@@ -79,6 +79,21 @@ namespace Vidly.Services
             if (request.Status != RefundStatus.Pending)
                 throw new InvalidOperationException("Only pending requests can be approved.");
 
+            // CWE-20: Validate adjusted refund amount bounds.
+            // Without this check, a compromised staff session or forged request
+            // could set adjustedAmount to an arbitrarily large value (e.g. $999,999)
+            // far exceeding the original rental charges, enabling fraudulent payouts.
+            if (adjustedAmount.HasValue)
+            {
+                if (adjustedAmount.Value <= 0)
+                    throw new ArgumentOutOfRangeException(nameof(adjustedAmount),
+                        "Adjusted refund amount must be greater than zero.");
+                if (adjustedAmount.Value > request.OriginalAmount)
+                    throw new ArgumentOutOfRangeException(nameof(adjustedAmount),
+                        $"Adjusted refund amount (${adjustedAmount.Value:F2}) cannot exceed " +
+                        $"the original rental charges (${request.OriginalAmount:F2}).");
+            }
+
             request.Status = RefundStatus.Approved;
             request.ResolvedDate = DateTime.Now;
             request.StaffNotes = staffNotes;
