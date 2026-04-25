@@ -1,0 +1,31 @@
+@model List<Vidly.Models.MovieRetirementCandidate>
+@{ ViewBag.Title = ViewBag.Urgency + " Retirement Candidates"; }
+
+<style>
+    .urg-wrap{font-family:'Segoe UI',sans-serif;background:#0d1117;color:#c9d1d9;padding:24px;min-height:100vh}
+    .urg-wrap h1{color:#58a6ff;font-size:24px}
+    .urg-tbl{width:100%;border-collapse:collapse;font-size:13px}
+    .urg-tbl th{background:#161b22;color:#8b949e;padding:10px 8px;text-align:left;border-bottom:2px solid #30363d}
+    .urg-tbl td{padding:10px 8px;border-bottom:1px solid #21262d}
+    .urg-tbl tr:hover{background:#161b22}
+    a.back{color:#58a6ff;text-decoration:none;font-size:14px}
+</style>
+
+<div class="urg-wrap">
+    <a class="back" href="@Url.Action("Index")">← Back to Full Plan</a>
+    <h1>📦 @ViewBag.Urgency Retirement Candidates (@Model.Count)</h1>
+    <table class="urg-tbl">
+        <thead><tr><th>Movie</th><th>Genre</th><th>Score</th><th>Action</th><th>Total Rentals</th><th>Recent</th><th>Decline %</th><th>Days Dormant</th><th>Reasons</th></tr></thead>
+        <tbody>
+            @foreach (var c in Model)
+            {
+                <tr>
+                    <td>@c.MovieName</td><td>@c.Genre</td><td>@c.RetirementScore</td>
+                    <td>@c.RecommendedAction</td><td>@c.TotalRentals</td><td>@c.RecentRentals</td>
+                    <td>@c.DeclineRate%</td><td>@c.DaysSinceLastRental</td>
+                    <td>@String.Join("; ", c.Reasons)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
