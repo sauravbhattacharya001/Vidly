@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vidly — Smart Movie Mood Engine</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0f0f1a;--card:#1a1a2e;--accent:#e94560;--accent2:#0f3460;--text:#eee;--muted:#888;--green:#22c55e;--amber:#f59e0b;--blue:#3b82f6;--purple:#a855f7}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.header{text-align:center;padding:2rem 1rem 1rem;background:linear-gradient(135deg,#16213e,#0f3460)}
+.header h1{font-size:2rem;margin-bottom:.3rem}
+.header p{color:var(--muted);font-size:.95rem}
+.container{max-width:1200px;margin:0 auto;padding:1rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:1rem;margin-bottom:1rem}
+.card{background:var(--card);border-radius:12px;padding:1.2rem;border:1px solid #ffffff10}
+.card h3{margin-bottom:.8rem;display:flex;align-items:center;gap:.5rem}
+.btn{padding:.5rem 1rem;border:none;border-radius:8px;cursor:pointer;font-size:.85rem;font-weight:600;transition:.2s}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:#c73650}
+.btn-secondary{background:var(--accent2);color:#fff}
+.btn-secondary:hover{background:#0a2647}
+.btn-sm{padding:.3rem .7rem;font-size:.8rem}
+select,input{background:#0f0f1a;color:var(--text);border:1px solid #333;border-radius:6px;padding:.4rem .6rem;font-size:.85rem}
+.mood-wheel{position:relative;width:280px;height:280px;margin:0 auto}
+.mood-wheel canvas{width:100%;height:100%}
+.mood-badge{display:inline-block;padding:.25rem .6rem;border-radius:20px;font-size:.75rem;font-weight:600;margin:.15rem}
+.mood-bar{height:8px;border-radius:4px;background:#333;margin:.3rem 0;overflow:hidden}
+.mood-bar-fill{height:100%;border-radius:4px;transition:width .5s}
+.log{max-height:200px;overflow-y:auto;font-size:.8rem;background:#0a0a15;border-radius:8px;padding:.6rem;margin-top:.5rem}
+.log-entry{padding:.2rem 0;border-bottom:1px solid #ffffff08}
+.log-entry:last-child{border:none}
+.rec-card{background:#0f0f1a;border-radius:8px;padding:.8rem;margin:.4rem 0;display:flex;justify-content:space-between;align-items:center}
+.rec-card .title{font-weight:600}
+.rec-card .reason{font-size:.75rem;color:var(--muted)}
+.tag{display:inline-block;padding:.1rem .4rem;border-radius:4px;font-size:.7rem;margin-left:.3rem}
+.pulse{animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.flex{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+.mt{margin-top:.8rem}
+.stats-row{display:flex;gap:1rem;flex-wrap:wrap;margin:.5rem 0}
+.stat{text-align:center;flex:1;min-width:80px}
+.stat .val{font-size:1.5rem;font-weight:700}
+.stat .lbl{font-size:.7rem;color:var(--muted);text-transform:uppercase}
+table{width:100%;border-collapse:collapse;font-size:.82rem}
+th,td{padding:.4rem .5rem;text-align:left;border-bottom:1px solid #ffffff0a}
+th{color:var(--muted);font-weight:600;font-size:.75rem;text-transform:uppercase}
+.emoji{font-size:1.3rem}
+.transition-arrow{color:var(--accent);font-weight:bold;margin:0 .3rem}
+</style>
+</head>
+<body>
+<div class="header">
+<h1>🎭 Smart Movie Mood Engine</h1>
+<p>Autonomous mood inference from rental patterns · Proactive emotion-aware recommendations</p>
+</div>
+<div class="container">
+
+<!-- Controls -->
+<div class="card" style="margin-bottom:1rem">
+<div class="flex" style="justify-content:space-between;flex-wrap:wrap;gap:.5rem">
+<div class="flex">
+<label>Customer: <select id="selCustomer"></select></label>
+<label>Strategy: <select id="selStrategy">
+<option value="match">Match Mood</option>
+<option value="shift">Shift Mood</option>
+<option value="balance">Balance</option>
+<option value="auto" selected>Auto (Adaptive)</option>
+</select></label>
+</div>
+<div class="flex">
+<button class="btn btn-primary" onclick="analyze()">🔍 Analyze Mood</button>
+<button class="btn btn-secondary" onclick="startAutoMonitor()">🤖 Auto-Monitor</button>
+<button class="btn btn-sm" style="background:#333;color:#fff" onclick="stopAutoMonitor()">⏹ Stop</button>
+</div>
+</div>
+</div>
+
+<div class="grid">
+<!-- Mood Wheel -->
+<div class="card">
+<h3>🎡 Mood Wheel</h3>
+<div class="mood-wheel"><canvas id="moodCanvas" width="280" height="280"></canvas></div>
+<div id="moodSummary" class="mt" style="text-align:center;font-size:.9rem"></div>
+</div>
+
+<!-- Current State -->
+<div class="card">
+<h3>🧠 Mood Inference</h3>
+<div id="inferencePanel">
+<p style="color:var(--muted)">Click "Analyze Mood" to begin inference...</p>
+</div>
+</div>
+
+<!-- Mood Trajectory -->
+<div class="card">
+<h3>📈 Mood Trajectory</h3>
+<canvas id="trajectoryCanvas" width="500" height="180"></canvas>
+<div id="trajectoryInsight" class="mt" style="font-size:.8rem;color:var(--muted)"></div>
+</div>
+
+<!-- Recommendations -->
+<div class="card">
+<h3>🎬 Proactive Recommendations</h3>
+<div id="recPanel">
+<p style="color:var(--muted)">Recommendations appear after mood analysis...</p>
+</div>
+</div>
+
+<!-- Mood Transitions -->
+<div class="card">
+<h3>🔄 Mood Transitions</h3>
+<div id="transitionPanel">
+<p style="color:var(--muted)">Transition patterns appear after analysis...</p>
+</div>
+</div>
+
+<!-- Activity Log -->
+<div class="card">
+<h3><span class="pulse">🟢</span> Engine Activity Log</h3>
+<div id="logPanel" class="log">
+<div class="log-entry" style="color:var(--muted)">Engine idle. Awaiting analysis or auto-monitor start...</div>
+</div>
+</div>
+</div>
+
+<!-- Proactive Insights -->
+<div class="card" style="margin-bottom:1rem">
+<h3>💡 Proactive Insights</h3>
+<div id="insightsPanel">
+<p style="color:var(--muted)">Insights generated after mood analysis...</p>
+</div>
+</div>
+
+<!-- Fleet Overview -->
+<div class="card">
+<h3>👥 Customer Fleet Mood Overview</h3>
+<div class="stats-row" id="fleetStats"></div>
+<table id="fleetTable"><thead><tr><th>Customer</th><th>Dominant Mood</th><th>Stability</th><th>Trend</th><th>Risk</th></tr></thead><tbody id="fleetBody"></tbody></table>
+</div>
+
+</div>
+
+<script>
+// --- Data Layer ---
+const MOODS = {
+  joy:      {emoji:'😄',color:'#fbbf24',genres:['Comedy','Animation','Musical','Family']},
+  thrill:   {emoji:'🔥',color:'#ef4444',genres:['Action','Thriller','Adventure','Sci-Fi']},
+  romance:  {emoji:'💕',color:'#ec4899',genres:['Romance','Drama']},
+  wonder:   {emoji:'✨',color:'#8b5cf6',genres:['Fantasy','Sci-Fi','Animation','Mystery']},
+  melancholy:{emoji:'🌧️',color:'#6b7280',genres:['Drama','War','Documentary']},
+  tension:  {emoji:'😰',color:'#f97316',genres:['Horror','Thriller','Crime','Mystery']},
+  nostalgia:{emoji:'🕰️',color:'#a78bfa',genres:['Family','Musical','Western','Classic']},
+  calm:     {emoji:'🍃',color:'#22c55e',genres:['Documentary','Family','Animation']},
+};
+const MOOD_NAMES = Object.keys(MOODS);
+
+const GENRES = ['Action','Comedy','Drama','Thriller','Horror','Sci-Fi','Romance','Animation','Documentary','Fantasy','Crime','Mystery','Family','Musical','War','Western','Adventure','Classic'];
+
+const MOVIES = [];
+const TITLES_BY_GENRE = {
+  Action:['Die Hard','Mad Max','John Wick','Top Gun','Gladiator','The Matrix','Terminator 2','Mission Impossible'],
+  Comedy:['Superbad','The Hangover','Bridesmaids','Step Brothers','Anchorman','Mean Girls','Dumb & Dumber'],
+  Drama:['Shawshank Redemption','Forrest Gump','The Godfather','Schindlers List','Fight Club','Parasite'],
+  Thriller:['Se7en','Gone Girl','Silence of the Lambs','Zodiac','Prisoners','Nightcrawler'],
+  Horror:['The Shining','Get Out','Hereditary','A Quiet Place','Midsommar','The Conjuring'],
+  'Sci-Fi':['Interstellar','Blade Runner','Arrival','The Martian','Ex Machina','Dune'],
+  Romance:['The Notebook','Titanic','La La Land','Pride & Prejudice','Before Sunrise'],
+  Animation:['Spirited Away','Coco','WALL-E','Inside Out','Spider-Verse','Toy Story'],
+  Documentary:['Planet Earth','Free Solo','13th','Blackfish','Jiro Dreams of Sushi'],
+  Fantasy:['Lord of the Rings','Harry Potter','Pan\'s Labyrinth','The Princess Bride','Stardust'],
+  Crime:['Pulp Fiction','Goodfellas','No Country for Old Men','Heat','The Departed'],
+  Mystery:['Knives Out','Clue','Memento','Shutter Island','The Prestige'],
+  Family:['Home Alone','The Incredibles','Paddington','Mary Poppins','Matilda'],
+  Musical:['Grease','West Side Story','Chicago','Hamilton','Moulin Rouge'],
+  War:['Saving Private Ryan','Dunkirk','1917','Apocalypse Now','Full Metal Jacket'],
+  Western:['The Good the Bad and the Ugly','Unforgiven','Django Unchained','True Grit'],
+  Adventure:['Indiana Jones','Jurassic Park','Pirates of the Caribbean','The Goonies'],
+  Classic:['Casablanca','Citizen Kane','Psycho','12 Angry Men','Rear Window']
+};
+// Build movie catalog
+let movieId = 1;
+for(const [genre, titles] of Object.entries(TITLES_BY_GENRE)){
+  for(const t of titles) MOVIES.push({id:movieId++, title:t, genre, rating:+(3+Math.random()*2).toFixed(1)});
+}
+
+// Generate synthetic customers with rental histories
+const CUSTOMER_NAMES = ['Alice','Bob','Charlie','Diana','Eve','Frank','Grace','Henry','Ivy','Jake','Karen','Leo','Mia','Noah','Olivia','Pete','Quinn','Rosa','Sam','Tina'];
+const customers = [];
+function genHistory(bias){
+  const h = [];
+  const days = 60;
+  for(let d=days;d>=0;d-=Math.ceil(Math.random()*4)){
+    const dt = new Date(Date.now()-d*864e5);
+    // Bias genre selection
+    const r = Math.random();
+    let genre;
+    if(r<0.5 && bias.length) genre = bias[Math.floor(Math.random()*bias.length)];
+    else genre = GENRES[Math.floor(Math.random()*GENRES.length)];
+    const pool = MOVIES.filter(m=>m.genre===genre);
+    if(!pool.length) continue;
+    const movie = pool[Math.floor(Math.random()*pool.length)];
+    h.push({date:dt, movieId:movie.id, title:movie.title, genre:movie.genre});
+  }
+  return h;
+}
+const BIAS_MAP = [
+  ['Comedy','Animation'],['Action','Thriller'],['Romance','Drama'],['Horror','Crime'],
+  ['Sci-Fi','Fantasy'],['Documentary','Drama'],['Comedy','Family'],['Action','Adventure'],
+  ['Drama','War'],['Thriller','Mystery'],['Animation','Family'],['Crime','Thriller'],
+  ['Musical','Romance'],['Fantasy','Adventure'],['Drama','Documentary'],['Comedy','Romance'],
+  ['Horror','Thriller'],['Sci-Fi','Action'],['Family','Animation'],['Western','Classic']
+];
+for(let i=0;i<20;i++){
+  customers.push({id:i+1, name:CUSTOMER_NAMES[i], history:genHistory(BIAS_MAP[i])});
+}
+
+// Populate customer dropdown
+const selC = document.getElementById('selCustomer');
+customers.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.name;selC.appendChild(o)});
+
+// --- Mood Inference Engine ---
+function inferMood(history, windowDays=14){
+  const cutoff = new Date(Date.now() - windowDays*864e5);
+  const recent = history.filter(r=>r.date>=cutoff);
+  if(!recent.length) return {scores:{}, dominant:'calm', recent};
+  const genreCounts = {};
+  recent.forEach(r=>{ genreCounts[r.genre]=(genreCounts[r.genre]||0)+1; });
+  const total = recent.length;
+  const scores = {};
+  for(const mood of MOOD_NAMES){
+    let s = 0;
+    MOODS[mood].genres.forEach(g=>{ s += (genreCounts[g]||0)/total; });
+    scores[mood] = Math.min(1, s);
+  }
+  // Normalize
+  const maxS = Math.max(...Object.values(scores), 0.01);
+  for(const m in scores) scores[m] /= maxS;
+  const dominant = Object.entries(scores).sort((a,b)=>b[1]-a[1])[0][0];
+  return {scores, dominant, recent, genreCounts};
+}
+
+function computeTrajectory(history){
+  const points = [];
+  for(let w=8;w>=0;w--){
+    const inf = inferMood(history.filter(r=>r.date<=new Date(Date.now()-w*7*864e5)), 14);
+    points.push({week: -w, ...inf});
+  }
+  return points;
+}
+
+function detectTransitions(history){
+  const trans = [];
+  const sorted = [...history].sort((a,b)=>a.date-b.date);
+  for(let i=1;i<sorted.length;i++){
+    const prev = moodForGenre(sorted[i-1].genre);
+    const curr = moodForGenre(sorted[i].genre);
+    if(prev!==curr) trans.push({from:prev, to:curr, date:sorted[i].date});
+  }
+  return trans;
+}
+
+function moodForGenre(genre){
+  for(const [mood,info] of Object.entries(MOODS)){
+    if(info.genres.includes(genre)) return mood;
+  }
+  return 'calm';
+}
+
+// --- Recommendation Engine ---
+function recommend(moodResult, strategy){
+  const {scores, dominant} = moodResult;
+  let targetMoods;
+  if(strategy==='match') targetMoods = [dominant];
+  else if(strategy==='shift'){
+    const opposite = {joy:'melancholy',thrill:'calm',romance:'tension',wonder:'melancholy',melancholy:'joy',tension:'calm',nostalgia:'thrill',calm:'thrill'};
+    targetMoods = [opposite[dominant]||'joy'];
+  } else if(strategy==='balance'){
+    const low = Object.entries(scores).sort((a,b)=>a[1]-b[1]).slice(0,3).map(e=>e[0]);
+    targetMoods = low;
+  } else {
+    // Auto: if stability low → balance, if dominant strong → shift, else match
+    const vals = Object.values(scores);
+    const avg = vals.reduce((a,b)=>a+b,0)/vals.length;
+    const variance = vals.reduce((a,b)=>a+(b-avg)**2,0)/vals.length;
+    if(variance<0.05) targetMoods = Object.entries(scores).sort((a,b)=>a[1]-b[1]).slice(0,2).map(e=>e[0]); // balance
+    else if(scores[dominant]>0.8){ const opp={joy:'melancholy',thrill:'calm',romance:'tension',wonder:'melancholy',melancholy:'joy',tension:'calm',nostalgia:'thrill',calm:'thrill'}; targetMoods=[opp[dominant]||'joy']; }
+    else targetMoods = [dominant];
+  }
+  const targetGenres = new Set();
+  targetMoods.forEach(m=>MOODS[m].genres.forEach(g=>targetGenres.add(g)));
+  const recs = MOVIES.filter(m=>targetGenres.has(m.genre)).sort((a,b)=>b.rating-a.rating).slice(0,6);
+  return {targetMoods, recs, strategy: strategy==='auto'?'auto-'+( targetMoods.length>1?'balance':'focused'):strategy};
+}
+
+// --- Drawing ---
+function drawMoodWheel(scores){
+  const canvas = document.getElementById('moodCanvas');
+  const ctx = canvas.getContext('2d');
+  const cx=140,cy=140,R=120;
+  ctx.clearRect(0,0,280,280);
+  const names = MOOD_NAMES;
+  const n = names.length;
+  // Draw web
+  for(let ring=0.25;ring<=1;ring+=0.25){
+    ctx.beginPath();
+    for(let i=0;i<=n;i++){
+      const angle = (Math.PI*2/n)*i - Math.PI/2;
+      const x = cx+Math.cos(angle)*R*ring;
+      const y = cy+Math.sin(angle)*R*ring;
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    }
+    ctx.strokeStyle='#ffffff15';ctx.stroke();
+  }
+  // Axes
+  for(let i=0;i<n;i++){
+    const angle = (Math.PI*2/n)*i - Math.PI/2;
+    ctx.beginPath();ctx.moveTo(cx,cy);
+    ctx.lineTo(cx+Math.cos(angle)*R, cy+Math.sin(angle)*R);
+    ctx.strokeStyle='#ffffff10';ctx.stroke();
+    // Label
+    const lx=cx+Math.cos(angle)*(R+18);
+    const ly=cy+Math.sin(angle)*(R+18);
+    ctx.fillStyle=MOODS[names[i]].color;ctx.font='11px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(MOODS[names[i]].emoji+' '+names[i], lx, ly);
+  }
+  // Fill area
+  ctx.beginPath();
+  for(let i=0;i<=n;i++){
+    const idx=i%n;
+    const angle=(Math.PI*2/n)*idx - Math.PI/2;
+    const val = scores[names[idx]]||0;
+    const x=cx+Math.cos(angle)*R*val;
+    const y=cy+Math.sin(angle)*R*val;
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.fillStyle='rgba(233,69,96,0.25)';ctx.fill();
+  ctx.strokeStyle='var(--accent)';ctx.lineWidth=2;ctx.stroke();
+  // Dots
+  for(let i=0;i<n;i++){
+    const angle=(Math.PI*2/n)*i-Math.PI/2;
+    const val=scores[names[i]]||0;
+    ctx.beginPath();ctx.arc(cx+Math.cos(angle)*R*val,cy+Math.sin(angle)*R*val,4,0,Math.PI*2);
+    ctx.fillStyle=MOODS[names[i]].color;ctx.fill();
+  }
+}
+
+function drawTrajectory(points){
+  const canvas=document.getElementById('trajectoryCanvas');
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,500,180);
+  if(!points.length) return;
+  const dominant = points.map(p=>p.dominant);
+  // Draw mood colors over time
+  const w=500/points.length;
+  points.forEach((p,i)=>{
+    ctx.fillStyle=MOODS[p.dominant].color+'40';
+    ctx.fillRect(i*w,0,w,150);
+    ctx.fillStyle=MOODS[p.dominant].color;
+    ctx.font='20px sans-serif';ctx.textAlign='center';
+    ctx.fillText(MOODS[p.dominant].emoji, i*w+w/2, 30);
+    ctx.font='9px sans-serif';ctx.fillStyle='#888';
+    ctx.fillText(p.week===0?'now':p.week+'w', i*w+w/2, 170);
+    // Bar for dominant score
+    const s = p.scores[p.dominant]||0;
+    ctx.fillStyle=MOODS[p.dominant].color;
+    ctx.fillRect(i*w+w*0.2, 150-s*100, w*0.6, s*100);
+  });
+  // Trend line
+  ctx.beginPath();ctx.strokeStyle='#e94560';ctx.lineWidth=2;
+  points.forEach((p,i)=>{
+    const y=150-(p.scores[p.dominant]||0)*100;
+    i===0?ctx.moveTo(i*w+w/2,y):ctx.lineTo(i*w+w/2,y);
+  });
+  ctx.stroke();
+}
+
+// --- UI Update ---
+function log(msg){
+  const panel=document.getElementById('logPanel');
+  const d=document.createElement('div');d.className='log-entry';
+  d.innerHTML=`<span style="color:var(--muted)">${new Date().toLocaleTimeString()}</span> ${msg}`;
+  panel.prepend(d);
+  if(panel.children.length>50) panel.removeChild(panel.lastChild);
+}
+
+function analyze(){
+  const cust = customers.find(c=>c.id==selC.value);
+  if(!cust) return;
+  const strategy = document.getElementById('selStrategy').value;
+  log(`🔍 Analyzing <b>${cust.name}</b>'s mood...`);
+
+  const result = inferMood(cust.history);
+  drawMoodWheel(result.scores);
+
+  // Inference panel
+  const ip = document.getElementById('inferencePanel');
+  const sorted = Object.entries(result.scores).sort((a,b)=>b[1]-a[1]);
+  ip.innerHTML = `
+    <div style="font-size:1.1rem;margin-bottom:.5rem">${MOODS[result.dominant].emoji} <b>Dominant: ${result.dominant}</b></div>
+    ${sorted.map(([m,s])=>`
+      <div style="display:flex;align-items:center;gap:.5rem;margin:.2rem 0">
+        <span style="width:80px;font-size:.8rem">${MOODS[m].emoji} ${m}</span>
+        <div class="mood-bar" style="flex:1"><div class="mood-bar-fill" style="width:${(s*100).toFixed(0)}%;background:${MOODS[m].color}"></div></div>
+        <span style="font-size:.75rem;color:var(--muted)">${(s*100).toFixed(0)}%</span>
+      </div>`).join('')}
+    <div class="mt" style="font-size:.8rem;color:var(--muted)">Based on ${result.recent.length} rentals in last 14 days</div>
+  `;
+
+  // Trajectory
+  const traj = computeTrajectory(cust.history);
+  drawTrajectory(traj);
+  const shifts = traj.filter((p,i)=>i>0&&p.dominant!==traj[i-1].dominant).length;
+  document.getElementById('trajectoryInsight').textContent = shifts>3?'⚠️ High mood volatility — customer may benefit from curated stability picks':shifts>1?'📊 Moderate mood shifts detected — adaptive strategy recommended':'✅ Stable mood pattern — current genre preferences are consistent';
+
+  // Transitions
+  const trans = detectTransitions(cust.history);
+  const tp = document.getElementById('transitionPanel');
+  const freqMap = {};
+  trans.forEach(t=>{const k=t.from+'→'+t.to; freqMap[k]=(freqMap[k]||0)+1;});
+  const topTrans = Object.entries(freqMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  tp.innerHTML = topTrans.length ? topTrans.map(([k,v])=>{
+    const [f,t]=k.split('→');
+    return `<div style="display:flex;align-items:center;gap:.3rem;margin:.3rem 0">
+      <span class="mood-badge" style="background:${MOODS[f].color}30;color:${MOODS[f].color}">${MOODS[f].emoji} ${f}</span>
+      <span class="transition-arrow">→</span>
+      <span class="mood-badge" style="background:${MOODS[t].color}30;color:${MOODS[t].color}">${MOODS[t].emoji} ${t}</span>
+      <span style="font-size:.75rem;color:var(--muted)">${v}×</span>
+    </div>`;
+  }).join('') : '<p style="color:var(--muted)">No transitions in history</p>';
+
+  // Recommendations
+  const recs = recommend(result, strategy);
+  const rp = document.getElementById('recPanel');
+  rp.innerHTML = `
+    <div style="font-size:.8rem;margin-bottom:.5rem">Strategy: <b>${recs.strategy}</b> · Target moods: ${recs.targetMoods.map(m=>`<span class="mood-badge" style="background:${MOODS[m].color}30;color:${MOODS[m].color}">${MOODS[m].emoji} ${m}</span>`).join('')}</div>
+    ${recs.recs.map(m=>`<div class="rec-card">
+      <div><span class="title">${m.title}</span><span class="tag" style="background:${MOODS[moodForGenre(m.genre)].color}30;color:${MOODS[moodForGenre(m.genre)].color}">${m.genre}</span></div>
+      <div style="font-size:.8rem">⭐ ${m.rating}</div>
+    </div>`).join('')}
+  `;
+  log(`✅ Mood: <b>${result.dominant}</b> ${MOODS[result.dominant].emoji} → ${recs.recs.length} recs (${recs.strategy})`);
+
+  // Proactive Insights
+  generateInsights(cust, result, traj, trans);
+
+  // Fleet
+  updateFleet();
+}
+
+function generateInsights(cust, result, traj, trans){
+  const ip = document.getElementById('insightsPanel');
+  const insights = [];
+  const {scores,dominant} = result;
+
+  // Monotony alert
+  if(scores[dominant]>0.85) insights.push({icon:'⚠️',text:`${cust.name} has been watching almost exclusively ${dominant}-mood content. Consider suggesting something different to prevent fatigue.`,type:'warning'});
+
+  // Emerging mood
+  const prev = traj.length>2 ? traj[traj.length-3] : null;
+  if(prev){
+    for(const m of MOOD_NAMES){
+      if(m!==dominant && (result.scores[m]||0)-(prev.scores[m]||0)>0.3)
+        insights.push({icon:'📈',text:`Emerging interest in <b>${m}</b> content — consider featuring ${MOODS[m].genres.slice(0,2).join('/')} titles.`,type:'info'});
+    }
+  }
+
+  // Weekend binge pattern
+  const weekendRentals = result.recent.filter(r=>r.date.getDay()===0||r.date.getDay()===6).length;
+  if(weekendRentals > result.recent.length*0.6) insights.push({icon:'📅',text:`Weekend binger detected — ${weekendRentals}/${result.recent.length} rentals on weekends. Time promotions for Friday evenings.`,type:'opportunity'});
+
+  // Mood stability
+  const vals = Object.values(scores);
+  const variance = vals.reduce((a,b)=>a+(b-vals.reduce((x,y)=>x+y,0)/vals.length)**2,0)/vals.length;
+  if(variance<0.03) insights.push({icon:'🎯',text:'Very focused taste profile — this customer knows what they like. Prioritize depth over breadth in recommendations.',type:'info'});
+  if(variance>0.15) insights.push({icon:'🌈',text:'Eclectic viewer with diverse mood patterns. Cast a wide net with varied genre recommendations.',type:'info'});
+
+  // Churn risk from melancholy
+  if(dominant==='melancholy'&&scores.melancholy>0.7) insights.push({icon:'🚨',text:'High melancholy score may indicate disengagement. Proactively offer uplifting picks or special promotions.',type:'critical'});
+
+  if(!insights.length) insights.push({icon:'✅',text:'No anomalies detected. Mood patterns are healthy and engagement looks good.',type:'ok'});
+
+  const colors = {warning:'var(--amber)',info:'var(--blue)',opportunity:'var(--green)',critical:'var(--accent)',ok:'var(--green)'};
+  ip.innerHTML = insights.map(i=>`<div style="display:flex;gap:.5rem;align-items:flex-start;margin:.4rem 0;padding:.5rem;background:#0f0f1a;border-radius:8px;border-left:3px solid ${colors[i.type]}">
+    <span style="font-size:1.1rem">${i.icon}</span><span style="font-size:.82rem">${i.text}</span>
+  </div>`).join('');
+}
+
+function updateFleet(){
+  const fs = document.getElementById('fleetStats');
+  const fb = document.getElementById('fleetBody');
+  const moodCounts = {};
+  const rows = customers.map(c=>{
+    const r = inferMood(c.history);
+    moodCounts[r.dominant]=(moodCounts[r.dominant]||0)+1;
+    const vals = Object.values(r.scores);
+    const avg = vals.reduce((a,b)=>a+b,0)/vals.length;
+    const stability = 1-Math.sqrt(vals.reduce((a,b)=>a+(b-avg)**2,0)/vals.length);
+    const traj = computeTrajectory(c.history);
+    const recent2 = traj.slice(-2);
+    const trend = recent2.length===2?(recent2[1].scores[recent2[1].dominant]-recent2[0].scores[recent2[0].dominant]):0;
+    const risk = r.dominant==='melancholy'&&r.scores.melancholy>0.6?'High':stability<0.7?'Medium':'Low';
+    return {name:c.name,dominant:r.dominant,stability,trend,risk};
+  });
+  // Stats
+  const topMood = Object.entries(moodCounts).sort((a,b)=>b[1]-a[1])[0];
+  const avgStab = (rows.reduce((a,r)=>a+r.stability,0)/rows.length*100).toFixed(0);
+  const highRisk = rows.filter(r=>r.risk==='High').length;
+  fs.innerHTML=`<div class="stat"><div class="val">${MOODS[topMood[0]].emoji}</div><div class="lbl">Top Mood: ${topMood[0]}</div></div>
+    <div class="stat"><div class="val">${avgStab}%</div><div class="lbl">Avg Stability</div></div>
+    <div class="stat"><div class="val" style="color:${highRisk?'var(--accent)':'var(--green)'}">${highRisk}</div><div class="lbl">High Risk</div></div>
+    <div class="stat"><div class="val">${customers.length}</div><div class="lbl">Customers</div></div>`;
+  fb.innerHTML = rows.map(r=>`<tr>
+    <td>${r.name}</td>
+    <td><span class="mood-badge" style="background:${MOODS[r.dominant].color}30;color:${MOODS[r.dominant].color}">${MOODS[r.dominant].emoji} ${r.dominant}</span></td>
+    <td>${(r.stability*100).toFixed(0)}%</td>
+    <td style="color:${r.trend>0?'var(--green)':r.trend<0?'var(--accent)':'var(--muted)'}">${r.trend>0?'↑':r.trend<0?'↓':'→'} ${(Math.abs(r.trend)*100).toFixed(0)}%</td>
+    <td style="color:${r.risk==='High'?'var(--accent)':r.risk==='Medium'?'var(--amber)':'var(--green)'}">${r.risk}</td>
+  </tr>`).join('');
+}
+
+// Auto-monitor
+let monitorInterval = null;
+function startAutoMonitor(){
+  if(monitorInterval) return;
+  log('🤖 <b>Auto-Monitor started</b> — analyzing all customers every 8s');
+  let idx=0;
+  monitorInterval = setInterval(()=>{
+    selC.value = customers[idx%customers.length].id;
+    analyze();
+    idx++;
+  }, 8000);
+  analyze(); // immediate first
+}
+function stopAutoMonitor(){
+  if(monitorInterval){clearInterval(monitorInterval);monitorInterval=null;log('⏹ Auto-Monitor stopped');}
+}
+
+// Init
+updateFleet();
+drawMoodWheel(Object.fromEntries(MOOD_NAMES.map(m=>[m,0])));
+</script>
+</body>
+</html>
