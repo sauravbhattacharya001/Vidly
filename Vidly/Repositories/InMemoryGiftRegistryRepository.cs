@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 using Vidly.Models;
 
 namespace Vidly.Repositories
@@ -120,11 +121,13 @@ namespace Vidly.Repositories
 
         private static string GenerateShareCode()
         {
-            var chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-            var rng = new Random();
+            const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+            var bytes = new byte[10];
+            using (var rng = RandomNumberGenerator.Create())
+                rng.GetBytes(bytes);
             var code = new char[10];
             for (int i = 0; i < code.Length; i++)
-                code[i] = chars[rng.Next(chars.Length)];
+                code[i] = chars[bytes[i] % chars.Length];
             return new string(code);
         }
     }
