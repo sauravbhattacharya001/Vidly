@@ -207,11 +207,12 @@ namespace Vidly.Services
                     double avgGap = 0;
                     if (movieRentals.Count > 1)
                     {
-                        var gaps = new List<double>();
+                        // Inline running sum — avoids List<double> allocation per movie
+                        var gapSum = 0.0;
                         for (int i = 1; i < movieRentals.Count; i++)
-                            gaps.Add((movieRentals[i].RentalDate -
-                                      movieRentals[i - 1].RentalDate).TotalDays);
-                        avgGap = gaps.Average();
+                            gapSum += (movieRentals[i].RentalDate -
+                                       movieRentals[i - 1].RentalDate).TotalDays;
+                        avgGap = gapSum / (movieRentals.Count - 1);
                     }
 
                     return new MovieVelocity
@@ -262,14 +263,28 @@ namespace Vidly.Services
                     })
                     .ToList();
 
-            var dateRange = rentals.Max(r => r.RentalDate) - rentals.Min(r => r.RentalDate);
+            // Single pass: compute min/max date, last-30 count, and day-of-week
+            // counts simultaneously — replaces 3 separate O(N) scans + GroupBy.
+            var minDate = rentals[0].RentalDate;
+            var maxDate = minDate;
+            var last30Cutoff = _clock.Today.AddDays(-30);
+            var last30 = 0;
+            var dowCounts = new double[7];
+            for (int i = 0; i < rentals.Count; i++)
+            {
+                var d = rentals[i].RentalDate;
+                if (d < minDate) minDate = d;
+                if (d > maxDate) maxDate = d;
+                if (d >= last30Cutoff) last30++;
+                dowCounts[(int)d.DayOfWeek]++;
+            }
+            var dateRange = maxDate - minDate;
             var totalWeeks = Math.Max(1, dateRange.TotalDays / 7.0);
 
-            var dayAvgs = rentals
-                .GroupBy(r => r.RentalDate.DayOfWeek)
-                .ToDictionary(g => g.Key, g => g.Count() / totalWeeks);
+            var dayAvgs = new Dictionary<DayOfWeek, double>(7);
+            for (int i = 0; i < 7; i++)
+                dayAvgs[(DayOfWeek)i] = dowCounts[i] / totalWeeks;
 
-            var last30 = rentals.Count(r => r.RentalDate >= _clock.Today.AddDays(-30));
             var overallDailyAvg = rentals.Count / Math.Max(1, dateRange.TotalDays);
             var recentDailyAvg = last30 / 30.0;
             var trendMultiplier = overallDailyAvg > 0
