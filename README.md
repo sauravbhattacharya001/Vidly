@@ -226,6 +226,7 @@ dotnet add package Vidly --source github
 ## 📚 Documentation
 
 - **[📖 Live Docs](https://sauravbhattacharya001.github.io/Vidly/)** — Interactive documentation via GitHub Pages
+- **[🎭 Mood Engine](https://sauravbhattacharya001.github.io/Vidly/mood-engine.html)** — Autonomous mood inference from rental patterns with proactive recommendations
 - **[Architecture Guide](ARCHITECTURE.md)** — Request lifecycle, layers, threading, extension points
 - **[Security Policy](SECURITY.md)** — Security measures and vulnerability reporting
 - **[Contributing Guide](CONTRIBUTING.md)** — How to contribute
