@@ -143,8 +143,8 @@
     @foreach (var a in Model.TopAffinities.Take(40))
     {
         <text>
-        if(!nodeMap[@a.MovieIdA]){nodeMap[@a.MovieIdA]={id:@a.MovieIdA,label:"@Html.Raw(a.MovieNameA.Replace("\"","\\\""))",x:Math.random()*W,y:Math.random()*H,vx:0,vy:0};nodes.push(nodeMap[@a.MovieIdA]);}
-        if(!nodeMap[@a.MovieIdB]){nodeMap[@a.MovieIdB]={id:@a.MovieIdB,label:"@Html.Raw(a.MovieNameB.Replace("\"","\\\""))",x:Math.random()*W,y:Math.random()*H,vx:0,vy:0};nodes.push(nodeMap[@a.MovieIdB]);}
+        if(!nodeMap[@a.MovieIdA]){nodeMap[@a.MovieIdA]={id:@a.MovieIdA,label:"@Html.Raw(System.Web.HttpUtility.JavaScriptStringEncode(a.MovieNameA))",x:Math.random()*W,y:Math.random()*H,vx:0,vy:0};nodes.push(nodeMap[@a.MovieIdA]);}
+        if(!nodeMap[@a.MovieIdB]){nodeMap[@a.MovieIdB]={id:@a.MovieIdB,label:"@Html.Raw(System.Web.HttpUtility.JavaScriptStringEncode(a.MovieNameB))",x:Math.random()*W,y:Math.random()*H,vx:0,vy:0};nodes.push(nodeMap[@a.MovieIdB]);}
         edges.push({a:nodeMap[@a.MovieIdA],b:nodeMap[@a.MovieIdB],w:@a.AffinityScore,str:"@a.Strength"});
         </text>
     }
