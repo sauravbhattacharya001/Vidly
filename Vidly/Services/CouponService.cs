@@ -12,6 +12,13 @@ namespace Vidly.Services
         private readonly ICouponRepository _couponRepository;
         private readonly IClock _clock;
 
+        /// <summary>
+        /// Global lock for coupon redemption to prevent TOCTOU race conditions
+        /// where concurrent requests pass validation before either redeems,
+        /// allowing over-redemption past MaxRedemptions (CWE-367).
+        /// </summary>
+        private static readonly object _redeemLock = new object();
+
         public CouponService() : this(new InMemoryCouponRepository(), new SystemClock()) { }
 
         public CouponService(ICouponRepository couponRepository, IClock clock)
@@ -60,14 +67,18 @@ namespace Vidly.Services
         /// <summary>
         /// Apply (redeem) a coupon, incrementing its usage count.
         /// Returns the discount amount, or 0 if redemption fails.
+        /// Serializes validation + redemption to prevent TOCTOU over-redemption (CWE-367).
         /// </summary>
         public decimal Apply(string code, decimal rentalSubtotal)
         {
-            var validation = Validate(code, rentalSubtotal);
-            if (!validation.IsValid) return 0m;
+            lock (_redeemLock)
+            {
+                var validation = Validate(code, rentalSubtotal);
+                if (!validation.IsValid) return 0m;
 
-            var redeemed = _couponRepository.TryRedeem(code);
-            return redeemed ? validation.DiscountAmount : 0m;
+                var redeemed = _couponRepository.TryRedeem(code);
+                return redeemed ? validation.DiscountAmount : 0m;
+            }
         }
 
         private static decimal CalculateDiscount(Coupon coupon, decimal subtotal)
