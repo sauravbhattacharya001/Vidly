@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 using Vidly.Models;
@@ -13,6 +14,15 @@ namespace Vidly.Services
     {
         private readonly IGiftCardRepository _giftCardRepository;
         private readonly IClock _clock;
+
+        /// <summary>
+        /// Per-card locks to prevent TOCTOU race conditions in Redeem/TopUp.
+        /// Without locking, concurrent requests can both read the same balance
+        /// and each deduct independently, allowing double-spend (CWE-367).
+        /// Keyed by card ID to minimize contention across unrelated cards.
+        /// </summary>
+        private static readonly ConcurrentDictionary<int, object> _cardLocks
+            = new ConcurrentDictionary<int, object>();
         /// <summary>
         /// Maximum retry attempts for code generation to prevent unbounded
         /// recursion if the code space becomes saturated.
@@ -138,6 +148,7 @@ namespace Vidly.Services
 
         /// <summary>
         /// Redeem an amount from a gift card. Returns the actual amount deducted.
+        /// Serializes access per card to prevent TOCTOU double-spend (CWE-367).
         /// </summary>
         public GiftCardRedemptionResult Redeem(string code, decimal amount, string description = null)
         {
@@ -151,34 +162,44 @@ namespace Vidly.Services
             if (card == null)
                 return GiftCardRedemptionResult.Fail("Gift card not found.");
 
-            if (!card.IsRedeemable)
-                return GiftCardRedemptionResult.Fail(
-                    $"This gift card cannot be redeemed (status: {card.StatusDisplay}).");
-
-            // Deduct up to the available balance
-            var deducted = Math.Min(amount, card.Balance);
-            card.Balance -= deducted;
-
-            _giftCardRepository.Update(card);
-            _giftCardRepository.AddTransaction(card.Id, new GiftCardTransaction
+            var cardLock = _cardLocks.GetOrAdd(card.Id, _ => new object());
+            lock (cardLock)
             {
-                Type = GiftCardTransactionType.Redemption,
-                Amount = deducted,
-                BalanceAfter = card.Balance,
-                Description = description ?? "Rental checkout"
-            });
+                // Re-read inside lock to get authoritative balance
+                card = _giftCardRepository.GetByCode(code.Trim());
+                if (card == null)
+                    return GiftCardRedemptionResult.Fail("Gift card not found.");
 
-            return new GiftCardRedemptionResult
-            {
-                Success = true,
-                AmountDeducted = deducted,
-                RemainingBalance = card.Balance,
-                Message = $"${deducted:F2} redeemed. Remaining balance: ${card.Balance:F2}"
-            };
+                if (!card.IsRedeemable)
+                    return GiftCardRedemptionResult.Fail(
+                        $"This gift card cannot be redeemed (status: {card.StatusDisplay}).");
+
+                // Deduct up to the available balance
+                var deducted = Math.Min(amount, card.Balance);
+                card.Balance -= deducted;
+
+                _giftCardRepository.Update(card);
+                _giftCardRepository.AddTransaction(card.Id, new GiftCardTransaction
+                {
+                    Type = GiftCardTransactionType.Redemption,
+                    Amount = deducted,
+                    BalanceAfter = card.Balance,
+                    Description = description ?? "Rental checkout"
+                });
+
+                return new GiftCardRedemptionResult
+                {
+                    Success = true,
+                    AmountDeducted = deducted,
+                    RemainingBalance = card.Balance,
+                    Message = $"${deducted:F2} redeemed. Remaining balance: ${card.Balance:F2}"
+                };
+            }
         }
 
         /// <summary>
         /// Add funds to an existing gift card.
+        /// Serializes access per card to prevent TOCTOU balance overflow (CWE-367).
         /// </summary>
         public GiftCardRedemptionResult TopUp(string code, decimal amount)
         {
@@ -192,31 +213,40 @@ namespace Vidly.Services
             if (card == null)
                 return GiftCardRedemptionResult.Fail("Gift card not found.");
 
-            if (!card.IsActive)
-                return GiftCardRedemptionResult.Fail("This gift card has been disabled.");
-
-            if (card.Balance + amount > MaxCardBalance)
-                return GiftCardRedemptionResult.Fail(
-                    $"Top-up would exceed maximum card balance of ${MaxCardBalance:F2}. " +
-                    $"Current balance: ${card.Balance:F2}, maximum top-up: ${MaxCardBalance - card.Balance:F2}.");
-
-            card.Balance += amount;
-            _giftCardRepository.Update(card);
-            _giftCardRepository.AddTransaction(card.Id, new GiftCardTransaction
+            var cardLock = _cardLocks.GetOrAdd(card.Id, _ => new object());
+            lock (cardLock)
             {
-                Type = GiftCardTransactionType.TopUp,
-                Amount = amount,
-                BalanceAfter = card.Balance,
-                Description = $"Top-up of ${amount:F2}"
-            });
+                // Re-read inside lock to get authoritative balance
+                card = _giftCardRepository.GetByCode(code.Trim());
+                if (card == null)
+                    return GiftCardRedemptionResult.Fail("Gift card not found.");
 
-            return new GiftCardRedemptionResult
-            {
-                Success = true,
-                AmountDeducted = amount,
-                RemainingBalance = card.Balance,
-                Message = $"${amount:F2} added. New balance: ${card.Balance:F2}"
-            };
+                if (!card.IsActive)
+                    return GiftCardRedemptionResult.Fail("This gift card has been disabled.");
+
+                if (card.Balance + amount > MaxCardBalance)
+                    return GiftCardRedemptionResult.Fail(
+                        $"Top-up would exceed maximum card balance of ${MaxCardBalance:F2}. " +
+                        $"Current balance: ${card.Balance:F2}, maximum top-up: ${MaxCardBalance - card.Balance:F2}.");
+
+                card.Balance += amount;
+                _giftCardRepository.Update(card);
+                _giftCardRepository.AddTransaction(card.Id, new GiftCardTransaction
+                {
+                    Type = GiftCardTransactionType.TopUp,
+                    Amount = amount,
+                    BalanceAfter = card.Balance,
+                    Description = $"Top-up of ${amount:F2}"
+                });
+
+                return new GiftCardRedemptionResult
+                {
+                    Success = true,
+                    AmountDeducted = amount,
+                    RemainingBalance = card.Balance,
+                    Message = $"${amount:F2} added. New balance: ${card.Balance:F2}"
+                };
+            }
         }
     }
 
