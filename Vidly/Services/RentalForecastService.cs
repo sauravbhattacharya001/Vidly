@@ -198,34 +198,39 @@ namespace Vidly.Services
                 .GroupBy(r => r.MovieId)
                 .Select(g =>
                 {
-                    var movieRentals = g.OrderBy(r => r.RentalDate).ToList();
-                    var first = movieRentals.First().RentalDate;
-                    var last = movieRentals.Last().RentalDate;
+                    // Single-pass min/max scan — O(K) per group instead of
+                    // O(K log K) sort.  The average gap between consecutive
+                    // sorted dates is a telescoping sum: (last − first) / (n − 1),
+                    // so we only need the extremes, not sorted order.
+                    var count = 0;
+                    var first = DateTime.MaxValue;
+                    var last = DateTime.MinValue;
+                    foreach (var r in g)
+                    {
+                        count++;
+                        if (r.RentalDate < first) first = r.RentalDate;
+                        if (r.RentalDate > last) last = r.RentalDate;
+                    }
+
                     var spanDays = Math.Max(1, (last - first).TotalDays);
                     var movie = movies.TryGetValue(g.Key, out var _v2) ? _v2 : null;
 
-                    double avgGap = 0;
-                    if (movieRentals.Count > 1)
-                    {
-                        // Inline running sum — avoids List<double> allocation per movie
-                        var gapSum = 0.0;
-                        for (int i = 1; i < movieRentals.Count; i++)
-                            gapSum += (movieRentals[i].RentalDate -
-                                       movieRentals[i - 1].RentalDate).TotalDays;
-                        avgGap = gapSum / (movieRentals.Count - 1);
-                    }
+                    // Telescoping sum: Σ(d[i+1] - d[i]) = d[n] - d[1]
+                    double avgGap = count > 1
+                        ? (last - first).TotalDays / (count - 1)
+                        : 0;
 
                     return new MovieVelocity
                     {
                         MovieId = g.Key,
                         MovieName = movie?.Name ?? $"Movie #{g.Key}",
                         Genre = movie?.Genre,
-                        TotalRentals = movieRentals.Count,
+                        TotalRentals = count,
                         FirstRental = first,
                         LastRental = last,
                         RentalsPerMonth = spanDays >= 30
-                            ? Math.Round(movieRentals.Count / (spanDays / 30.0), 2)
-                            : movieRentals.Count,
+                            ? Math.Round(count / (spanDays / 30.0), 2)
+                            : count,
                         AverageDaysBetweenRentals = Math.Round(avgGap, 1),
                         DaysSinceLastRental = (int)(_clock.Today - last).TotalDays
                     };
