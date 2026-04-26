@@ -325,27 +325,46 @@ namespace Vidly.Services
             var activeStaff = _staff.Where(s => s.IsActive).ToList();
             var entries = new List<StaffRankingEntry>();
 
+            // Pre-group transactions by staffId so each member lookup
+            // is O(Ti) instead of scanning the full O(T) list.
+            var txnsByStaff = new Dictionary<int, List<StaffTransaction>>();
+            foreach (var t in _transactions)
+            {
+                if (t.Timestamp < periodStart || t.Timestamp >= periodEnd) continue;
+                if (!txnsByStaff.TryGetValue(t.StaffId, out var list))
+                {
+                    list = new List<StaffTransaction>();
+                    txnsByStaff[t.StaffId] = list;
+                }
+                list.Add(t);
+            }
+
             foreach (var member in activeStaff)
             {
-                var txns = _transactions
-                    .Where(t => t.StaffId == member.Id && t.Timestamp >= periodStart && t.Timestamp < periodEnd)
-                    .ToList();
+                if (!txnsByStaff.TryGetValue(member.Id, out var txns) || txns.Count == 0)
+                    continue;
 
-                if (txns.Count == 0) continue;
-
-                var rated = txns.Where(t => t.SatisfactionRating.HasValue).ToList();
-                var score = CalculateScore(txns);
+                // Reuse ScoreComponents to get both composite score and
+                // satisfaction avg in a single pass (was 2 separate scans).
+                var comp = ComputeScoreComponents(txns);
+                var score = Math.Round(
+                    comp.Volume * _volumeWeight +
+                    comp.Revenue * _revenueWeight +
+                    comp.Satisfaction * _satisfactionWeight +
+                    comp.Upsell * _upsellWeight +
+                    comp.Speed * _speedWeight,
+                    1);
 
                 entries.Add(new StaffRankingEntry
                 {
                     StaffId = member.Id,
                     StaffName = member.Name,
                     Role = member.Role,
-                    Score = Math.Round(score, 1),
+                    Score = score,
                     Grade = ScoreToGrade(score),
                     Transactions = txns.Count,
-                    Revenue = txns.Sum(t => t.Revenue),
-                    SatisfactionAvg = rated.Count > 0 ? Math.Round(rated.Average(t => t.SatisfactionRating.Value), 2) : 0
+                    Revenue = txns.Aggregate(0m, (sum, t) => sum + t.Revenue),
+                    SatisfactionAvg = comp.RatedCount > 0 ? comp.SatisfactionAvg : 0
                 });
             }
 
@@ -618,59 +637,115 @@ namespace Vidly.Services
         //  Private Helpers
         // ══════════════════════════════════════════════════════
 
-        /// <summary>
-        /// Calculate a composite performance score (0-100) from transactions.
-        /// Dimensions: volume, revenue, satisfaction, upsell rate, speed.
-        /// Each dimension is normalized to 0-100 using reasonable benchmarks.
-        /// </summary>
-        private double CalculateScore(List<StaffTransaction> txns)
+        // ── Score components ────────────────────────────
+        // Extracted so callers (GetLeaderboard, etc.) can reuse
+        // intermediate metrics (e.g. satisfactionAvg) without
+        // re-scanning the transaction list.
+
+        private struct ScoreComponents
         {
-            if (txns.Count == 0) return 0;
+            public double Volume, Revenue, Satisfaction, Upsell, Speed;
+            public double SatisfactionAvg;
+            public int RatedCount;
+        }
+
+        /// <summary>
+        /// Single-pass computation of all scoring dimensions plus
+        /// commonly-needed aggregates (satisfactionAvg, ratedCount).
+        /// Replaces 8+ separate LINQ scans with one O(N) traversal.
+        /// </summary>
+        private ScoreComponents ComputeScoreComponents(List<StaffTransaction> txns)
+        {
+            if (txns.Count == 0) return default;
+
+            decimal totalRevenue = 0m;
+            DateTime minTs = DateTime.MaxValue, maxTs = DateTime.MinValue;
+            int ratedCount = 0, ratingSum = 0;
+            int upsellAttempts = 0, upsellAccepted = 0;
+            long durationSum = 0;
+            int durationCount = 0;
+
+            foreach (var t in txns)
+            {
+                totalRevenue += t.Revenue;
+                if (t.Timestamp < minTs) minTs = t.Timestamp;
+                if (t.Timestamp > maxTs) maxTs = t.Timestamp;
+
+                if (t.SatisfactionRating.HasValue)
+                {
+                    ratedCount++;
+                    ratingSum += t.SatisfactionRating.Value;
+                }
+
+                if (t.UpsellAttempted)
+                {
+                    upsellAttempts++;
+                    if (t.UpsellAccepted) upsellAccepted++;
+                }
+
+                if (t.DurationSeconds > 0)
+                {
+                    durationSum += t.DurationSeconds;
+                    durationCount++;
+                }
+            }
 
             // Volume: benchmark = 10 transactions/day -> 100
-            var days = Math.Max(1, (txns.Max(t => t.Timestamp) - txns.Min(t => t.Timestamp)).TotalDays + 1);
-            var dailyAvg = txns.Count / days;
-            var volumeScore = Math.Min(100, dailyAvg / 10.0 * 100);
+            var days = Math.Max(1, (maxTs - minTs).TotalDays + 1);
+            var volumeScore = Math.Min(100, (txns.Count / days) / 10.0 * 100);
 
             // Revenue: benchmark = $50/transaction -> 100
-            var avgRevenue = txns.Average(t => (double)t.Revenue);
+            var avgRevenue = (double)totalRevenue / txns.Count;
             var revenueScore = Math.Min(100, avgRevenue / 50.0 * 100);
 
             // Satisfaction: 5.0 -> 100, 1.0 -> 0
-            var rated = txns.Where(t => t.SatisfactionRating.HasValue).ToList();
-            var satisfactionScore = rated.Count > 0
-                ? (rated.Average(t => t.SatisfactionRating.Value) - 1.0) / 4.0 * 100
-                : 50; // neutral if no ratings
+            double satAvg = ratedCount > 0 ? (double)ratingSum / ratedCount : 0;
+            var satisfactionScore = ratedCount > 0
+                ? (satAvg - 1.0) / 4.0 * 100
+                : 50;
 
             // Upsell: 50% conversion -> 100
-            var upsellAttempts = txns.Count(t => t.UpsellAttempted);
             double upsellScore;
             if (upsellAttempts == 0)
-                upsellScore = 30; // penalize not attempting
+                upsellScore = 30;
             else
-            {
-                var conversionRate = (double)txns.Count(t => t.UpsellAccepted) / upsellAttempts;
-                upsellScore = Math.Min(100, conversionRate / 0.5 * 100);
-            }
+                upsellScore = Math.Min(100, ((double)upsellAccepted / upsellAttempts) / 0.5 * 100);
 
-            // Speed: benchmark = 120s average -> 100, faster is better
-            var durations = txns.Where(t => t.DurationSeconds > 0).ToList();
+            // Speed: 60s = 100, 120s = 75
             double speedScore;
-            if (durations.Count == 0)
-                speedScore = 50; // neutral
+            if (durationCount == 0)
+                speedScore = 50;
             else
             {
-                var avgDuration = durations.Average(t => t.DurationSeconds);
-                // 60s = 100, 120s = 75, 240s = 37.5, 480s = 18.75
+                var avgDuration = (double)durationSum / durationCount;
                 speedScore = avgDuration > 0 ? Math.Min(100, 120.0 / avgDuration * 75) : 50;
             }
 
+            return new ScoreComponents
+            {
+                Volume = volumeScore,
+                Revenue = revenueScore,
+                Satisfaction = satisfactionScore,
+                Upsell = upsellScore,
+                Speed = speedScore,
+                SatisfactionAvg = Math.Round(satAvg, 2),
+                RatedCount = ratedCount
+            };
+        }
+
+        /// <summary>
+        /// Calculate a composite performance score (0-100) from transactions.
+        /// Delegates to <see cref="ComputeScoreComponents"/> for the heavy lifting.
+        /// </summary>
+        private double CalculateScore(List<StaffTransaction> txns)
+        {
+            var c = ComputeScoreComponents(txns);
             return Math.Round(
-                volumeScore * _volumeWeight +
-                revenueScore * _revenueWeight +
-                satisfactionScore * _satisfactionWeight +
-                upsellScore * _upsellWeight +
-                speedScore * _speedWeight,
+                c.Volume * _volumeWeight +
+                c.Revenue * _revenueWeight +
+                c.Satisfaction * _satisfactionWeight +
+                c.Upsell * _upsellWeight +
+                c.Speed * _speedWeight,
                 1);
         }
 
