@@ -62,7 +62,16 @@ namespace Vidly.Controllers
                 return View("ProfileForm", vm);
             }
 
-            _service.CreateProfile(profile);
+            try
+            {
+                _service.CreateProfile(profile);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                TempData["Error"] = "Only parent profiles can create new profiles. Please switch to a parent profile first.";
+                return RedirectToAction("Index");
+            }
+
             TempData["Success"] = $"Profile '{profile.Name}' created successfully.";
             return RedirectToAction("Index");
         }
@@ -98,9 +107,17 @@ namespace Vidly.Controllers
                 return View("ProfileForm", vm);
             }
 
-            if (!_service.UpdateProfile(profile))
+            try
             {
-                TempData["Error"] = "Profile not found.";
+                if (!_service.UpdateProfile(profile))
+                {
+                    TempData["Error"] = "Profile not found.";
+                    return RedirectToAction("Index");
+                }
+            }
+            catch (UnauthorizedAccessException)
+            {
+                TempData["Error"] = "Only parent profiles can edit profiles. Please switch to a parent profile first.";
                 return RedirectToAction("Index");
             }
 
@@ -113,9 +130,17 @@ namespace Vidly.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult Delete(int id)
         {
-            if (!_service.DeleteProfile(id))
+            try
             {
-                TempData["Error"] = "Cannot delete this profile (parent profiles cannot be removed).";
+                if (!_service.DeleteProfile(id))
+                {
+                    TempData["Error"] = "Cannot delete this profile (parent profiles cannot be removed).";
+                    return RedirectToAction("Index");
+                }
+            }
+            catch (UnauthorizedAccessException)
+            {
+                TempData["Error"] = "Only parent profiles can delete profiles. Please switch to a parent profile first.";
                 return RedirectToAction("Index");
             }
 
