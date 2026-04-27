@@ -1,0 +1,295 @@
+@model Vidly.Models.StorePulseReport
+@{
+    ViewBag.Title = "Store Pulse Monitor";
+}
+
+<div class="container-fluid" id="pulse-dashboard">
+    <!-- Header -->
+    <div class="row" style="margin-bottom: 24px;">
+        <div class="col-md-12">
+            <h2 style="margin-bottom: 4px;">
+                <span class="glyphicon glyphicon-heart-empty" style="color: #e74c3c;"></span>
+                Store Pulse Monitor
+                <small style="color: #999; font-size: 14px;" id="last-updated">
+                    Updated: @Model.GeneratedAt.ToString("MMM dd, yyyy h:mm tt")
+                </small>
+            </h2>
+            <p class="text-muted" style="margin: 0;">Autonomous health monitoring — 7 signals, anomaly detection, smart action items</p>
+        </div>
+    </div>
+
+    <!-- Health Score Hero -->
+    <div class="row" style="margin-bottom: 30px;">
+        <div class="col-md-4 text-center">
+            <div style="position: relative; display: inline-block; width: 200px; height: 200px;">
+                <svg viewBox="0 0 200 200" style="width: 200px; height: 200px;">
+                    <!-- Background circle -->
+                    <circle cx="100" cy="100" r="85" fill="none" stroke="#eee" stroke-width="12" />
+                    <!-- Score arc -->
+                    <circle cx="100" cy="100" r="85" fill="none"
+                            stroke="@GetScoreColor(Model.OverallHealthScore)"
+                            stroke-width="12"
+                            stroke-dasharray="@(Math.Round(534.07 * Model.OverallHealthScore / 100.0, 0)) 534"
+                            stroke-linecap="round"
+                            transform="rotate(-90 100 100)" />
+                </svg>
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
+                    <div style="font-size: 48px; font-weight: 700; color: @GetScoreColor(Model.OverallHealthScore); line-height: 1;">
+                        @Model.OverallHealthScore
+                    </div>
+                    <div style="font-size: 14px; color: #999;">/ 100</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div style="padding: 20px;">
+                <div style="font-size: 72px; font-weight: 700; color: @GetScoreColor(Model.OverallHealthScore); line-height: 1;">
+                    @Model.HealthGrade
+                </div>
+                <div style="font-size: 16px; color: #666; margin-top: 8px;">Health Grade</div>
+                @if (Model.Trend != null)
+                {
+                    <div style="margin-top: 16px; font-size: 20px;">
+                        @if (Model.Trend.Direction == "improving")
+                        {
+                            <span style="color: #27ae60;">&#9650; Improving</span>
+                        }
+                        else if (Model.Trend.Direction == "declining")
+                        {
+                            <span style="color: #e74c3c;">&#9660; Declining</span>
+                        }
+                        else
+                        {
+                            <span style="color: #f39c12;">&#9654; Stable</span>
+                        }
+                        @if (Model.Trend.ScoreChange != 0)
+                        {
+                            <span style="font-size: 14px; color: #999; margin-left: 8px;">
+                                (@(Model.Trend.ScoreChange > 0 ? "+" : "")@Model.Trend.ScoreChange pts)
+                            </span>
+                        }
+                    </div>
+                    <div style="font-size: 13px; color: #888; margin-top: 4px;">@Model.Trend.Summary</div>
+                }
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div style="padding: 20px; background: #f8f9fa; border-radius: 8px;">
+                <h5 style="margin-top: 0;">Quick Stats</h5>
+                @{
+                    int healthy = 0, warning = 0, critical = 0;
+                    foreach (var s in Model.Signals)
+                    {
+                        if (s.Status == "healthy") healthy++;
+                        else if (s.Status == "warning") warning++;
+                        else critical++;
+                    }
+                }
+                <div style="margin-bottom: 8px;">
+                    <span class="label label-success">@healthy Healthy</span>
+                    <span class="label label-warning">@warning Warning</span>
+                    <span class="label label-danger">@critical Critical</span>
+                </div>
+                <div style="font-size: 13px; color: #666;">
+                    <div>@Model.Anomalies.Count anomal@(Model.Anomalies.Count == 1 ? "y" : "ies") detected</div>
+                    <div>@Model.ActionItems.Count action item@(Model.ActionItems.Count == 1 ? "" : "s") generated</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Signal Cards -->
+    <div class="row" style="margin-bottom: 30px;">
+        <div class="col-md-12">
+            <h4>Health Signals</h4>
+        </div>
+        @foreach (var signal in Model.Signals)
+        {
+            <div class="col-md-4 col-sm-6" style="margin-bottom: 16px;">
+                <div class="panel panel-default" style="border-left: 4px solid @GetStatusColor(signal.Status); margin-bottom: 0;">
+                    <div class="panel-body">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <strong>@signal.Name</strong>
+                            <span class="label @GetStatusLabelClass(signal.Status)">@signal.Status</span>
+                        </div>
+                        <div style="margin-bottom: 8px;">
+                            <div style="display: flex; align-items: center;">
+                                <div style="flex: 1; background: #eee; border-radius: 4px; height: 8px; margin-right: 10px;">
+                                    <div style="width: @(signal.Score)%; background: @GetScoreColor(signal.Score); height: 8px; border-radius: 4px;"></div>
+                                </div>
+                                <span style="font-weight: 700; font-size: 18px; color: @GetScoreColor(signal.Score);">@signal.Score</span>
+                            </div>
+                        </div>
+                        <div style="font-size: 12px; color: #666;">@signal.Description</div>
+                        <div style="font-size: 11px; color: #999; margin-top: 4px;">
+                            <span class="label label-default" style="font-weight: normal;">@signal.Category</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Anomalies -->
+    @if (Model.Anomalies.Count > 0)
+    {
+        <div class="row" style="margin-bottom: 30px;">
+            <div class="col-md-12">
+                <h4>
+                    <span class="glyphicon glyphicon-exclamation-sign" style="color: #e74c3c;"></span>
+                    Anomalies Detected
+                    <span class="badge" style="background: #e74c3c;">@Model.Anomalies.Count</span>
+                </h4>
+                <div class="panel panel-danger">
+                    <div class="panel-body" style="padding: 0;">
+                        <table class="table table-striped" style="margin: 0;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 100px;">Severity</th>
+                                    <th>Signal</th>
+                                    <th>Type</th>
+                                    <th>Description</th>
+                                    <th style="width: 100px;">Deviation</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var anomaly in Model.Anomalies)
+                                {
+                                    <tr>
+                                        <td>
+                                            <span class="label @GetSeverityLabelClass(anomaly.Severity)">
+                                                @anomaly.Severity
+                                            </span>
+                                        </td>
+                                        <td><strong>@anomaly.SignalName</strong></td>
+                                        <td>@anomaly.Type.Replace("_", " ")</td>
+                                        <td>@anomaly.Description</td>
+                                        <td style="text-align: right;">
+                                            @if (anomaly.DeviationPercent != 0)
+                                            {
+                                                <span style="font-weight: 700;">@anomaly.DeviationPercent%</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Action Items -->
+    @if (Model.ActionItems.Count > 0)
+    {
+        <div class="row" style="margin-bottom: 30px;">
+            <div class="col-md-12">
+                <h4>
+                    <span class="glyphicon glyphicon-tasks"></span>
+                    Recommended Actions
+                    <span class="badge">@Model.ActionItems.Count</span>
+                </h4>
+                @foreach (var item in Model.ActionItems)
+                {
+                    <div class="panel panel-default" style="border-left: 4px solid @GetPriorityColor(item.Priority);">
+                        <div class="panel-body">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                <div>
+                                    <h5 style="margin-top: 0; margin-bottom: 4px;">
+                                        <span class="label @GetPriorityLabelClass(item.Priority)" style="margin-right: 6px;">
+                                            P@(item.Priority)
+                                        </span>
+                                        @item.Title
+                                    </h5>
+                                    <p style="margin: 0; color: #666;">@item.Description</p>
+                                </div>
+                                <div style="text-align: right; white-space: nowrap; margin-left: 16px;">
+                                    <span class="label label-default">@item.Category</span>
+                                    @if (item.IsAutomatable)
+                                    {
+                                        <span class="label label-info" title="This action can be automated">
+                                            <span class="glyphicon glyphicon-flash"></span> automatable
+                                        </span>
+                                    }
+                                    <br />
+                                    <small style="color: #999;">Impact: @item.Impact</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <!-- API Endpoints -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="panel panel-info">
+                <div class="panel-heading">
+                    <h3 class="panel-title">
+                        <span class="glyphicon glyphicon-cloud"></span> API Endpoints
+                    </h3>
+                </div>
+                <div class="panel-body">
+                    <code>GET /StorePulse/HealthCheck</code> — lightweight health score (for monitoring)<br />
+                    <code>GET /StorePulse/Signal?name=Revenue+Velocity</code> — single signal detail<br />
+                    <code>GET /StorePulse/Actions</code> — all action items as JSON
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Auto-refresh every 60 seconds
+    setTimeout(function () { window.location.reload(); }, 60000);
+</script>
+
+@functions {
+    string GetScoreColor(int score)
+    {
+        if (score >= 80) return "#27ae60";
+        if (score >= 60) return "#f39c12";
+        if (score >= 40) return "#e67e22";
+        return "#e74c3c";
+    }
+
+    string GetStatusColor(string status)
+    {
+        if (status == "healthy") return "#27ae60";
+        if (status == "warning") return "#f39c12";
+        return "#e74c3c";
+    }
+
+    string GetStatusLabelClass(string status)
+    {
+        if (status == "healthy") return "label-success";
+        if (status == "warning") return "label-warning";
+        return "label-danger";
+    }
+
+    string GetSeverityLabelClass(string severity)
+    {
+        if (severity == "info") return "label-info";
+        if (severity == "warning") return "label-warning";
+        return "label-danger";
+    }
+
+    string GetPriorityColor(int priority)
+    {
+        if (priority == 1) return "#e74c3c";
+        if (priority == 2) return "#e67e22";
+        if (priority == 3) return "#f39c12";
+        return "#95a5a6";
+    }
+
+    string GetPriorityLabelClass(int priority)
+    {
+        if (priority == 1) return "label-danger";
+        if (priority == 2) return "label-warning";
+        if (priority == 3) return "label-info";
+        return "label-default";
+    }
+}

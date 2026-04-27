@@ -171,6 +171,9 @@
     <Compile Include="Models\CustomerLifetimeValue.cs" />
     <Compile Include="Services\CustomerLifetimeValueService.cs" />
     <Compile Include="Controllers\CustomerLifetimeValueController.cs" />
+    <Compile Include="Models\StorePulseModels.cs" />
+    <Compile Include="Services\StorePulseService.cs" />
+    <Compile Include="Controllers\StorePulseController.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Content\bootstrap-lumen.css" />
