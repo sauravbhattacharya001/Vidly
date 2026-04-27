@@ -1,7 +1,7 @@
 # 🎬 Vidly
 
 <!-- Build & Security -->
-[![CI — Build & Test](https://github.com/sauravbhattacharya001/Vidly/actions/workflows/ci.yml/badge.svg)](https://github.com/sauravbhattacharya001/Vidly/actions/workflows/ci.yml)
+[![CI - Build & Test](https://github.com/sauravbhattacharya001/Vidly/actions/workflows/ci.yml/badge.svg)](https://github.com/sauravbhattacharya001/Vidly/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/sauravbhattacharya001/Vidly/actions/workflows/codeql.yml/badge.svg)](https://github.com/sauravbhattacharya001/Vidly/actions/workflows/codeql.yml)
 [![Docker](https://github.com/sauravbhattacharya001/Vidly/actions/workflows/docker.yml/badge.svg)](https://github.com/sauravbhattacharya001/Vidly/actions/workflows/docker.yml)
 [![Pages](https://github.com/sauravbhattacharya001/Vidly/actions/workflows/pages.yml/badge.svg)](https://sauravbhattacharya001.github.io/Vidly/)
@@ -13,7 +13,9 @@
 <!-- Tech -->
 [![.NET Framework](https://img.shields.io/badge/.NET%20Framework-4.5.2-purple.svg)](https://dotnet.microsoft.com/en-us/download/dotnet-framework)
 [![ASP.NET MVC](https://img.shields.io/badge/ASP.NET%20MVC-5.2-green.svg)](https://www.asp.net/mvc)
-[![Tests](https://img.shields.io/badge/tests-3600%2B%20passing-brightgreen.svg)](Vidly.Tests)
+[![Tests](https://img.shields.io/badge/tests-3690%2B%20passing-brightgreen.svg)](Vidly.Tests)
+[![Controllers](https://img.shields.io/badge/controllers-99-informational.svg)](#-architecture)
+[![Services](https://img.shields.io/badge/services-96-informational.svg)](#-architecture)
 
 <!-- Repo -->
 [![GitHub last commit](https://img.shields.io/github/last-commit/sauravbhattacharya001/Vidly)](https://github.com/sauravbhattacharya001/Vidly/commits/master)
@@ -21,7 +23,7 @@
 [![GitHub issues](https://img.shields.io/github/issues/sauravbhattacharya001/Vidly)](https://github.com/sauravbhattacharya001/Vidly/issues)
 [![GitHub stars](https://img.shields.io/github/stars/sauravbhattacharya001/Vidly?style=social)](https://github.com/sauravbhattacharya001/Vidly)
 
-A full-featured video rental store web application built with **ASP.NET MVC 5**, featuring **80 controllers**, **82 services**, and **3,600+ unit tests** across **97 test files**. Demonstrates enterprise-scale MVC patterns including layered architecture, repository pattern, service layer, rate limiting, security headers, and comprehensive validation.
+A full-featured video rental store web application built with **ASP.NET MVC 5**, featuring **99 controllers**, **96 services**, **88 domain models**, and **3,690+ unit tests** across **100 test files**. Demonstrates enterprise-scale MVC patterns including layered architecture, repository pattern, service layer, dependency injection, rate limiting, security headers, and comprehensive validation.
 
 ---
 
@@ -43,29 +45,31 @@ A full-featured video rental store web application built with **ASP.NET MVC 5**,
 ## ✨ Features
 
 ### Core Business
-- **Movie Catalog** — Full CRUD with search, filtering by genre/rating, and sorting
-- **Rental Management** — Checkout, returns, extensions, late fees, and rental history
-- **Customer Management** — Profiles, segmentation, merge, loyalty points, and insights
-- **Reservation System** — Waitlists, availability tracking, and rental calendars
+- **Movie Catalog** - Full CRUD with search, filtering by genre/rating, and sorting
+- **Rental Management** - Checkout, returns, extensions, late fees, and rental history
+- **Customer Management** - Profiles, segmentation, merge, loyalty points, and insights
+- **Reservation System** - Waitlists, availability tracking, and rental calendars
 
 ### Engagement
-- **Recommendations** — Smart movie recommendations and similarity matching
-- **Movie Clubs** — Club management with marathon planning and movie nights
-- **Gamification** — Achievements, quizzes, trivia, bingo, and movie tournaments
-- **Social** — Reviews, watchlists, playlists, staff picks, and movie quotes board
+- **Recommendations** - Smart movie recommendations and similarity matching
+- **Movie Clubs** - Club management with marathon planning and movie nights
+- **Gamification** - Achievements, quizzes, trivia, bingo, and movie tournaments
+- **Social** - Reviews, watchlists, playlists, staff picks, and movie quotes board
 
 ### Business Operations
-- **Financial** — Gift cards, coupons, subscriptions, refunds, budgets, and revenue analytics
-- **Staff** — Scheduling, performance tracking, and store management
-- **Franchise** — Multi-store tracking and franchise management
-- **Security** — Rate limiting, CSRF protection, security headers, parental controls
+- **Financial** - Gift cards, coupons, subscriptions, refunds, budgets, and revenue analytics
+- **Staff** - Scheduling, performance tracking, and store management
+- **Franchise** - Multi-store tracking and franchise management
+- **Security** - Rate limiting, CSRF protection, security headers, parental controls
+- **Customer Intelligence** - Churn prediction, lifetime value scoring, customer health, segmentation, taste DNA
+- **Demand Planning** - Demand forecasting, shelf optimization, retirement planning, inventory auditing
 
 ### Infrastructure
-- **Repository Pattern** — In-memory repositories with interfaces for easy swapping
-- **Service Layer** — 67 dedicated services with dependency injection
-- **Thread Safety** — Lock-based synchronization for concurrent access
-- **Bundling & Minification** — Optimized client-side assets via `BundleConfig`
-- **Bootstrap UI** — Responsive interface using Bootstrap with the Lumen theme
+- **Repository Pattern** - 56 in-memory repositories with interfaces for easy swapping
+- **Service Layer** - 96 dedicated services with dependency injection
+- **Thread Safety** - Lock-based synchronization for concurrent access
+- **Bundling & Minification** - Optimized client-side assets via `BundleConfig`
+- **Bootstrap UI** - Responsive interface using Bootstrap with the Lumen theme
 
 ## ⚡ Quick Start
 
@@ -83,26 +87,26 @@ docker build -t vidly . && docker run -d -p 8080:80 vidly
 
 ```
 Vidly/
-├── Controllers/          # 80 MVC controllers
+├── Controllers/          # 99 MVC controllers
 │   ├── MoviesController  # Movie CRUD, browsing, filtering
 │   ├── RentalsController # Checkout, returns, extensions
 │   ├── CustomersController # Customer management
-│   └── ...               # 77 more domain controllers
-├── Models/               # Domain entities with data annotations
-├── ViewModels/           # Composed view models for Razor views
-├── Services/             # 82 business logic services
+│   └── ...               # 96 more domain controllers
+├── Models/               # 88 domain entities with data annotations
+├── ViewModels/           # 60 composed view models for Razor views
+├── Services/             # 96 business logic services
 │   ├── RecommendationService
 │   ├── LoyaltyPointsService
 │   ├── ChurnPredictorService
 │   └── ...
-├── Repositories/         # In-memory repositories (IRepository<T>)
+├── Repositories/         # 56 in-memory repositories (IRepository<T>)
 ├── Filters/              # Rate limiting, security headers
 ├── App_Start/            # Routing, bundling, filter config
 ├── Content/              # CSS (Bootstrap, Lumen theme)
 ├── Scripts/              # JavaScript (jQuery, Bootstrap)
 ├── Views/                # Razor views with shared layout
 ├── docs/                 # API docs deployed to GitHub Pages
-└── Vidly.Tests/          # 97 test files, 3,600+ test methods
+└── Vidly.Tests/          # 100 test files, 3,690+ test methods
 ```
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for a deep dive into the request lifecycle, layer responsibilities, threading model, and extension points.
@@ -157,14 +161,14 @@ The application includes dedicated controllers and routes for: rentals, customer
 
 ### Query Parameters (Movie Index)
 
-- **`query`** — Case-insensitive substring search on movie name
-- **`genre`** — Filter by genre enum value (e.g., `Action`, `Comedy`)
-- **`minRating`** — Minimum star rating filter
-- **`sortBy`** — Sort column: `name`, `rating`, `releasedate`, `genre`, or `id`
+- **`query`** - Case-insensitive substring search on movie name
+- **`genre`** - Filter by genre enum value (e.g., `Action`, `Comedy`)
+- **`minRating`** - Minimum star rating filter
+- **`sortBy`** - Sort column: `name`, `rating`, `releasedate`, `genre`, or `id`
 
 ## 🧪 Testing
 
-The project includes a comprehensive test suite with **3,600+ unit tests** across **97 test files** covering models, services, controllers, and view models.
+The project includes a comprehensive test suite with **3,690+ unit tests** across **100 test files** covering models, services, controllers, and view models.
 
 ```bash
 # Restore and run tests
@@ -192,7 +196,7 @@ Coverage reports are generated in Cobertura format and uploaded as CI artifacts 
 | **View Engine** | Razor |
 | **CSS Framework** | Bootstrap 3 (Lumen theme) |
 | **JavaScript** | jQuery 1.10.2 |
-| **Testing** | MSTest + Coverlet (3,600+ tests) |
+| **Testing** | MSTest + Coverlet (3,690+ tests) |
 | **CI/CD** | GitHub Actions |
 | **Container** | Docker (Windows/IIS) |
 | **Security** | CodeQL, Dependabot |
@@ -225,11 +229,11 @@ dotnet add package Vidly --source github
 
 ## 📚 Documentation
 
-- **[📖 Live Docs](https://sauravbhattacharya001.github.io/Vidly/)** — Interactive documentation via GitHub Pages
-- **[🎭 Mood Engine](https://sauravbhattacharya001.github.io/Vidly/mood-engine.html)** — Autonomous mood inference from rental patterns with proactive recommendations
-- **[Architecture Guide](ARCHITECTURE.md)** — Request lifecycle, layers, threading, extension points
-- **[Security Policy](SECURITY.md)** — Security measures and vulnerability reporting
-- **[Contributing Guide](CONTRIBUTING.md)** — How to contribute
+- **[📖 Live Docs](https://sauravbhattacharya001.github.io/Vidly/)** - Interactive documentation via GitHub Pages
+- **[🎭 Mood Engine](https://sauravbhattacharya001.github.io/Vidly/mood-engine.html)** - Autonomous mood inference from rental patterns with proactive recommendations
+- **[Architecture Guide](ARCHITECTURE.md)** - Request lifecycle, layers, threading, extension points
+- **[Security Policy](SECURITY.md)** - Security measures and vulnerability reporting
+- **[Contributing Guide](CONTRIBUTING.md)** - How to contribute
 
 ## 🤝 Contributing
 
@@ -243,7 +247,7 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 ## 📄 License
 
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
 
 ---
 
