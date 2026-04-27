@@ -69,7 +69,12 @@ namespace Vidly.Services
                     var b = movieIds[j];
                     var setA = movieCustomers[a];
                     var setB = movieCustomers[b];
-                    int shared = setA.Count(x => setB.Contains(x));
+                    // Iterate the smaller set for O(min(|A|,|B|)) intersection
+                    var smaller = setA.Count <= setB.Count ? setA : setB;
+                    var larger  = setA.Count <= setB.Count ? setB : setA;
+                    int shared = 0;
+                    foreach (var x in smaller)
+                        if (larger.Contains(x)) shared++;
                     if (shared == 0) continue;
                     int union = setA.Count + setB.Count - shared;
                     double jaccard = (double)shared / union;
@@ -93,6 +98,15 @@ namespace Vidly.Services
             }
 
             affinities = affinities.OrderByDescending(a => a.AffinityScore).ToList();
+
+            // Pre-build affinity lookup: (min,max) movie-id pair → score for O(1) cohesion queries
+            var affinityIndex = new Dictionary<long, double>(affinities.Count);
+            foreach (var aff in affinities)
+            {
+                int lo = Math.Min(aff.MovieIdA, aff.MovieIdB);
+                int hi = Math.Max(aff.MovieIdA, aff.MovieIdB);
+                affinityIndex[((long)lo << 32) | (uint)hi] = aff.AffinityScore;
+            }
 
             // Step 3: Greedy cluster detection (connected components on strong links)
             var strongThreshold = 0.15;
@@ -145,17 +159,22 @@ namespace Vidly.Services
                     ? genreCounts.OrderByDescending(kv => kv.Value).First().Key
                     : "Mixed";
 
-                // Cohesion = average affinity within cluster
+                // Cohesion = average affinity within cluster (O(C²) with O(1) lookups)
                 int pairCount = 0;
                 double totalAff = 0;
                 for (int ci = 0; ci < component.Count; ci++)
                 {
                     for (int cj = ci + 1; cj < component.Count; cj++)
                     {
-                        var link = affinities.FirstOrDefault(a =>
-                            (a.MovieIdA == component[ci] && a.MovieIdB == component[cj]) ||
-                            (a.MovieIdA == component[cj] && a.MovieIdB == component[ci]));
-                        if (link != null) { totalAff += link.AffinityScore; pairCount++; }
+                        int lo = Math.Min(component[ci], component[cj]);
+                        int hi = Math.Max(component[ci], component[cj]);
+                        long key = ((long)lo << 32) | (uint)hi;
+                        double score;
+                        if (affinityIndex.TryGetValue(key, out score))
+                        {
+                            totalAff += score;
+                            pairCount++;
+                        }
                     }
                 }
 
