@@ -16,6 +16,8 @@ on:
 permissions:
   contents: read
   packages: write
+  attestations: write
+  id-token: write
 
 jobs:
   publish:
@@ -72,20 +74,82 @@ jobs:
           & $msbuild Vidly\Vidly.csproj /p:Configuration=Release /verbosity:minimal
 
       - name: Pack NuGet package
+        shell: pwsh
         run: |
-          nuget pack Vidly.nuspec -Version ${{ steps.version.outputs.version }} -Properties Configuration=Release -OutputDirectory ./nupkg -Symbols -SymbolPackageFormat snupkg
+          nuget pack Vidly.nuspec -Version ${{ steps.version.outputs.version }} -Properties "Configuration=Release" -OutputDirectory ./nupkg -Symbols -SymbolPackageFormat snupkg
 
-      - name: Verify package
+      - name: Generate SBOM
+        shell: pwsh
+        run: |
+          # Generate a CycloneDX-style SBOM from packages.config
+          $packagesConfig = "Vidly/packages.config"
+          if (Test-Path $packagesConfig) {
+            [xml]$packages = Get-Content $packagesConfig
+            $components = @()
+            foreach ($pkg in $packages.packages.package) {
+              $components += @{
+                type = "library"
+                name = $pkg.id
+                version = $pkg.version
+                purl = "pkg:nuget/$($pkg.id)@$($pkg.version)"
+              }
+            }
+            $sbom = @{
+              bomFormat = "CycloneDX"
+              specVersion = "1.5"
+              serialNumber = "urn:uuid:$([guid]::NewGuid())"
+              version = 1
+              metadata = @{
+                timestamp = (Get-Date -Format o)
+                component = @{
+                  type = "application"
+                  name = "Vidly"
+                  version = "${{ steps.version.outputs.version }}"
+                  purl = "pkg:nuget/Vidly@${{ steps.version.outputs.version }}"
+                }
+              }
+              components = $components
+            }
+            $sbom | ConvertTo-Json -Depth 10 | Out-File -FilePath ./nupkg/vidly-sbom.cdx.json -Encoding utf8
+            Write-Host "SBOM generated with $($components.Count) components"
+          } else {
+            Write-Host "::warning::packages.config not found — skipping SBOM"
+          }
+
+      - name: Verify package integrity
         shell: pwsh
         run: |
           $pkg = Get-ChildItem ./nupkg -Filter "*.nupkg" -Exclude "*.snupkg" | Select-Object -First 1
           if (-not $pkg) {
-            Write-Host "::error::No .nupkg file found in ./nupkg"
+            Write-Host "::error::No .nupkg file found"
             exit 1
           }
-          Write-Host "Package: $($pkg.Name) ($([math]::Round($pkg.Length / 1KB, 1)) KB)"
-          $snupkg = Get-ChildItem ./nupkg -Filter "*.snupkg" | Select-Object -First 1
-          if ($snupkg) { Write-Host "Symbols: $($snupkg.Name) ($([math]::Round($snupkg.Length / 1KB, 1)) KB)" }
+          # Verify it's a valid ZIP archive (NuGet packages are ZIP files)
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          try {
+            $zip = [System.IO.Compression.ZipFile]::OpenRead($pkg.FullName)
+            $entries = $zip.Entries.Count
+            $zip.Dispose()
+            Write-Host "✅ Package valid: $($pkg.Name) ($entries entries, $([math]::Round($pkg.Length / 1KB, 1)) KB)"
+          } catch {
+            Write-Host "::error::Package is corrupted: $_"
+            exit 1
+          }
+          # Compute SHA256 for provenance
+          $hash = (Get-FileHash $pkg.FullName -Algorithm SHA256).Hash
+          Write-Host "SHA256: $hash"
+          echo "PACKAGE_SHA256=$hash" >> $env:GITHUB_ENV
+          echo "PACKAGE_NAME=$($pkg.Name)" >> $env:GITHUB_ENV
+
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages
+          path: |
+            ./nupkg/*.nupkg
+            ./nupkg/*.snupkg
+            ./nupkg/*-sbom.cdx.json
+          retention-days: 90
 
       - name: Push to GitHub Packages
         run: |
@@ -107,20 +171,28 @@ jobs:
         shell: pwsh
         run: |
           $pkg = Get-ChildItem ./nupkg -Filter "*.nupkg" -Exclude "*.snupkg" | Select-Object -First 1
+          $sbomExists = Test-Path ./nupkg/vidly-sbom.cdx.json
           $summary = @"
           ## 📦 NuGet Package Published
 
-          **Package:** Vidly v${{ steps.version.outputs.version }}
-          **Registries:** GitHub Packages ✅ | nuget.org (if NUGET_API_KEY set)
-          **Size:** $([math]::Round($pkg.Length / 1KB, 1)) KB
+          | Property | Value |
+          |----------|-------|
+          | **Package** | Vidly v${{ steps.version.outputs.version }} |
+          | **Size** | $([math]::Round($pkg.Length / 1KB, 1)) KB |
+          | **SHA256** | ``$env:PACKAGE_SHA256`` |
+          | **SBOM** | $(if ($sbomExists) { '✅ CycloneDX 1.5' } else { '⚠️ Not generated' }) |
+          | **GitHub Packages** | ✅ Published |
+          | **nuget.org** | $(if ('${{ github.event.inputs.publish_nuget_org }}' -eq 'true' -or '${{ github.ref }}'.StartsWith('refs/tags/v')) { '✅ Published' } else { '⏭️ Skipped' }) |
 
-          **Install (GitHub Packages):**
-          ``````
+          ### Install
+
+          **GitHub Packages:**
+          ``````shell
           dotnet add package Vidly --version ${{ steps.version.outputs.version }} --source "https://nuget.pkg.github.com/sauravbhattacharya001/index.json"
           ``````
 
-          **Install (nuget.org):**
-          ``````
+          **nuget.org:**
+          ``````shell
           dotnet add package Vidly --version ${{ steps.version.outputs.version }}
           ``````
           "@
