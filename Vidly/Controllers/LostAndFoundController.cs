@@ -14,6 +14,26 @@ namespace Vidly.Controllers
     /// </summary>
     public class LostAndFoundController : Controller
     {
+        // ── Input length limits (CWE-770) ───────────────────────────
+        // Without caps, an attacker can submit multi-megabyte strings in
+        // any text field, exhausting server memory and bloating storage.
+        // These limits match what a human would reasonably type.
+
+        /// <summary>Max length for item description.</summary>
+        public const int MaxDescriptionLength = 500;
+
+        /// <summary>Max length for location, color, brand, storage bin fields.</summary>
+        public const int MaxShortFieldLength = 100;
+
+        /// <summary>Max length for notes / customer claim description.</summary>
+        public const int MaxNotesLength = 2000;
+
+        /// <summary>Max length for staff ID.</summary>
+        public const int MaxStaffIdLength = 50;
+
+        /// <summary>Max length for claim rejection reason.</summary>
+        public const int MaxReasonLength = 1000;
+
         private readonly ILostAndFoundRepository _repository;
         private readonly ICustomerRepository _customerRepository;
 
@@ -66,6 +86,20 @@ namespace Vidly.Controllers
             if (string.IsNullOrWhiteSpace(description))
                 return RedirectToAction("Index", new { message = "Description is required.", error = true });
 
+            // Enforce input length limits to prevent memory exhaustion (CWE-770).
+            // A malicious or misbehaving client could POST megabytes of text in
+            // any of these fields; the in-memory repository stores them forever.
+            var lengthError = ValidateFieldLengths(
+                (description, MaxDescriptionLength, "Description"),
+                (locationFound, MaxShortFieldLength, "Location"),
+                (color, MaxShortFieldLength, "Color"),
+                (brand, MaxShortFieldLength, "Brand"),
+                (notes, MaxNotesLength, "Notes"),
+                (storageBin, MaxShortFieldLength, "Storage bin"),
+                (staffId, MaxStaffIdLength, "Staff ID"));
+            if (lengthError != null)
+                return RedirectToAction("Index", new { message = lengthError, error = true });
+
             var item = new LostItem
             {
                 Description = description.Trim(),
@@ -107,6 +141,13 @@ namespace Vidly.Controllers
             if (string.IsNullOrWhiteSpace(customerDescription))
                 return RedirectToAction("Index", new { message = "Please describe the item to verify ownership.", error = true });
 
+            if (customerDescription.Trim().Length > MaxNotesLength)
+                return RedirectToAction("Index", new
+                {
+                    message = $"Description cannot exceed {MaxNotesLength} characters.",
+                    error = true
+                });
+
             var claim = new LostItemClaim
             {
                 ItemId = itemId,
@@ -138,6 +179,13 @@ namespace Vidly.Controllers
             var item = _repository.GetById(claim.ItemId);
             if (item == null)
                 return RedirectToAction("Index", new { message = "Item not found.", error = true });
+
+            if (staffId != null && staffId.Trim().Length > MaxStaffIdLength)
+                return RedirectToAction("Index", new
+                {
+                    message = $"Staff ID cannot exceed {MaxStaffIdLength} characters.",
+                    error = true
+                });
 
             claim.Verified = true;
             claim.VerifiedByStaffId = string.IsNullOrWhiteSpace(staffId) ? "STAFF" : staffId.Trim();
@@ -173,6 +221,13 @@ namespace Vidly.Controllers
             var claim = _repository.GetClaimById(claimId);
             if (claim == null)
                 return RedirectToAction("Index", new { message = "Claim not found.", error = true });
+
+            if (reason != null && reason.Trim().Length > MaxReasonLength)
+                return RedirectToAction("Index", new
+                {
+                    message = $"Rejection reason cannot exceed {MaxReasonLength} characters.",
+                    error = true
+                });
 
             claim.Rejected = true;
             claim.RejectionReason = reason?.Trim() ?? "Description did not match item.";
@@ -219,6 +274,31 @@ namespace Vidly.Controllers
         {
             var report = _repository.GetReport();
             return Json(report, JsonRequestBehavior.AllowGet);
+        }
+
+        // ── Input Validation ─────────────────────────────────────────
+
+        /// <summary>
+        /// Checks each (value, maxLength, label) tuple and returns the first
+        /// error message, or null if all pass. Null/empty values are allowed
+        /// (they're optional fields); only non-null values over the limit
+        /// are rejected.
+        /// </summary>
+        private static string ValidateFieldLengths(
+            params (string value, int maxLength, string label)[] fields)
+        {
+            foreach (var (value, maxLength, label) in fields)
+            {
+                if (value != null && value.Trim().Length > maxLength)
+                    return $"{label} cannot exceed {maxLength} characters.";
+            }
+            return null;
+        }
+
+        private class RentalIdComparer : System.Collections.Generic.IEqualityComparer<Rental>
+        {
+            public bool Equals(Rental x, Rental y) => x?.Id == y?.Id;
+            public int GetHashCode(Rental obj) => obj?.Id.GetHashCode() ?? 0;
         }
     }
 }
