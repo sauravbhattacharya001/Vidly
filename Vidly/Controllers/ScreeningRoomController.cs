@@ -17,6 +17,9 @@ namespace Vidly.Controllers
     /// </summary>
     public class ScreeningRoomController : Controller
     {
+        /// <summary>Max length for booking notes (CWE-770).</summary>
+        public const int MaxNotesLength = 1000;
+
         private readonly IScreeningRoomRepository _repo;
         private readonly ICustomerRepository _customerRepo;
         private readonly IMovieRepository _movieRepo;
@@ -104,6 +107,9 @@ namespace Vidly.Controllers
 
             if (guestCount > room.Capacity)
                 return Json(new { success = false, error = $"Exceeds room capacity ({room.Capacity})." });
+
+            if (notes != null && notes.Trim().Length > MaxNotesLength)
+                return Json(new { success = false, error = $"Notes cannot exceed {MaxNotesLength} characters." });
 
             if (!_repo.IsSlotAvailable(roomId, parsedDate, startHour, durationHours))
                 return Json(new { success = false, error = "Time slot not available." });

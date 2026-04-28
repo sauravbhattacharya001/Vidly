@@ -13,6 +13,15 @@ namespace Vidly.Controllers
     /// </summary>
     public class MovieClubController : Controller
     {
+        /// <summary>Max length for club name (CWE-770).</summary>
+        public const int MaxClubNameLength = 100;
+
+        /// <summary>Max length for club description (CWE-770).</summary>
+        public const int MaxDescriptionLength = 2000;
+
+        /// <summary>Max length for poll title (CWE-770).</summary>
+        public const int MaxPollTitleLength = 200;
+
         private readonly IMovieClubRepository _clubRepository;
         private readonly ICustomerRepository _customerRepository;
         private readonly IMovieRepository _movieRepository;
@@ -92,6 +101,18 @@ namespace Vidly.Controllers
             if (string.IsNullOrWhiteSpace(name))
             {
                 TempData["Error"] = "Club name is required.";
+                return RedirectToAction("Index");
+            }
+
+            if (name.Trim().Length > MaxClubNameLength)
+            {
+                TempData["Error"] = $"Club name cannot exceed {MaxClubNameLength} characters.";
+                return RedirectToAction("Index");
+            }
+
+            if (description != null && description.Trim().Length > MaxDescriptionLength)
+            {
+                TempData["Error"] = $"Description cannot exceed {MaxDescriptionLength} characters.";
                 return RedirectToAction("Index");
             }
 
@@ -221,6 +242,12 @@ namespace Vidly.Controllers
             if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(movieIds))
             {
                 TempData["Error"] = "Poll title and movie options are required.";
+                return RedirectToAction("Details", new { id = clubId });
+            }
+
+            if (title.Trim().Length > MaxPollTitleLength)
+            {
+                TempData["Error"] = $"Poll title cannot exceed {MaxPollTitleLength} characters.";
                 return RedirectToAction("Details", new { id = clubId });
             }
 
