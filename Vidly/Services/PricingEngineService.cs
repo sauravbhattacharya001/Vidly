@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using Vidly.Models;
 using Vidly.Repositories;
 
@@ -12,6 +13,10 @@ namespace Vidly.Services
         private readonly IMovieRepository _movieRepository;
         private readonly ICustomerRepository _customerRepository;
         private readonly IClock _clock;
+
+        // Lock protects _rules, _ruleIdCounter, _autopilotEnabled,
+        // and _lastAutopilotResults from concurrent access.
+        private static readonly object _lock = new object();
 
         private static readonly List<PricingRule> _rules = new List<PricingRule>
         {
@@ -52,26 +57,38 @@ namespace Vidly.Services
 
         public List<PricingRule> GetActiveRules()
         {
-            return _rules.OrderBy(r => r.Priority).ToList();
+            lock (_lock)
+            {
+                return _rules.OrderBy(r => r.Priority).ToList();
+            }
         }
 
         public void AddRule(PricingRule rule)
         {
-            rule.Id = _ruleIdCounter++;
-            rule.CreatedAt = _clock.UtcNow;
-            rule.IsActive = true;
-            _rules.Add(rule);
+            lock (_lock)
+            {
+                rule.Id = Interlocked.Increment(ref _ruleIdCounter);
+                rule.CreatedAt = _clock.Now;
+                rule.IsActive = true;
+                _rules.Add(rule);
+            }
         }
 
         public void ToggleRule(int id)
         {
-            var rule = _rules.FirstOrDefault(r => r.Id == id);
-            if (rule != null) rule.IsActive = !rule.IsActive;
+            lock (_lock)
+            {
+                var rule = _rules.FirstOrDefault(r => r.Id == id);
+                if (rule != null) rule.IsActive = !rule.IsActive;
+            }
         }
 
         public void RemoveRule(int id)
         {
-            _rules.RemoveAll(r => r.Id == id);
+            lock (_lock)
+            {
+                _rules.RemoveAll(r => r.Id == id);
+            }
         }
 
         public List<PricingRecommendation> GetRecommendations()
@@ -237,7 +254,11 @@ namespace Vidly.Services
         public decimal CalculatePrice(int movieId)
         {
             var basePrice = 3.99m;
-            var activeRules = _rules.Where(r => r.IsActive).OrderBy(r => r.Priority).ToList();
+            List<PricingRule> activeRules;
+            lock (_lock)
+            {
+                activeRules = _rules.Where(r => r.IsActive).OrderBy(r => r.Priority).ToList();
+            }
             var finalMultiplier = 1.0m;
 
             foreach (var rule in activeRules)
@@ -250,15 +271,25 @@ namespace Vidly.Services
 
         public List<PricingRecommendation> RunAutopilot()
         {
-            _autopilotEnabled = true;
             var recommendations = GetRecommendations();
-            _lastAutopilotResults = recommendations.Where(r => r.Confidence >= 80).ToList();
-            return _lastAutopilotResults;
+            var highConfidence = recommendations.Where(r => r.Confidence >= 80).ToList();
+            lock (_lock)
+            {
+                _autopilotEnabled = true;
+                _lastAutopilotResults = highConfidence;
+            }
+            return highConfidence;
         }
 
         private PricingStats GetStats()
         {
-            var activeRules = _rules.Where(r => r.IsActive).ToList();
+            List<PricingRule> activeRules;
+            bool autopilotEnabled;
+            lock (_lock)
+            {
+                activeRules = _rules.Where(r => r.IsActive).ToList();
+                autopilotEnabled = _autopilotEnabled;
+            }
             var avgMult = activeRules.Any() ? activeRules.Average(r => r.Multiplier) : 1.0m;
             var recs = GetRecommendations();
 
@@ -268,7 +299,7 @@ namespace Vidly.Services
                 TotalRecommendations = recs.Count,
                 EstimatedRevenueGain = recs.Sum(r => Math.Max(0, r.PotentialRevenueDelta)),
                 RulesActive = activeRules.Count,
-                AutopilotEnabled = _autopilotEnabled
+                AutopilotEnabled = autopilotEnabled
             };
         }
     }
