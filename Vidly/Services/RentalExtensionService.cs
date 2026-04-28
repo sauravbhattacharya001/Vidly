@@ -337,16 +337,13 @@ namespace Vidly.Services
         /// <summary>
         /// Get membership-tier discount on extension fees.
         /// Basic = 0%, Silver = 25%, Gold = 50%, Platinum = 100% (free).
+        /// Delegates to <see cref="RentalPolicyConstants.TierExtensionDiscount"/>
+        /// for a single source of truth.
         /// </summary>
-        private static decimal GetMembershipDiscount(MembershipType tier)
+        internal static decimal GetMembershipDiscount(MembershipType tier)
         {
-            switch (tier)
-            {
-                case MembershipType.Silver:   return 0.25m;
-                case MembershipType.Gold:     return 0.50m;
-                case MembershipType.Platinum: return 1.00m;
-                default:                      return 0.00m;
-            }
+            return RentalPolicyConstants.GetTierValue(
+                RentalPolicyConstants.TierExtensionDiscount, tier, 0.00m);
         }
 
         private void AddExtensionRecord(int rentalId, ExtensionRecord record)
