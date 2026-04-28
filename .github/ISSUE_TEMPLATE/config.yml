@@ -1,11 +1,14 @@
 blank_issues_enabled: false
 contact_links:
-  - name: 📖 Architecture Guide
+  - name: "📖 Architecture Guide"
     url: https://github.com/sauravbhattacharya001/Vidly/blob/master/ARCHITECTURE.md
     about: Read the architecture guide before contributing
-  - name: 🔒 Security Vulnerability
+  - name: "🔒 Security Vulnerability"
     url: https://github.com/sauravbhattacharya001/Vidly/blob/master/SECURITY.md
     about: Report security issues via SECURITY.md (do not open a public issue)
-  - name: 📚 Documentation Site
+  - name: "📚 Documentation Site"
     url: https://sauravbhattacharya001.github.io/Vidly/
     about: Browse the full documentation
+  - name: "🤝 Contributing Guide"
+    url: https://github.com/sauravbhattacharya001/Vidly/blob/master/CONTRIBUTING.md
+    about: Read the contributing guide before submitting PRs
