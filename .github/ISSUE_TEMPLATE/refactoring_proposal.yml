@@ -1,0 +1,127 @@
+name: "🔧 Refactoring / Tech Debt Proposal"
+description: Propose a refactoring or tech debt cleanup
+title: "[refactor]: "
+labels: ["refactoring", "tech-debt"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template to propose code refactoring, architectural improvements, or tech debt cleanup. Good refactoring proposals include concrete before/after comparisons and measurable impact.
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options:
+        - Code duplication / DRY violation
+        - Architectural improvement
+        - Design pattern introduction or correction
+        - Dependency update / migration
+        - Dead code removal
+        - Naming / readability improvement
+        - Test infrastructure improvement
+        - Build / CI pipeline optimization
+        - Database schema optimization
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected Area
+      description: Which part of the codebase is affected?
+      multiple: true
+      options:
+        - Controllers
+        - Services (business logic)
+        - Repository / Data access layer
+        - Models / ViewModels / DTOs
+        - Views / Razor templates
+        - Middleware / Filters
+        - Dependency injection / Startup
+        - Unit tests / Integration tests
+        - Build / CI configuration
+        - Multiple areas (cross-cutting)
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-state
+    attributes:
+      label: Current State
+      description: Describe the current code or architecture and why it's problematic.
+      placeholder: |
+        The `MoviesController` directly calls repository methods and contains
+        duplicated validation logic that also exists in `RentalService`...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-change
+    attributes:
+      label: Proposed Change
+      description: What refactoring do you propose? Include before/after examples if possible.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Expected Impact
+      description: What improvement does this bring?
+      multiple: true
+      options:
+        - Reduced code duplication
+        - Improved testability
+        - Better separation of concerns
+        - Improved performance
+        - Reduced complexity / cyclomatic complexity
+        - Easier onboarding for new contributors
+        - Smaller binary / fewer dependencies
+        - Improved error handling
+    validations:
+      required: true
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Estimated Scope
+      options:
+        - Small (< 50 lines changed, 1-2 files)
+        - Medium (50-200 lines, 3-5 files)
+        - Large (200+ lines, multiple components)
+        - Breaking (requires migration or API changes)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: risk
+    attributes:
+      label: Risk Level
+      description: How likely is this change to introduce regressions?
+      options:
+        - Low (internal restructuring, no behavior change)
+        - Medium (behavior-preserving but touches critical paths)
+        - High (changes interfaces or data flow)
+    validations:
+      required: true
+
+  - type: textarea
+    id: testing-strategy
+    attributes:
+      label: Testing Strategy
+      description: How would you verify this refactoring doesn't break anything?
+      placeholder: |
+        - Existing unit tests cover the affected methods
+        - Would add integration tests for the new service layer
+        - Manual smoke test of /movies and /rentals endpoints
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      options:
+        - label: I have searched existing issues and this is not a duplicate
+          required: true
+        - label: I am willing to submit a PR for this refactoring

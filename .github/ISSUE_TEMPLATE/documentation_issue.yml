@@ -1,0 +1,73 @@
+name: "📖 Documentation Issue"
+description: Report incorrect, missing, or outdated documentation
+title: "[docs]: "
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Help us keep documentation accurate and useful. Use this template for any docs-related issue — incorrect API examples, missing setup steps, outdated architecture diagrams, etc.
+
+  - type: dropdown
+    id: doc-type
+    attributes:
+      label: Documentation Type
+      description: Which documentation is affected?
+      options:
+        - README.md
+        - ARCHITECTURE.md
+        - API reference / Swagger
+        - CONTRIBUTING.md / developer guide
+        - Inline code comments / XML docs
+        - GitHub Pages docs site
+        - Issue / PR templates
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: issue-type
+    attributes:
+      label: Issue Type
+      options:
+        - Incorrect / misleading information
+        - Missing documentation for existing feature
+        - Outdated (no longer matches current code)
+        - Unclear / hard to follow
+        - Broken links or formatting
+        - Missing code examples
+    validations:
+      required: true
+
+  - type: textarea
+    id: location
+    attributes:
+      label: Location
+      description: Where is the issue? Link to the file, section, or page.
+      placeholder: |
+        File: ARCHITECTURE.md, "Repository Pattern" section
+        Or URL: https://sauravbhattacharya001.github.io/Vidly/architecture.html
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What's wrong with the current documentation?
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested Fix
+      description: If you know what the correct information should be, describe it here.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      options:
+        - label: I have verified this against the current codebase
+          required: true
