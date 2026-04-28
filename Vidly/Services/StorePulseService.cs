@@ -266,38 +266,34 @@ namespace Vidly.Services
         private PulseSignal CalculateCustomerActivity(
             IEnumerable<Rental> rentals, IEnumerable<Customer> customers, DateTime now)
         {
-            var rentalList = rentals.ToList();
             var recentCutoff = now.AddDays(-30);
             var dormantCutoff = now.AddDays(-60);
 
+            // Single-pass: track most recent rental date per customer and
+            // whether they had any rental in the recent period. Replaces
+            // the previous O(inactiveCustomers × totalRentals) nested loop
+            // with O(totalRentals) using a per-customer latest-date map.
             var recentCustomerIds = new HashSet<int>();
-            var allCustomerIds = new HashSet<int>();
-            foreach (var r in rentalList)
+            var latestRentalByCustomer = new Dictionary<int, DateTime>();
+            foreach (var r in rentals)
             {
-                allCustomerIds.Add(r.CustomerId);
                 if (r.RentalDate >= recentCutoff)
                     recentCustomerIds.Add(r.CustomerId);
+
+                if (!latestRentalByCustomer.TryGetValue(r.CustomerId, out var prev)
+                    || r.RentalDate > prev)
+                {
+                    latestRentalByCustomer[r.CustomerId] = r.RentalDate;
+                }
             }
 
             int totalCustomers = customers.Count();
             int activeCustomers = recentCustomerIds.Count;
             int dormantCustomers = 0;
-            foreach (var cid in allCustomerIds)
+            foreach (var kv in latestRentalByCustomer)
             {
-                if (!recentCustomerIds.Contains(cid))
-                {
-                    bool hasDormant = true;
-                    foreach (var r in rentalList)
-                    {
-                        if (r.CustomerId == cid && r.RentalDate >= dormantCutoff)
-                        {
-                            hasDormant = false;
-                            break;
-                        }
-                    }
-                    if (hasDormant)
-                        dormantCustomers++;
-                }
+                if (!recentCustomerIds.Contains(kv.Key) && kv.Value < dormantCutoff)
+                    dormantCustomers++;
             }
 
             double activeRate = totalCustomers > 0 ? (double)activeCustomers / totalCustomers : 0;
