@@ -6,7 +6,7 @@ namespace Vidly.Services
     /// <summary>
     /// Single source of truth for rental policy constants shared across
     /// <see cref="PricingService"/>, <see cref="RentalReturnService"/>,
-    /// and <see cref="LoyaltyPointsService"/>.
+    /// <see cref="RentalExtensionService"/>, and <see cref="LoyaltyPointsService"/>.
     /// <para>
     /// Previously these values were independently declared in each service
     /// with identical values, creating a divergence risk if one service
@@ -73,6 +73,21 @@ namespace Vidly.Services
                 [MembershipType.Silver]   = 1,
                 [MembershipType.Gold]     = 2,
                 [MembershipType.Platinum] = 4,
+            };
+
+        /// <summary>
+        /// Extension fee discount percentage by membership tier.
+        /// Applied when a customer extends an active rental past its due date.
+        /// Higher tiers pay less (Platinum gets free extensions).
+        /// Previously hardcoded in <see cref="RentalExtensionService"/>.
+        /// </summary>
+        public static readonly IReadOnlyDictionary<MembershipType, decimal> TierExtensionDiscount
+            = new Dictionary<MembershipType, decimal>
+            {
+                [MembershipType.Basic]    = 0.00m,
+                [MembershipType.Silver]   = 0.25m,
+                [MembershipType.Gold]     = 0.50m,
+                [MembershipType.Platinum] = 1.00m,
             };
 
         /// <summary>
