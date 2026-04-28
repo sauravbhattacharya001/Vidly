@@ -1,0 +1,388 @@
+@model Vidly.Services.GenreEcosystemReport
+@{
+    ViewBag.Title = "Genre Ecosystem";
+}
+
+<div class="container-fluid" id="ecosystem-dashboard">
+    <!-- Header -->
+    <div class="row" style="margin-bottom: 24px;">
+        <div class="col-md-12">
+            <h2 style="margin-bottom: 4px;">
+                <span class="glyphicon glyphicon-globe" style="color: #8b5cf6;"></span>
+                Genre Ecosystem Analyzer
+                <small style="color: #999; font-size: 14px;">
+                    Updated: @Model.GeneratedAt.ToString("MMM dd, yyyy h:mm tt")
+                </small>
+            </h2>
+            <p class="text-muted" style="margin: 0;">
+                Autonomous genre relationship mapping — @Model.TotalRentalsAnalyzed rentals across @Model.TotalCustomersAnalyzed customers (last @Model.LookbackDays days)
+            </p>
+        </div>
+    </div>
+
+    <!-- Ecosystem Health Hero -->
+    <div class="row" style="margin-bottom: 30px;">
+        <div class="col-md-4 text-center">
+            <div style="position: relative; display: inline-block; width: 180px; height: 180px;">
+                <svg viewBox="0 0 200 200" style="width: 180px; height: 180px;">
+                    <circle cx="100" cy="100" r="85" fill="none" stroke="#eee" stroke-width="12" />
+                    <circle cx="100" cy="100" r="85" fill="none"
+                            stroke="@GetHealthColor(Model.EcosystemHealth.OverallScore)"
+                            stroke-width="12" stroke-linecap="round"
+                            stroke-dasharray="@(Math.Round(Model.EcosystemHealth.OverallScore * 5.34)) 534"
+                            transform="rotate(-90 100 100)" />
+                    <text x="100" y="90" text-anchor="middle" font-size="42" font-weight="bold"
+                          fill="@GetHealthColor(Model.EcosystemHealth.OverallScore)">
+                        @Model.EcosystemHealth.OverallScore
+                    </text>
+                    <text x="100" y="118" text-anchor="middle" font-size="18" fill="#888">
+                        Grade @Model.EcosystemHealth.Grade
+                    </text>
+                </svg>
+            </div>
+            <p style="margin-top: 8px; color: #666;">Ecosystem Health Score</p>
+        </div>
+        <div class="col-md-8">
+            <div class="row">
+                @{ var metrics = new[] {
+                    new { Label = "Diversity", Score = Model.EcosystemHealth.DiversityScore, Icon = "glyphicon-th", Color = "#3b82f6" },
+                    new { Label = "Connectivity", Score = Model.EcosystemHealth.ConnectivityScore, Icon = "glyphicon-link", Color = "#10b981" },
+                    new { Label = "Vibrancy", Score = Model.EcosystemHealth.VibrancyScore, Icon = "glyphicon-fire", Color = "#f59e0b" },
+                    new { Label = "Bridge Density", Score = (int)Math.Round(Math.Min(Model.EcosystemHealth.BridgeDensityPercent * 5, 100)), Icon = "glyphicon-transfer", Color = "#8b5cf6" }
+                }; }
+                @foreach (var m in metrics)
+                {
+                    <div class="col-md-3 col-sm-6" style="margin-bottom: 16px;">
+                        <div style="background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; text-align: center;">
+                            <span class="glyphicon @m.Icon" style="font-size: 20px; color: @m.Color;"></span>
+                            <div style="font-size: 28px; font-weight: bold; color: @m.Color; margin: 4px 0;">@m.Score</div>
+                            <div style="font-size: 12px; color: #888;">@m.Label</div>
+                            <div style="background: #f3f4f6; border-radius: 4px; height: 6px; margin-top: 8px;">
+                                <div style="background: @m.Color; height: 6px; border-radius: 4px; width: @(m.Score)%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+            <p style="color: #666; font-style: italic; margin-top: 8px;">@Model.EcosystemHealth.Summary</p>
+        </div>
+    </div>
+
+    <!-- Genre Nodes -->
+    <div class="row" style="margin-bottom: 30px;">
+        <div class="col-md-12">
+            <h3><span class="glyphicon glyphicon-th-large" style="color: #3b82f6;"></span> Genre Landscape</h3>
+            <div class="table-responsive">
+                <table class="table table-hover" style="background: #fff; border-radius: 8px;">
+                    <thead>
+                        <tr style="background: #f8f9fa;">
+                            <th>Genre</th>
+                            <th>Status</th>
+                            <th>Movies</th>
+                            <th>Rentals</th>
+                            <th>Customers</th>
+                            <th>Velocity</th>
+                            <th>Market Share</th>
+                            <th>Revenue</th>
+                            <th>Avg Rating</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var node in Model.GenreNodes)
+                        {
+                            <tr>
+                                <td><strong>@node.Genre</strong></td>
+                                <td><span class="label" style="background: @GetStatusColor(node.Status);">@node.Status</span></td>
+                                <td>@node.MovieCount</td>
+                                <td>@node.RentalCount</td>
+                                <td>@node.UniqueCustomers</td>
+                                <td>@node.Velocity</td>
+                                <td>@((node.MarketShare * 100).ToString("F1"))%</td>
+                                <td>$@node.Revenue.ToString("N2")</td>
+                                <td>
+                                    @if (node.AverageRating > 0)
+                                    {
+                                        @for (int i = 0; i < (int)Math.Round(node.AverageRating); i++)
+                                        {
+                                            <span class="glyphicon glyphicon-star" style="color: #f59e0b; font-size: 11px;"></span>
+                                        }
+                                        <span style="color: #999; font-size: 11px;">(@node.AverageRating)</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Co-Rental Network + Trends side by side -->
+    <div class="row" style="margin-bottom: 30px;">
+        <!-- Co-Rental Edges -->
+        <div class="col-md-6">
+            <h3><span class="glyphicon glyphicon-random" style="color: #10b981;"></span> Co-Rental Network</h3>
+            @if (Model.CoRentalEdges.Count == 0)
+            {
+                <p class="text-muted">No co-rental relationships detected yet.</p>
+            }
+            else
+            {
+                <div style="max-height: 400px; overflow-y: auto;">
+                    @foreach (var edge in Model.CoRentalEdges.Take(15))
+                    {
+                        var barWidth = (int)(edge.Affinity * 100);
+                        <div style="display: flex; align-items: center; margin-bottom: 8px; padding: 8px; background: #fff; border-radius: 8px; border: 1px solid #e5e7eb;">
+                            <div style="width: 180px; font-size: 13px;">
+                                <strong>@edge.GenreA</strong> ↔ <strong>@edge.GenreB</strong>
+                            </div>
+                            <div style="flex: 1; margin: 0 12px;">
+                                <div style="background: #f3f4f6; border-radius: 4px; height: 8px;">
+                                    <div style="background: @GetStrengthColor(edge.Strength); height: 8px; border-radius: 4px; width: @(barWidth)%;"></div>
+                                </div>
+                            </div>
+                            <div style="width: 120px; text-align: right; font-size: 12px;">
+                                <span class="label" style="background: @GetStrengthColor(edge.Strength);">@edge.Strength</span>
+                                <span style="color: #888; margin-left: 4px;">@edge.SharedCustomers cust</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <!-- Genre Trends -->
+        <div class="col-md-6">
+            <h3><span class="glyphicon glyphicon-trending-up" style="color: #f59e0b;"></span> Genre Trends</h3>
+            @foreach (var trend in Model.Trends.Take(10))
+            {
+                <div style="display: flex; align-items: center; margin-bottom: 8px; padding: 8px; background: #fff; border-radius: 8px; border: 1px solid #e5e7eb;">
+                    <div style="width: 100px;"><strong>@trend.Genre</strong></div>
+                    <div style="width: 80px;">
+                        <span style="color: @GetDirectionColor(trend.Direction); font-size: 13px;">
+                            @GetDirectionArrow(trend.Direction) @trend.Direction
+                        </span>
+                    </div>
+                    <div style="flex: 1; font-size: 12px; color: #888;">
+                        @trend.OldPeriodRentals → @trend.MidPeriodRentals → @trend.RecentPeriodRentals
+                    </div>
+                    <div style="width: 80px; text-align: right; font-size: 12px;">
+                        <span class="label" style="background: @GetConfidenceColor(trend.Confidence);">@trend.Confidence</span>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Bridge Customers -->
+    @if (Model.BridgeCustomers.Count > 0)
+    {
+        <div class="row" style="margin-bottom: 30px;">
+            <div class="col-md-12">
+                <h3><span class="glyphicon glyphicon-user" style="color: #8b5cf6;"></span> Genre Bridge Customers</h3>
+                <p class="text-muted">Customers who connect multiple genres — key to cross-genre discovery</p>
+                <div class="row">
+                    @foreach (var bridge in Model.BridgeCustomers.Take(8))
+                    {
+                        <div class="col-md-3 col-sm-6" style="margin-bottom: 16px;">
+                            <div style="background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <strong style="font-size: 14px;">@bridge.CustomerName</strong>
+                                    <span class="label" style="background: @GetBridgeColor(bridge.Classification);">@bridge.Classification</span>
+                                </div>
+                                <div style="font-size: 12px; color: #888; margin-bottom: 4px;">
+                                    @bridge.GenreCount genres · @bridge.TotalRentals rentals · Score: @bridge.BridgeScore
+                                </div>
+                                <div style="font-size: 11px;">
+                                    @string.Join(", ", bridge.GenresExplored.Take(5))
+                                    @if (bridge.GenresExplored.Count > 5)
+                                    {
+                                        <span style="color: #999;">+@(bridge.GenresExplored.Count - 5) more</span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Genre Deserts -->
+    @if (Model.Deserts.Count > 0)
+    {
+        <div class="row" style="margin-bottom: 30px;">
+            <div class="col-md-12">
+                <h3><span class="glyphicon glyphicon-alert" style="color: #ef4444;"></span> Genre Deserts</h3>
+                <p class="text-muted">Genres with unmet demand or untapped potential</p>
+                @foreach (var desert in Model.Deserts)
+                {
+                    <div class="alert" style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;">
+                        <strong style="color: #dc2626;">@desert.Genre</strong>
+                        <span class="label" style="background: @GetUrgencyColor(desert.Urgency); margin-left: 8px;">@desert.Urgency</span>
+                        <p style="margin: 4px 0 0; color: #666;">@desert.Reason</p>
+                        <p style="margin: 2px 0 0; font-size: 12px; color: #888;">
+                            Currently: @desert.CurrentMovieCount movies (velocity @desert.CurrentVelocity) · Need: ~@desert.EstimatedMoviesNeeded more titles
+                        </p>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <!-- Recommendations -->
+    @if (Model.Recommendations.Count > 0)
+    {
+        <div class="row" style="margin-bottom: 30px;">
+            <div class="col-md-12">
+                <h3><span class="glyphicon glyphicon-flash" style="color: #f59e0b;"></span> Autonomous Recommendations</h3>
+                <div class="table-responsive">
+                    <table class="table" style="background: #fff; border-radius: 8px;">
+                        <thead>
+                            <tr style="background: #f8f9fa;">
+                                <th style="width: 40px;">#</th>
+                                <th>Category</th>
+                                <th>Action</th>
+                                <th>Rationale</th>
+                                <th>Impact</th>
+                                <th>Genre</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var rec in Model.Recommendations)
+                            {
+                                <tr>
+                                    <td><span class="badge" style="background: #8b5cf6;">@rec.Priority</span></td>
+                                    <td><span class="label label-default" style="background: @GetCategoryColor(rec.Category);">@rec.Category</span></td>
+                                    <td><strong>@rec.Action</strong></td>
+                                    <td style="font-size: 12px; color: #666;">@rec.Rationale</td>
+                                    <td><span class="label" style="background: @GetImpactColor(rec.ExpectedImpact);">@rec.ExpectedImpact</span></td>
+                                    <td>@rec.TargetGenre</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@functions {
+    string GetHealthColor(int score)
+    {
+        if (score >= 80) return "#22c55e";
+        if (score >= 60) return "#3b82f6";
+        if (score >= 40) return "#f59e0b";
+        if (score >= 20) return "#f97316";
+        return "#ef4444";
+    }
+
+    string GetStatusColor(string status)
+    {
+        switch (status)
+        {
+            case "Star": return "#22c55e";
+            case "Growing": return "#3b82f6";
+            case "Stable": return "#6b7280";
+            case "Niche": return "#8b5cf6";
+            case "Declining": return "#ef4444";
+            default: return "#6b7280";
+        }
+    }
+
+    string GetStrengthColor(string strength)
+    {
+        switch (strength)
+        {
+            case "Strong": return "#22c55e";
+            case "Moderate": return "#f59e0b";
+            case "Weak": return "#d1d5db";
+            default: return "#d1d5db";
+        }
+    }
+
+    string GetDirectionColor(string dir)
+    {
+        switch (dir)
+        {
+            case "Rising": return "#22c55e";
+            case "Warming": return "#3b82f6";
+            case "Stable": return "#6b7280";
+            case "Cooling": return "#f97316";
+            case "Falling": return "#ef4444";
+            default: return "#6b7280";
+        }
+    }
+
+    string GetDirectionArrow(string dir)
+    {
+        switch (dir)
+        {
+            case "Rising": return "▲";
+            case "Warming": return "↗";
+            case "Stable": return "→";
+            case "Cooling": return "↘";
+            case "Falling": return "▼";
+            default: return "→";
+        }
+    }
+
+    string GetConfidenceColor(string conf)
+    {
+        switch (conf)
+        {
+            case "High": return "#22c55e";
+            case "Medium": return "#f59e0b";
+            case "Low": return "#ef4444";
+            default: return "#6b7280";
+        }
+    }
+
+    string GetBridgeColor(string cls)
+    {
+        switch (cls)
+        {
+            case "Omnivore": return "#8b5cf6";
+            case "Explorer": return "#3b82f6";
+            case "Crossover": return "#10b981";
+            case "Dabbler": return "#6b7280";
+            default: return "#6b7280";
+        }
+    }
+
+    string GetUrgencyColor(string urg)
+    {
+        switch (urg)
+        {
+            case "High": return "#ef4444";
+            case "Medium": return "#f59e0b";
+            case "Low": return "#3b82f6";
+            default: return "#6b7280";
+        }
+    }
+
+    string GetCategoryColor(string cat)
+    {
+        switch (cat)
+        {
+            case "Catalog Gap": return "#ef4444";
+            case "Trend Capture": return "#f59e0b";
+            case "Cross-Promotion": return "#10b981";
+            case "Customer Engagement": return "#8b5cf6";
+            case "Genre Recovery": return "#f97316";
+            default: return "#6b7280";
+        }
+    }
+
+    string GetImpactColor(string impact)
+    {
+        switch (impact)
+        {
+            case "High": return "#22c55e";
+            case "Medium": return "#3b82f6";
+            case "Low": return "#f59e0b";
+            default: return "#6b7280";
+        }
+    }
+}
