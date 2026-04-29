@@ -24,6 +24,9 @@ namespace Vidly.Services
             var allRentals = _rentals.GetAll();
             var now = DateTime.Now;
 
+            // O(M) movie lookup dictionary — eliminates O(R×M) linear scans in rental loop
+            var movieById = allMovies.ToDictionary(m => m.Id);
+
             // Build per-movie rental history (count per day-of-week)
             var movieDowCounts = new Dictionary<int, double[]>(); // movieId -> [7] day-of-week counts
             var movieRentalCounts = new Dictionary<int, int>();
@@ -33,19 +36,25 @@ namespace Vidly.Services
             {
                 var dow = (int)rental.RentalDate.DayOfWeek;
 
-                if (!movieDowCounts.ContainsKey(rental.MovieId))
-                    movieDowCounts[rental.MovieId] = new double[7];
-                movieDowCounts[rental.MovieId][dow]++;
+                if (!movieDowCounts.TryGetValue(rental.MovieId, out var dowArr))
+                {
+                    dowArr = new double[7];
+                    movieDowCounts[rental.MovieId] = dowArr;
+                }
+                dowArr[dow]++;
 
                 if (!movieRentalCounts.ContainsKey(rental.MovieId))
                     movieRentalCounts[rental.MovieId] = 0;
                 movieRentalCounts[rental.MovieId]++;
 
-                var movie = allMovies.FirstOrDefault(m => m.Id == rental.MovieId);
+                movieById.TryGetValue(rental.MovieId, out var movie);
                 var genre = movie?.Genre?.ToString() ?? "Unknown";
-                if (!genreDowCounts.ContainsKey(genre))
-                    genreDowCounts[genre] = new double[7];
-                genreDowCounts[genre][dow]++;
+                if (!genreDowCounts.TryGetValue(genre, out var genreArr))
+                {
+                    genreArr = new double[7];
+                    genreDowCounts[genre] = genreArr;
+                }
+                genreArr[dow]++;
             }
 
             // Compute weeks of data for averaging
@@ -112,11 +121,22 @@ namespace Vidly.Services
             }
 
             // Stock alerts - simulate stock as 3 copies per movie minus active rentals
-            var activeRentals = allRentals.Where(r => r.Status == RentalStatus.Active || r.Status == RentalStatus.Overdue).ToList();
+            // Pre-count active rentals per movie in O(A) instead of O(M×A)
+            var activeCountByMovie = new Dictionary<int, int>();
+            foreach (var r in allRentals)
+            {
+                if (r.Status == RentalStatus.Active || r.Status == RentalStatus.Overdue)
+                {
+                    if (!activeCountByMovie.TryGetValue(r.MovieId, out var cnt))
+                        cnt = 0;
+                    activeCountByMovie[r.MovieId] = cnt + 1;
+                }
+            }
+
             var stockAlerts = new List<StockAlert>();
             foreach (var mf in movieForecasts)
             {
-                var activeCount = activeRentals.Count(r => r.MovieId == mf.MovieId);
+                activeCountByMovie.TryGetValue(mf.MovieId, out var activeCount);
                 var stock = Math.Max(0, 3 - activeCount);
                 var weekDemand = mf.DailyPredictions.Sum();
                 if (weekDemand > stock * 0.7)
@@ -141,11 +161,12 @@ namespace Vidly.Services
                 a.RiskLevel == "Critical" ? 0 : a.RiskLevel == "High" ? 1 : a.RiskLevel == "Medium" ? 2 : 3
             ).ToList();
 
-            // Restock recommendations
+            // Restock recommendations — O(1) genre lookup via dictionary instead of O(alerts×M) name search
+            var forecastByName = movieForecasts.ToDictionary(f => f.Name);
             var recommendations = new List<RestockRecommendation>();
             foreach (var alert in stockAlerts.Where(a => a.RiskLevel == "Critical" || a.RiskLevel == "High"))
             {
-                var mf = movieForecasts.FirstOrDefault(f => f.Name == alert.MovieName);
+                forecastByName.TryGetValue(alert.MovieName, out var mf);
                 var qty = Math.Max(1, (int)Math.Ceiling(alert.PredictedDemand - alert.CurrentStock));
                 recommendations.Add(new RestockRecommendation
                 {
