@@ -80,16 +80,20 @@ namespace Vidly.Services
             var customer = _customers.GetById(customerId);
             if (customer == null) return null;
 
-            var rentals = _rentals.GetAll()
-                .Where(r => r.CustomerId == customerId)
-                .ToList();
+            // Fetch all rentals once and group by customer — avoids O(N) separate
+            // GetAll() calls that previously made this method O(N × R).
+            var allRentals = _rentals.GetAll();
+            var rentalsByCustomer = allRentals
+                .GroupBy(r => r.CustomerId)
+                .ToDictionary(g => g.Key, g => g.ToList());
 
-            var profile = BuildProfile(customer, rentals, now);
+            var customerRentals = rentalsByCustomer.GetValueOrDefault(customerId);
+            var profile = BuildProfile(customer, customerRentals, now);
 
-            // Need all profiles to assign tier
-            var allProfiles = _customers.GetAll()
-                .Select(c => BuildProfile(c,
-                    _rentals.GetAll().Where(r => r.CustomerId == c.Id).ToList(), now))
+            // Build all profiles to determine tier placement (single pass)
+            var allCustomers = _customers.GetAll();
+            var allProfiles = allCustomers
+                .Select(c => BuildProfile(c, rentalsByCustomer.GetValueOrDefault(c.Id), now))
                 .OrderByDescending(p => p.EstimatedClv)
                 .ToList();
             AssignTiers(allProfiles);
@@ -252,42 +256,86 @@ namespace Vidly.Services
         //  Trend (last 6 months)
         // ------------------------------------------------------------------
 
+        /// <summary>
+        /// Builds a 6-month CLV trend. Previously did 6 × O(R) filter+GroupBy passes
+        /// over all rentals (one cumulative subset per month). Now sorts rentals once
+        /// and accumulates per-customer revenue in a single forward pass, snapshotting
+        /// at each month boundary — O(R log R + R) total instead of O(6R + 6R).
+        /// </summary>
         private ClvTrend BuildTrend(IReadOnlyList<Rental> allRentals, IReadOnlyList<Customer> allCustomers, DateTime now)
         {
-            var labels = new List<string>();
-            var avgClv = new List<decimal>();
-            var newCustClv = new List<decimal>();
+            var labels = new List<string>(6);
+            var avgClv = new List<decimal>(6);
+            var newCustClv = new List<decimal>(6);
 
-            for (int i = 5; i >= 0; i--)
+            // Pre-compute the 6 month boundaries
+            var boundaries = new DateTime[6];
+            var monthStarts = new DateTime[6];
+            for (int i = 0; i < 6; i++)
             {
-                var monthStart = new DateTime(now.Year, now.Month, 1).AddMonths(-i);
-                var monthEnd = monthStart.AddMonths(1);
-                labels.Add(monthStart.ToString("MMM yy"));
+                monthStarts[i] = new DateTime(now.Year, now.Month, 1).AddMonths(i - 5);
+                boundaries[i] = monthStarts[i].AddMonths(1); // exclusive upper bound
+                labels.Add(monthStarts[i].ToString("MMM yy"));
+            }
 
-                // Revenue up to that month end per customer
-                var rentalsUpTo = allRentals.Where(r => r.RentalDate < monthEnd).ToList();
-                var revenueByCustomer = rentalsUpTo
-                    .GroupBy(r => r.CustomerId)
-                    .ToDictionary(g => g.Key, g => g.Sum(r => r.TotalCost));
-
-                if (revenueByCustomer.Any())
-                    avgClv.Add(Math.Round(revenueByCustomer.Values.Average(), 2));
-                else
-                    avgClv.Add(0);
-
-                // New customers that month
-                var newCustomers = allCustomers
-                    .Where(c => c.MemberSince.HasValue &&
-                                c.MemberSince.Value >= monthStart &&
-                                c.MemberSince.Value < monthEnd)
-                    .ToList();
-
-                if (newCustomers.Any())
+            // Group new customers by their month boundary index for O(1) lookup
+            var newCustomersByBoundary = new List<Customer>[6];
+            for (int i = 0; i < 6; i++) newCustomersByBoundary[i] = new List<Customer>();
+            foreach (var c in allCustomers)
+            {
+                if (!c.MemberSince.HasValue) continue;
+                var ms = c.MemberSince.Value;
+                for (int i = 0; i < 6; i++)
                 {
-                    var newRevenue = newCustomers
-                        .Select(c => revenueByCustomer.GetValueOrDefault(c.Id, 0m))
-                        .Average();
-                    newCustClv.Add(Math.Round(newRevenue, 2));
+                    if (ms >= monthStarts[i] && ms < boundaries[i])
+                    {
+                        newCustomersByBoundary[i].Add(c);
+                        break;
+                    }
+                }
+            }
+
+            // Sort rentals by date — single pass accumulation
+            var sorted = allRentals
+                .Where(r => r.RentalDate < boundaries[5]) // ignore future rentals
+                .OrderBy(r => r.RentalDate)
+                .ToList();
+
+            // Accumulate per-customer revenue, snapshot at each boundary
+            var revenueByCustomer = new Dictionary<int, decimal>();
+            int rentalIdx = 0;
+            for (int b = 0; b < 6; b++)
+            {
+                var cutoff = boundaries[b];
+                while (rentalIdx < sorted.Count && sorted[rentalIdx].RentalDate < cutoff)
+                {
+                    var r = sorted[rentalIdx];
+                    if (!revenueByCustomer.ContainsKey(r.CustomerId))
+                        revenueByCustomer[r.CustomerId] = 0;
+                    revenueByCustomer[r.CustomerId] += r.TotalCost;
+                    rentalIdx++;
+                }
+
+                // Average CLV snapshot
+                if (revenueByCustomer.Count > 0)
+                {
+                    decimal sum = 0;
+                    foreach (var v in revenueByCustomer.Values) sum += v;
+                    avgClv.Add(Math.Round(sum / revenueByCustomer.Count, 2));
+                }
+                else
+                {
+                    avgClv.Add(0);
+                }
+
+                // New customer CLV for this month
+                var newCusts = newCustomersByBoundary[b];
+                if (newCusts.Count > 0)
+                {
+                    decimal newSum = 0;
+                    foreach (var c in newCusts)
+                        newSum += revenueByCustomer.GetValueOrDefault(c.Id, 0m);
+                    newCustClv.Add(Math.Round(newSum / newCusts.Count, 2));
                 }
                 else
                 {
