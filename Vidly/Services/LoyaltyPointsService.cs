@@ -234,29 +234,36 @@ namespace Vidly.Services
 
         /// <summary>
         /// Get a leaderboard of top loyalty members by points balance.
+        /// Single O(L) pass over the ledger to aggregate balance and lifetime
+        /// earned per customer, replacing the previous O(C × L) approach that
+        /// called GetBalance() + scanned for positive points per customer.
         /// </summary>
         public List<LoyaltyLeaderboardEntry> GetLeaderboard(int top = 10)
         {
-            var customerIds = _ledger.Select(t => t.CustomerId).Distinct();
-            var entries = new List<LoyaltyLeaderboardEntry>();
-
-            foreach (var id in customerIds)
+            // Single pass: accumulate balance and lifetime earned per customer
+            var aggregates = new Dictionary<int, (int Balance, int LifetimeEarned)>();
+            foreach (var t in _ledger)
             {
-                var customer = _customerRepository.GetById(id);
-                if (customer == null) continue;
+                aggregates.TryGetValue(t.CustomerId, out var agg);
+                agg.Balance += t.Points;
+                if (t.Points > 0)
+                    agg.LifetimeEarned += t.Points;
+                aggregates[t.CustomerId] = agg;
+            }
 
-                var balance = GetBalance(id);
-                var totalEarned = _ledger
-                    .Where(t => t.CustomerId == id && t.Points > 0)
-                    .Sum(t => t.Points);
+            var entries = new List<LoyaltyLeaderboardEntry>();
+            foreach (var kvp in aggregates)
+            {
+                var customer = _customerRepository.GetById(kvp.Key);
+                if (customer == null) continue;
 
                 entries.Add(new LoyaltyLeaderboardEntry
                 {
-                    CustomerId = id,
+                    CustomerId = kvp.Key,
                     CustomerName = customer.Name,
                     MembershipTier = customer.MembershipType,
-                    CurrentBalance = balance,
-                    LifetimeEarned = totalEarned
+                    CurrentBalance = kvp.Value.Balance,
+                    LifetimeEarned = kvp.Value.LifetimeEarned
                 });
             }
 
