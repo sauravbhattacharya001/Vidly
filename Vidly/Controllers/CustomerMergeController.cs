@@ -26,7 +26,8 @@ namespace Vidly.Controllers
             : this(
                 new CustomerMergeService(
                     new InMemoryCustomerRepository(),
-                    new InMemoryRentalRepository()),
+                    new InMemoryRentalRepository(),
+                    new SystemClock()),
                 new InMemoryCustomerRepository())
         {
         }
