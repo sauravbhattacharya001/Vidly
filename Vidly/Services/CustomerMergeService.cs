@@ -14,16 +14,25 @@ namespace Vidly.Services
     {
         private readonly ICustomerRepository _customers;
         private readonly IRentalRepository _rentals;
-        private static readonly List<MergeAuditEntry> _auditLog = new List<MergeAuditEntry>();
-        private static readonly object _lock = new object();
-        private static int _nextAuditId = 1;
+        private readonly IClock _clock;
+        private readonly List<MergeAuditEntry> _auditLog = new List<MergeAuditEntry>();
+        private readonly object _lock = new object();
+        private int _nextAuditId = 1;
+
+        /// <summary>
+        /// Maximum number of audit entries retained in memory.
+        /// Prevents unbounded growth in long-running server processes.
+        /// </summary>
+        private const int MaxAuditEntries = 10_000;
 
         public CustomerMergeService(
             ICustomerRepository customers,
-            IRentalRepository rentals)
+            IRentalRepository rentals,
+            IClock clock = null)
         {
             _customers = customers ?? throw new ArgumentNullException(nameof(customers));
             _rentals = rentals ?? throw new ArgumentNullException(nameof(rentals));
+            _clock = clock ?? new SystemClock();
         }
 
         /// <summary>
@@ -163,7 +172,7 @@ namespace Vidly.Services
             _customers.Update(primary);
             _customers.Remove(request.SecondaryId);
 
-            var now = DateTime.Now;
+            var now = _clock.Now;
 
             // Record audit
             lock (_lock)
@@ -178,6 +187,10 @@ namespace Vidly.Services
                     RentalsTransferred = transferred,
                     MergedAt = now
                 });
+
+                // Evict oldest entries to prevent unbounded memory growth
+                while (_auditLog.Count > MaxAuditEntries)
+                    _auditLog.RemoveAt(_auditLog.Count - 1);
             }
 
             return new MergeResult
