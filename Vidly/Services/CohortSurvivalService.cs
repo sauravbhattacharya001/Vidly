@@ -85,6 +85,13 @@ namespace Vidly.Services
                 .OrderBy(g => g.Key.Year).ThenBy(g => g.Key.Month)
                 .ToList();
 
+            // Pre-index rentals by customer ID for O(1) per-customer lookup.
+            // Eliminates the O(C × R) inner loop per month that previously
+            // scanned ALL rentals for EVERY cohort member in EVERY period.
+            // For M months, C customers, R rentals this reduces from
+            // O(M × C × R) to O(R + M × C × avgRentalsPerCustomer).
+            var rentalsByCustomer = CustomerRentalAnalytics.BuildRentalsByCustomer(rentals);
+
             var cohorts = new List<Cohort>();
 
             foreach (var group in grouped)
@@ -114,20 +121,29 @@ namespace Vidly.Services
 
                     if (periodStart > now) break;
 
-                    // Count customers who rented in this period
-                    var activeInPeriod = memberIds.Count(id =>
-                        rentals.Any(r => r.CustomerId == id &&
-                                        r.RentalDate >= periodStart &&
-                                        r.RentalDate < periodEnd));
+                    // Count customers who rented in this period using pre-indexed lookup
+                    var activeInPeriod = 0;
+                    foreach (var id in memberIds)
+                    {
+                        List<Rental> custRentals;
+                        if (rentalsByCustomer.TryGetValue(id, out custRentals))
+                        {
+                            foreach (var r in custRentals)
+                            {
+                                if (r.RentalDate >= periodStart && r.RentalDate < periodEnd)
+                                {
+                                    activeInPeriod++;
+                                    break; // only need to find one rental in the period
+                                }
+                            }
+                        }
+                    }
 
                     // For month 0, survival = 1.0 (everyone starts active)
                     if (month == 0)
                     {
-                        // Count who rented at all in first month
-                        var firstMonthActive = memberIds.Count(id =>
-                            rentals.Any(r => r.CustomerId == id &&
-                                            r.RentalDate >= cohortStart &&
-                                            r.RentalDate < cohortStart.AddMonths(1)));
+                        // activeInPeriod already computed for the first month above
+                        var firstMonthActive = activeInPeriod;
 
                         survivalPoints.Add(new SurvivalPoint
                         {
@@ -324,6 +340,9 @@ namespace Vidly.Services
 
         private List<RetainedCustomerInfo> GetTopRetained(Cohort cohort, IReadOnlyList<Customer> customers, IReadOnlyList<Rental> rentals)
         {
+            // Pre-index rentals by customer for O(C + R) instead of O(C × R)
+            var rentalsByCustomer = CustomerRentalAnalytics.BuildRentalsByCustomer(rentals);
+
             var cohortCustomers = customers
                 .Where(c => c.MemberSince.HasValue &&
                             c.MemberSince.Value.Year == cohort.CohortStart.Year &&
@@ -331,13 +350,18 @@ namespace Vidly.Services
                 .ToList();
 
             return cohortCustomers
-                .Select(c => new
-                {
-                    Customer = c,
-                    RentalCount = rentals.Count(r => r.CustomerId == c.Id),
-                    LastRental = rentals.Where(r => r.CustomerId == c.Id)
-                        .OrderByDescending(r => r.RentalDate)
-                        .FirstOrDefault()?.RentalDate
+                .Select(c => {
+                    List<Rental> custRentals;
+                    rentalsByCustomer.TryGetValue(c.Id, out custRentals);
+                    var list = custRentals ?? new List<Rental>();
+                    return new
+                    {
+                        Customer = c,
+                        RentalCount = list.Count,
+                        LastRental = list.Count > 0
+                            ? list.OrderByDescending(r => r.RentalDate).First().RentalDate
+                            : (DateTime?)null
+                    };
                 })
                 .OrderByDescending(x => x.RentalCount)
                 .Take(5)
@@ -353,6 +377,9 @@ namespace Vidly.Services
 
         private List<ChurnedCustomerInfo> GetChurned(Cohort cohort, IReadOnlyList<Customer> customers, IReadOnlyList<Rental> rentals, DateTime now)
         {
+            // Pre-index rentals by customer for O(C + R) instead of O(C × R)
+            var rentalsByCustomer = CustomerRentalAnalytics.BuildRentalsByCustomer(rentals);
+
             var cohortCustomers = customers
                 .Where(c => c.MemberSince.HasValue &&
                             c.MemberSince.Value.Year == cohort.CohortStart.Year &&
@@ -362,13 +389,18 @@ namespace Vidly.Services
             var inactiveThreshold = now.AddMonths(-3);
 
             return cohortCustomers
-                .Select(c => new
-                {
-                    Customer = c,
-                    RentalCount = rentals.Count(r => r.CustomerId == c.Id),
-                    LastRental = rentals.Where(r => r.CustomerId == c.Id)
-                        .OrderByDescending(r => r.RentalDate)
-                        .FirstOrDefault()?.RentalDate
+                .Select(c => {
+                    List<Rental> custRentals;
+                    rentalsByCustomer.TryGetValue(c.Id, out custRentals);
+                    var list = custRentals ?? new List<Rental>();
+                    return new
+                    {
+                        Customer = c,
+                        RentalCount = list.Count,
+                        LastRental = list.Count > 0
+                            ? list.OrderByDescending(r => r.RentalDate).First().RentalDate
+                            : (DateTime?)null
+                    };
                 })
                 .Where(x => !x.LastRental.HasValue || x.LastRental.Value < inactiveThreshold)
                 .OrderBy(x => x.LastRental ?? DateTime.MinValue)
