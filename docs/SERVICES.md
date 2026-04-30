@@ -1,6 +1,6 @@
 # Vidly Services API Reference
 
-Complete reference for all 44 service classes in `Vidly/Services/`.
+Complete reference for all 108 service classes in `Vidly/Services/`.
 Each service is instantiated with in-memory data stores and provides
 domain-specific business logic for the Vidly rental platform.
 
@@ -61,6 +61,33 @@ domain-specific business logic for the Vidly rental platform.
   - [RentalSurveyService](#rentalsurveyservice)
   - [StaffSchedulingService](#staffschedulingservice)
   - [StoreEventService](#storeeventservice)
+- [Customer Intelligence](#customer-intelligence)
+  - [CustomerHealthService](#customerhealthservice)
+  - [CustomerMergeService](#customermergeservice)
+  - [ChurnPredictorService (Advanced)](#churnpredictorservice-advanced)
+  - [CohortSurvivalService](#cohortsurvivalservice)
+  - [JourneyOrchestratorService](#journeyorchestratorservice)
+  - [HabitCoachService](#habitcoachservice)
+  - [TasteDnaService](#tastednaservice)
+  - [TasteEvolutionService](#tasteevolutionservice)
+  - [WinBackService](#winbackservice)
+  - [FrictionDetectorService](#frictiondetectorservice)
+- [Revenue & Pricing Intelligence](#revenue--pricing-intelligence)
+  - [PricingEngineService](#pricingengineservice)
+  - [RevenueAlertService](#revenuealertservice)
+  - [RevenueLeakageService](#revenueleakageservice)
+  - [StrategySimulatorService](#strategysimulatorservice)
+- [Catalog Intelligence](#catalog-intelligence)
+  - [AffinityNetworkService](#affinitynetworkservice)
+  - [CatalogGapService](#cataloggapservice)
+  - [CatalogVelocityService](#catalogvelocityservice)
+  - [GenreEcosystemService](#genreecosystemservice)
+- [Store Operations](#store-operations)
+  - [StorePulseService](#storepulseservice)
+  - [AutopilotService](#autopilotservice)
+- [Social & Engagement](#social--engagement)
+  - [WatchPartyService](#watchpartyservice)
+  - [ConnectionsService](#connectionsservice)
 
 ---
 
@@ -1213,6 +1240,308 @@ _In-store announcement system with scheduling, publishing, pinning, customer ack
 
 ---
 
-**Total:** 57 services, 500+ public methods across 7 domains.
+---
 
-*Auto-generated from source. Last updated: 2026-03-18.*
+## Customer Intelligence
+
+Advanced customer analytics — health scoring, journey mapping, taste profiling, win-back campaigns, and friction detection.
+
+### CustomerHealthService
+
+_Real-time customer health scoring with fleet-wide monitoring, tier distribution, automated alerts, and trend analysis._
+
+**Source:** `Vidly/Services/CustomerHealthService.cs` (15 KB) · **Methods:** 6
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `GetCustomerHealth` | `CustomerHealthResult` | `int customerId` |
+| `GetFleetHealth` | `FleetHealthResult` | `—` |
+| `GetTierDistribution` | `Dictionary<HealthTier, int>` | `—` |
+| `AutoMonitor` | `List<HealthAlert>` | `—` |
+| `GetRecommendations` | `List<string>` | `int customerId` |
+| `GetHealthTrend` | `TrendDirection` | `int customerId` |
+
+### CustomerMergeService
+
+_Detects duplicate customer accounts, merges records with full audit logging, and maintains merge history._
+
+**Source:** `Vidly/Services/CustomerMergeService.cs` (9 KB) · **Methods:** 3
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `FindDuplicates` | `IReadOnlyList<DuplicateCandidate>` | `—` |
+| `Merge` | `MergeResult` | `MergeRequest request` |
+| `GetAuditLog` | `IReadOnlyList<MergeAuditEntry>` | `—` |
+
+### CohortSurvivalService
+
+_Survival-curve analysis for customer cohorts — tracks retention rates over time to identify when and why customers churn._
+
+**Source:** `Vidly/Services/CohortSurvivalService.cs` (23 KB) · **Methods:** 2
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `GenerateReport` | `CohortSurvivalReport` | `—` |
+| `GetCohortDetail` | `CohortDetail` | `string cohortLabel` |
+
+### JourneyOrchestratorService
+
+_Maps and manages the complete customer lifecycle — from onboarding through loyalty to at-risk. Classifies stage, triggers interventions, and provides fleet-wide journey dashboards with alerts._
+
+**Source:** `Vidly/Services/JourneyOrchestratorService.cs` (39 KB) · **Methods:** 5
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `ClassifyCustomer` | `JourneyProfile` | `int customerId` |
+| `GetFullJourney` | `JourneyMap` | `int customerId` |
+| `GetInterventions` | `List<Intervention>` | `int customerId` |
+| `GetDashboard` | `JourneyDashboard` | `—` |
+| `GetAlerts` | `List<JourneyAlert>` | `—` |
+
+### HabitCoachService
+
+_Analyzes viewing habits and provides personalized coaching — rhythm detection, genre distribution, monthly engagement trends, day-of-week patterns, goals, and nudges._
+
+**Source:** `Vidly/Services/HabitCoachService.cs` (29 KB) · **Methods:** 1
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `Analyze` | `CoachingReport` | `int customerId` |
+
+### TasteDnaService
+
+_Builds deep taste profiles per customer by extracting genre/mood/era/director preference vectors — the "DNA" of viewing taste. Also computes fleet-wide aggregate profiles._
+
+**Source:** `Vidly/Services/TasteDnaService.cs` (19 KB) · **Methods:** 2
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `BuildProfile` | `TasteDnaProfile` | `int customerId` |
+| `BuildFleet` | `TasteDnaFleet` | `—` |
+
+### TasteEvolutionService
+
+_Tracks how a customer's taste changes over time — detects genre drift, era shifts, and preference evolution across their rental history._
+
+**Source:** `Vidly/Services/TasteEvolutionService.cs` (15 KB) · **Methods:** 1
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `Analyze` | `TasteEvolutionReport` | `int customerId` |
+
+### WinBackService
+
+_Identifies lapsed customers and generates win-back campaign targets with probability scoring. Prioritizes high-value former customers most likely to return._
+
+**Source:** `Vidly/Services/WinBackService.cs` (17 KB) · **Methods:** 3
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `Analyze` | `WinBackSummary` | `int lapseDaysThreshold = 60, int topN = 30` |
+| `AnalyzeCustomer` | `WinBackCase` | `int customerId, int lapseDaysThreshold = 60` |
+| `GetHighProbabilityTargets` | `IReadOnlyList<WinBackCase>` | `...` |
+
+### FrictionDetectorService
+
+_Identifies UX and process friction points in the rental experience — generates reports, per-customer profiles, heatmaps, and trend analysis to reveal where customers struggle._
+
+**Source:** `Vidly/Services/FrictionDetectorService.cs` (35 KB) · **Methods:** 4
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `GenerateReport` | `FrictionReport` | `—` |
+| `AnalyzeCustomer` | `CustomerFrictionProfile` | `int customerId` |
+| `GetHeatmap` | `FrictionHeatmap` | `—` |
+| `GetTrends` | `List<FrictionTrend>` | `int periodDays, int periods` |
+
+---
+
+## Revenue & Pricing Intelligence
+
+Dynamic pricing, revenue monitoring, leakage detection, and strategic business simulation.
+
+### PricingEngineService
+
+_Rule-based dynamic pricing engine — manages pricing rules, demand heatmaps, autopilot pricing recommendations, and price snapshots over time._
+
+**Source:** `Vidly/Services/PricingEngineService.cs` (13 KB) · **Methods:** 11
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `GetDashboard` | `PricingDashboard` | `—` |
+| `GetActiveRules` | `List<PricingRule>` | `—` |
+| `AddRule` | `void` | `PricingRule rule` |
+| `ToggleRule` | `void` | `int id` |
+| `RemoveRule` | `void` | `int id` |
+| `GetRecommendations` | `List<PricingRecommendation>` | `—` |
+| `GetDemandHeatmap` | `Dictionary<DayOfWeek, List<double>>` | `—` |
+| `GetTopDemandMovies` | `List<DemandEntry>` | `int count` |
+| `GetSnapshots` | `List<PricingSnapshot>` | `int days` |
+| `CalculatePrice` | `decimal` | `int movieId` |
+| `RunAutopilot` | `List<PricingRecommendation>` | `—` |
+
+### RevenueAlertService
+
+_Real-time revenue monitoring with configurable alerting — dashboards, forecasting, genre breakdowns, and acknowledgement workflows for revenue anomalies._
+
+**Source:** `Vidly/Services/RevenueAlertService.cs` (17 KB) · **Methods:** 8
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `GetDashboard` | `RevenueDashboard` | `int? daysBack = null` |
+| `GetAlerts` | `List<RevenueAlert>` | `bool includeAcknowledged` |
+| `AcknowledgeAlert` | `bool` | `string alertId` |
+| `RunAnalysis` | `RevenueDashboard` | `—` |
+| `GetForecast` | `List<RevenueForecast>` | `int days` |
+| `ConfigureAlerts` | `AlertConfig` | `AlertConfig config` |
+| `GetConfig` | `AlertConfig` | `—` |
+| `GetGenreRevenue` | `Dictionary<string, GenreRevenueInfo>` | `int? daysBack = null` |
+
+### RevenueLeakageService
+
+_Detects revenue leakage across categories — identifies where money is being lost through policy gaps, process failures, or missed charges._
+
+**Source:** `Vidly/Services/RevenueLeakageService.cs` (32 KB) · **Methods:** 2
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `Analyze` | `RevenueLeakageReport` | `—` |
+| `AnalyzeCategory` | `List<RevenueLeak>` | `LeakCategory category` |
+
+### StrategySimulatorService
+
+_Business strategy simulation engine — runs what-if scenarios, compares outcomes, generates recommendations with risk factors and weekly projections._
+
+**Source:** `Vidly/Services/StrategySimulatorService.cs` (27 KB) · **Methods:** 5
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `Simulate` | `SimulationResult` | `StrategyScenario scenario` |
+| `GetHistory` | `List<SimulationResult>` | `—` |
+| `GetById` | `SimulationResult` | `int id` |
+| `GetRecommendations` | `List<StrategyRecommendation>` | `—` |
+| `CompareScenarios` | `ScenarioComparison` | `StrategyScenario scenarioA, StrategyScenario scenarioB` |
+
+---
+
+## Catalog Intelligence
+
+Movie affinity networks, catalog gap analysis, velocity tracking, and genre ecosystem mapping.
+
+### AffinityNetworkService
+
+_Builds a co-rental affinity graph between movies — identifies which titles are frequently rented together and surfaces neighborhood relationships._
+
+**Source:** `Vidly/Services/AffinityNetworkService.cs` (14 KB) · **Methods:** 2
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `BuildNetwork` | `AffinityNetworkSummary` | `int topN = 30` |
+| `GetNeighbors` | `List<MovieAffinity>` | `int movieId, int topN = 10` |
+
+### CatalogGapService
+
+_Identifies gaps in the movie catalog — genres, eras, or audience segments that are underserved relative to demand._
+
+**Source:** `Vidly/Services/CatalogGapService.cs` (8 KB) · **Methods:** 1
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `GetDashboard` | `CatalogGapDashboard` | `—` |
+
+### CatalogVelocityService
+
+_Tracks rental velocity for each movie — classifies titles by lifecycle phase (rising/peak/declining/dormant) and surfaces action queues for catalog curation._
+
+**Source:** `Vidly/Services/CatalogVelocityService.cs` (22 KB) · **Methods:** 4
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `Analyze` | `CatalogVelocityReport` | `—` |
+| `GetMovieVelocity` | `MovieVelocityProfile` | `int movieId` |
+| `GetByPhase` | `List<MovieVelocityProfile>` | `CatalogPhase phase` |
+| `GetActionQueue` | `List<MovieVelocityProfile>` | `—` |
+
+### GenreEcosystemService
+
+_Maps the genre ecosystem — computes inter-genre affinities, identifies bridge customers who cross genre boundaries, and provides ecosystem health reports._
+
+**Source:** `Vidly/Services/GenreEcosystemService.cs` (36 KB) · **Methods:** 3
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `Analyze` | `GenreEcosystemReport` | `int lookbackDays = 180` |
+| `GetGenreAffinity` | `double` | `string genreA, string genreB, int lookbackDays = 180` |
+| `GetTopBridges` | `List<GenreBridgeCustomer>` | `int topN = 10, int lookbackDays = 180` |
+
+---
+
+## Store Operations
+
+Real-time store health monitoring and automated rental management.
+
+### StorePulseService
+
+_Real-time store health dashboard — aggregates operational signals (inventory levels, return rates, staff utilization) into a unified pulse report with named signal access._
+
+**Source:** `Vidly/Services/StorePulseService.cs` (35 KB) · **Methods:** 3
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `GenerateReport` | `StorePulseReport` | `—` |
+| `GetHealthCheck` | `StorePulseReport` | `—` |
+| `GetSignal` | `PulseSignal` | `string name` |
+
+### AutopilotService
+
+_Automated rental queue management — builds customer preference profiles, generates weekly rental queues, tracks accepts/skips, and provides engagement insights._
+
+**Source:** `Vidly/Services/AutopilotService.cs` (21 KB) · **Methods:** 7
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `GetOrCreateProfile` | `AutopilotProfile` | `int customerId` |
+| `UpdateProfile` | `void` | `int customerId, AutopilotProfile profile` |
+| `GenerateWeeklyQueue` | `AutopilotWeeklyQueue` | `int customerId` |
+| `AcceptPick` | `void` | `int customerId, int movieId` |
+| `SkipPick` | `void` | `int customerId, int movieId` |
+| `GetInsights` | `List<AutopilotInsight>` | `int customerId` |
+| `GetDashboard` | `AutopilotViewModel` | `int customerId` |
+
+---
+
+## Social & Engagement
+
+Social viewing experiences and gamified interactions.
+
+### WatchPartyService
+
+_Plan themed watch parties — browse themes, generate movie plans with snack suggestions, share via codes, and manage saved parties._
+
+**Source:** `Vidly/Services/WatchPartyService.cs` (10 KB) · **Methods:** 5
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `GetThemes` | `IReadOnlyList<PartyTheme>` | `—` |
+| `GeneratePlan` | `WatchPartyPlan` | `string themeKey, int? guestCount = null` |
+| `GetByShareCode` | `WatchPartyPlan` | `string code` |
+| `GetSavedParties` | `IReadOnlyList<WatchPartyPlan>` | `—` |
+| `GetPartyCount` | `int` | `—` |
+
+### ConnectionsService
+
+_NYT Connections-style movie puzzle game — presents grouped movie trivia puzzles with shuffled items for in-store entertainment._
+
+**Source:** `Vidly/Services/ConnectionsService.cs` (6 KB) · **Methods:** 3
+
+| Method | Returns | Parameters |
+|--------|---------|------------|
+| `GetPuzzle` | `ConnectionsPuzzleData` | `int index` |
+| `GetRandomPuzzle` | `ConnectionsPuzzleData` | `out int index` |
+| `GetShuffledItems` | `List<string>` | `ConnectionsPuzzleData puzzle` |
+
+---
+
+**Total:** 78 services documented, 600+ public methods across 10 domains.
+
+*Auto-generated from source. Last updated: 2026-04-30.*
