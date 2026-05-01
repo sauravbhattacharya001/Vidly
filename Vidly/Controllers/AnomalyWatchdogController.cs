@@ -72,6 +72,7 @@ namespace Vidly.Controllers
 
         // POST: AnomalyWatchdog/Acknowledge/5
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public ActionResult Acknowledge(int id)
         {
             _service.AcknowledgeAlert(id);
