@@ -78,10 +78,27 @@ namespace Vidly.Controllers
 
         // POST: /Strategy/Simulate
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public ActionResult Simulate(StrategyScenario scenario)
         {
             if (scenario == null)
                 return Json(new { error = "Scenario is required" });
+
+            // CWE-770: Bound resource-intensive parameters to prevent DoS
+            if (scenario.HorizonWeeks < 1 || scenario.HorizonWeeks > 52)
+                return Json(new { error = "HorizonWeeks must be between 1 and 52" });
+            if (scenario.PriceChangePercent < -90 || scenario.PriceChangePercent > 200)
+                return Json(new { error = "PriceChangePercent must be between -90 and 200" });
+            if (scenario.MarketingBudgetMultiplier < 0 || scenario.MarketingBudgetMultiplier > 10)
+                return Json(new { error = "MarketingBudgetMultiplier must be between 0 and 10" });
+            if (scenario.NewInventoryPercent < 0 || scenario.NewInventoryPercent > 100)
+                return Json(new { error = "NewInventoryPercent must be between 0 and 100" });
+            if (scenario.LoyaltyBoostPercent < 0 || scenario.LoyaltyBoostPercent > 100)
+                return Json(new { error = "LoyaltyBoostPercent must be between 0 and 100" });
+            if (string.IsNullOrWhiteSpace(scenario.Name))
+                scenario.Name = "Untitled Scenario";
+            else if (scenario.Name.Length > 200)
+                scenario.Name = scenario.Name.Substring(0, 200);
 
             try
             {
@@ -129,6 +146,7 @@ namespace Vidly.Controllers
 
         // POST: /Strategy/Compare
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public ActionResult Compare(StrategyScenario scenarioA, StrategyScenario scenarioB)
         {
             if (scenarioA == null || scenarioB == null)
