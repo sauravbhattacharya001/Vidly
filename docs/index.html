@@ -270,6 +270,9 @@
             <div class="section-label">Services</div>
             <a href="#services" onclick="showSection('services', this)">Service Catalog</a>
             <a href="#services-ref" onclick="showSection('services-ref', this)">API Reference</a>
+            <a href="#autonomous" onclick="showSection('autonomous', this)">Autonomous Engines</a>
+            <a href="#engagement" onclick="showSection('engagement', this)">Engagement &amp; Games</a>
+            <a href="#operations-ext" onclick="showSection('operations-ext', this)">Extended Operations</a>
             <div class="section-label">Testing</div>
             <a href="TESTING.md">Testing Guide</a>
         </nav>
@@ -290,7 +293,7 @@
                 <li><strong>Thread-Safe Data Store</strong> — Concurrent access via lock-based synchronization</li>
                 <li><strong>Repository Pattern</strong> — Decoupled data access with interface-based design</li>
                 <li><strong>Dependency Injection Ready</strong> — Constructor injection in controllers</li>
-                <li><strong>53 business services</strong> — Rental, pricing, loyalty, analytics, recommendations, and more</li>
+                <li><strong>107 business services</strong> — Rental, pricing, loyalty, analytics, recommendations, gamification, fraud detection, and more</li>
                 <li><strong>Comprehensive Test Suite</strong> — Models, controllers, services, and edge cases</li>
             </ul>
 
@@ -361,10 +364,10 @@ cd Vidly</code></pre>
 │   │   ├── Customer.cs             Customer entity + validation
 │   │   ├── Rental.cs               Rental entity + status tracking
 │   │   └── ... (enums, view models)
-│   ├── Services/                   <span class="highlight">← 53 business services</span>
+│   ├── Services/                   <span class="highlight">← 107 business services</span>
 │   │   ├── PricingService.cs       Rate calculation + tier benefits
-│   │   ├── RentalReturnService.cs  Return workflow + late fees
-│   │   ├── DashboardService.cs     Single-pass analytics
+│   │   ├── FraudDetectorService.cs 7-rule fraud detection engine
+│   │   ├── StorePulseService.cs    Autonomous store health monitoring
 │   │   └── ... (see Service Catalog)
 │   ├── Repositories/
 │   │   ├── IRepository.cs          Generic CRUD interface
@@ -588,7 +591,7 @@ dotnet test Vidly.Tests/Vidly.Tests.csproj --collect:"XPlat Code Coverage"</code
         <!-- Service Catalog -->
         <div id="services" class="section">
             <h2>Service Catalog</h2>
-            <p>Vidly includes <strong>53 business services</strong> organized into five domains.
+            <p>Vidly includes <strong>107 business services</strong> organized across nine domains.
             All services use constructor injection with repository interfaces and follow
             in-memory, list-based storage patterns.</p>
 
@@ -791,6 +794,332 @@ dotnet test Vidly.Tests/Vidly.Tests.csproj --collect:"XPlat Code Coverage"</code
                 <tr><td><code>GetRecommendations(customerId, count)</code></td><td><code>List&lt;MovieRecommendation&gt;</code></td><td>Personalized movie recommendations</td></tr>
                 <tr><td><code>GetSimilarMovies(movieId, count)</code></td><td><code>List&lt;MovieRecommendation&gt;</code></td><td>Movies similar to a given title</td></tr>
             </table>
+        </div>
+
+        <!-- Autonomous Engines -->
+        <div id="autonomous" class="section">
+            <h2>Autonomous Engines</h2>
+            <p>Vidly includes <strong>18 autonomous engines</strong> that proactively monitor, detect, and recommend without manual intervention.</p>
+
+            <h3>🛡️ Fraud &amp; Risk</h3>
+            <div class="card">
+                <h4>FraudDetectorService</h4>
+                <p>7-rule fraud detection engine analyzing rental patterns: velocity, late patterns, new account bursts, high-value targeting, concurrent overload, damage patterns, and weekend surges. Produces composite risk scores with tiered classification.</p>
+            </div>
+            <div class="card">
+                <h4>AnomalyWatchdogService</h4>
+                <p>Proactive detection across 6 engines: rental bursts, genre shifts, return pattern anomalies, inventory concentration, rate abuse, and identity risks. Maintains risk-scored watchlist.</p>
+            </div>
+            <div class="card">
+                <h4>LateReturnPredictorService</h4>
+                <p>Predicts which active rentals are at risk of late return. Analyzes customer history and timing patterns to produce risk scores (0–100) with actionable recommendations.</p>
+            </div>
+
+            <h3>📊 Revenue &amp; Forecasting</h3>
+            <div class="card">
+                <h4>RevenueAlertService</h4>
+                <p>Proactive revenue monitoring with anomaly detection, forecasting, and autonomous recommendations for unusual drops or spikes.</p>
+            </div>
+            <div class="card">
+                <h4>RevenueLeakageService</h4>
+                <p>Scans 8 revenue streams to identify money being lost: uncollected late fees, expired gift cards, underpriced titles, idle inventory, lapsed subscribers, underutilized subscriptions, overdue unreturned, and dormant customers.</p>
+            </div>
+            <div class="card">
+                <h4>RevenueWeatherService</h4>
+                <p>Treats revenue patterns like weather phenomena — detects storms (spikes), droughts (dry spells), fronts (genre distribution shifts), and forecasts upcoming conditions.</p>
+            </div>
+            <div class="card">
+                <h4>DemandForecastService</h4>
+                <p>Demand forecasting using historical patterns, seasonal adjustments, and trend analysis for inventory planning.</p>
+            </div>
+            <div class="card">
+                <h4>StrategySimulatorService</h4>
+                <p>What-if scenario engine that simulates business decisions and projects multi-week impact on revenue, customer traffic, churn, and inventory utilization with Monte Carlo confidence intervals.</p>
+            </div>
+
+            <h3>👥 Customer Intelligence</h3>
+            <div class="card">
+                <h4>CustomerLifetimeValueService</h4>
+                <p>Predicts CLV using historical revenue, tenure, recency, and membership tier. Segments customers into value tiers, detects trajectory changes, and generates proactive optimisation recommendations.</p>
+            </div>
+            <div class="card">
+                <h4>CohortSurvivalService</h4>
+                <p>Kaplan–Meier survival analysis for customer retention. Groups customers into monthly cohorts, tracks activity over time, detects retention cliffs, and computes hazard rates.</p>
+            </div>
+            <div class="card">
+                <h4>SegmentationService</h4>
+                <p>Autonomous RFM-based segmentation: classifies customers into behavioral segments, tracks segment migration, and generates proactive campaign recommendations.</p>
+            </div>
+            <div class="card">
+                <h4>WinBackService</h4>
+                <p>Identifies lapsed customers, classifies lapse reasons, generates personalised re-engagement campaigns, and estimates recovery probability.</p>
+            </div>
+            <div class="card">
+                <h4>FrictionDetectorService</h4>
+                <p>Detects 8 friction categories in the rental journey: availability constraints, price shocks, overdue patterns, frequency gaps, genre lock, return delays, new customer drop-off, and high-cost abandonment.</p>
+            </div>
+            <div class="card">
+                <h4>TasteDnaService</h4>
+                <p>Produces multi-dimensional preference fingerprints from rental history, classifies personality archetypes, and generates proactive viewing recommendations.</p>
+            </div>
+            <div class="card">
+                <h4>TasteEvolutionService</h4>
+                <p>Tracks how a customer's movie taste evolves over time. Detects genre drift, predicts future preferences using momentum, and proactively suggests movies matching evolving profiles.</p>
+            </div>
+
+            <h3>🏢 Store Operations</h3>
+            <div class="card">
+                <h4>StorePulseService</h4>
+                <p>Unified store health monitoring: aggregates inventory, revenue, customer activity, and operations signals into a health score with anomaly detection and auto-generated action items.</p>
+            </div>
+            <div class="card">
+                <h4>CatalogVelocityService</h4>
+                <p>Tracks movie lifecycle phases, computes rental velocity and acceleration, detects phase transitions, and recommends autonomous actions (promote/discount/bundle/retire).</p>
+            </div>
+            <div class="card">
+                <h4>ProcurementAdvisorService</h4>
+                <p>Movie acquisition recommendation engine: analyzes rental demand patterns, identifies genre supply gaps, forecasts ROI for potential acquisitions, and produces budget allocation recommendations.</p>
+            </div>
+        </div>
+
+        <!-- Engagement & Gamification -->
+        <div id="engagement" class="section">
+            <h2>Engagement &amp; Gamification</h2>
+            <p>Interactive features that turn movie rental into an experience.</p>
+
+            <h3>🏆 Gamification</h3>
+            <div class="card">
+                <h4>AchievementService</h4>
+                <p>Badge and milestone system based on customer rental behavior. Badges are evaluated dynamically from rental history — no persistent badge state needed.</p>
+            </div>
+            <div class="card">
+                <h4>AwardsService</h4>
+                <p>Annual Vidly Awards across multiple categories based on rental, review, and customer data.</p>
+            </div>
+            <div class="card">
+                <h4>ChallengeService</h4>
+                <p>Movie rental challenges — time-bound objectives with progress tracking and rewards.</p>
+            </div>
+            <div class="card">
+                <h4>AlphabetChallengeService</h4>
+                <p>Track which letters of the alphabet are covered by movies in the catalog. Goal: collect movies starting with every letter A–Z.</p>
+            </div>
+            <div class="card">
+                <h4>HabitCoachService</h4>
+                <p>Rental habit coaching — encourages healthy viewing patterns and milestone celebrations.</p>
+            </div>
+
+            <h3>🎮 Interactive Features</h3>
+            <div class="card">
+                <h4>MovieQuizService</h4>
+                <p>Trivia quiz engine with difficulty levels, timed sessions, daily challenges, streak tracking, loyalty point rewards, and leaderboards.</p>
+            </div>
+            <div class="card">
+                <h4>MovieTournamentService</h4>
+                <p>Single-elimination movie tournaments with bracket seeding, round-by-round voting, and hall-of-fame tracking.</p>
+            </div>
+            <div class="card">
+                <h4>ShowdownService</h4>
+                <p>Movie Showdown — random matchups with voting score tracking.</p>
+            </div>
+            <div class="card">
+                <h4>RouletteService</h4>
+                <p>Movie Roulette — spins a wheel to pick a random movie, optionally filtered by genre and minimum rating.</p>
+            </div>
+            <div class="card">
+                <h4>BingoService</h4>
+                <p>Movie bingo cards with genre-specific and universal tropes.</p>
+            </div>
+            <div class="card">
+                <h4>EmojiStoryService</h4>
+                <p>Emoji movie puzzles — 30 built-in puzzles, random selection, answer checking, and scoring.</p>
+            </div>
+            <div class="card">
+                <h4>DrinkingGameService</h4>
+                <p>Movie drinking game rule sets based on genre tropes and selected difficulty.</p>
+            </div>
+            <div class="card">
+                <h4>ConnectionsService</h4>
+                <p>Movie Connections puzzles — group 16 movies into 4 categories that share a hidden connection.</p>
+            </div>
+
+            <h3>🤝 Social</h3>
+            <div class="card">
+                <h4>WatchPartyService</h4>
+                <p>Watch Party planner with themed movie night plans, auto-generated snack pairings, runtime estimates, and shareable summaries.</p>
+            </div>
+            <div class="card">
+                <h4>MovieClubService</h4>
+                <p>Movie clubs — groups of customers who watch, discuss, and vote on movies together. Features: club CRUD, membership, shared watchlists, democratic polls, meeting scheduling, and group discounts.</p>
+            </div>
+            <div class="card">
+                <h4>AffinityNetworkService</h4>
+                <p>Discovers hidden movie relationships through co-rental pattern analysis, builds an affinity graph with Jaccard similarity, and detects clusters for cross-sell/bundling insights.</p>
+            </div>
+            <div class="card">
+                <h4>CustomerWrappedService</h4>
+                <p>"Wrapped"-style summaries — personalised breakdown of rental history with fun insights, statistics, and all-time/year-scoped views.</p>
+            </div>
+        </div>
+
+        <!-- Extended Operations -->
+        <div id="operations-ext" class="section">
+            <h2>Extended Operations</h2>
+            <p>Services covering inventory lifecycle, financial operations, and store management.</p>
+
+            <h3>📦 Inventory &amp; Physical</h3>
+            <div class="card">
+                <h4>InventoryAuditService</h4>
+                <p>Physical inventory auditing: shelf location tracking, scan sessions, discrepancy detection, shrinkage analysis, and audit history.</p>
+            </div>
+            <div class="card">
+                <h4>CopyConditionService</h4>
+                <p>Tracks physical condition of movie copies across their rental lifecycle. Records disc/case condition at checkout and return, calculates deterioration rates, flags copies needing replacement.</p>
+            </div>
+            <div class="card">
+                <h4>ShelfOptimizerService</h4>
+                <p>Physical shelf space optimization for the store layout.</p>
+            </div>
+            <div class="card">
+                <h4>LostAndFoundService</h4>
+                <p>Tracks items left behind by customers: item registration, claiming workflow, verification, auto-disposal, keyword matching, and store-wide reporting.</p>
+            </div>
+            <div class="card">
+                <h4>AvailabilityService</h4>
+                <p>Movie availability tracking, calendar views of upcoming returns, and availability search/filtering.</p>
+            </div>
+
+            <h3>💳 Financial</h3>
+            <div class="card">
+                <h4>LateFeeService</h4>
+                <p>Late fee policies and calculation engine.</p>
+            </div>
+            <div class="card">
+                <h4>RefundService</h4>
+                <p>Thread-safe refund request management with duplicate-prevention guards against TOCTOU race conditions.</p>
+            </div>
+            <div class="card">
+                <h4>RentalInsuranceService</h4>
+                <p>Optional rental insurance at checkout — three tiers (Basic/Standard/Premium) covering late fees, damage charges, and lost-disc replacement.</p>
+            </div>
+            <div class="card">
+                <h4>RentalBudgetService</h4>
+                <p>Customer rental spending tracking against monthly budgets, with spending breakdowns, alerts, and savings tips.</p>
+            </div>
+            <div class="card">
+                <h4>SubscriptionService</h4>
+                <p>Subscription rental plans: subscribe, cancel, pause/resume, upgrade/downgrade, billing, and usage tracking.</p>
+            </div>
+            <div class="card">
+                <h4>PricingEngineService</h4>
+                <p>Advanced pricing engine with dynamic pricing rules and optimisation.</p>
+            </div>
+
+            <h3>📝 Rental Lifecycle</h3>
+            <div class="card">
+                <h4>RentalExtensionService</h4>
+                <p>Rental period extensions with configurable rules around fees, membership perks, reservation conflicts, and per-rental limits.</p>
+            </div>
+            <div class="card">
+                <h4>RentalSwapService</h4>
+                <p>Movie swap operations — exchange a current rental for a different title.</p>
+            </div>
+            <div class="card">
+                <h4>RentalCalendarService</h4>
+                <p>Calendar data for rental events — checkouts, due dates, and returns.</p>
+            </div>
+            <div class="card">
+                <h4>RentalReceiptService</h4>
+                <p>Detailed formatted rental receipts for checkout and return. Supports single and batch receipts with itemised line items and multiple output formats (text, CSV).</p>
+            </div>
+            <div class="card">
+                <h4>RentalSurveyService</h4>
+                <p>Post-rental satisfaction surveys: submission, validation, NPS calculation, reporting, trend analysis, and actionable insights.</p>
+            </div>
+            <div class="card">
+                <h4>RentalTrendsService</h4>
+                <p>Trending movies, genre shifts, and peak activity patterns. Compares current vs previous time windows.</p>
+            </div>
+
+            <h3>🎥 Content &amp; Discovery</h3>
+            <div class="card">
+                <h4>MovieCurationService</h4>
+                <p>Staff-curated themed movie lists with themes (Staff Picks, Hidden Gems, Date Night), featuring/rotation, voting, and rental impact analysis.</p>
+            </div>
+            <div class="card">
+                <h4>MovieSeriesService</h4>
+                <p>Movie series/franchises — create series, add movies in order, track per-customer watch progress, and recommend the next installment.</p>
+            </div>
+            <div class="card">
+                <h4>MovieSoundtrackService</h4>
+                <p>Soundtrack discovery — themed playlists, genre-to-soundtrack mapping, and mood-based music suggestions.</p>
+            </div>
+            <div class="card">
+                <h4>MovieRequestService</h4>
+                <p>Customer movie requests: submission, voting, trending, fulfilment, and demand analytics.</p>
+            </div>
+            <div class="card">
+                <h4>AutopilotService</h4>
+                <p>Movie Autopilot — autonomously curates weekly rental queues by analyzing rental history, taste evolution, and accept/skip feedback.</p>
+            </div>
+            <div class="card">
+                <h4>SeasonalRecommenderService</h4>
+                <p>Season-aware movie recommendations based on time-of-year patterns and holidays.</p>
+            </div>
+            <div class="card">
+                <h4>GenreEcosystemService</h4>
+                <p>Treats the genre catalog as an interconnected ecosystem — maps co-rental relationships, identifies genre "bridge" customers, detects trends, and finds genre deserts.</p>
+            </div>
+            <div class="card">
+                <h4>MoodMatcherService</h4>
+                <p>Matches movies to viewer moods based on genre affinity, rating, and recency.</p>
+            </div>
+            <div class="card">
+                <h4>DecadeExplorerService</h4>
+                <p>Explore movies by decade with sorting and filtering.</p>
+            </div>
+            <div class="card">
+                <h4>TimelineService</h4>
+                <p>Chronological movie timeline grouped by release year with genre breakdowns.</p>
+            </div>
+            <div class="card">
+                <h4>MarathonPlannerService</h4>
+                <p>Movie marathon plans with scheduling, optimal ordering, and runtime stats.</p>
+            </div>
+            <div class="card">
+                <h4>StaffPicksService</h4>
+                <p>Staff-curated movie picks organised by themes.</p>
+            </div>
+
+            <h3>🏢 Store</h3>
+            <div class="card">
+                <h4>StoreInfoService</h4>
+                <p>Store location and hours information.</p>
+            </div>
+            <div class="card">
+                <h4>StoreAnnouncementService</h4>
+                <p>Store-wide announcement bulletin board: scheduling, membership tier targeting, pinning, acknowledgment tracking, and engagement analytics.</p>
+            </div>
+            <div class="card">
+                <h4>CustomerMergeService</h4>
+                <p>Duplicate customer detection and account merging with rental transfer.</p>
+            </div>
+            <div class="card">
+                <h4>NegotiationService</h4>
+                <p>Customer-facing rental negotiation workflows.</p>
+            </div>
+            <div class="card">
+                <h4>CustomerHealthService</h4>
+                <p>Customer account health monitoring and scoring.</p>
+            </div>
+            <div class="card">
+                <h4>RetirementPlannerService</h4>
+                <p>Customer loyalty retirement/transition planning.</p>
+            </div>
+            <div class="card">
+                <h4>CatalogGapService</h4>
+                <p>Identifies gaps in the movie catalog compared to demand signals.</p>
+            </div>
         </div>
     </main>
 
