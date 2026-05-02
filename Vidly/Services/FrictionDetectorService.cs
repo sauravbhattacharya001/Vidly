@@ -66,10 +66,16 @@ namespace Vidly.Services
             var allRentals = _rentalRepository.GetAll();
             var allMovies = _movieRepository.GetAll();
 
+            // Pre-index: O(R) + O(M) upfront instead of O(C×R) + O(R×M) later
+            var rentalsByCustomer = GroupRentalsByCustomer(allRentals);
+            var movieIndex = IndexMoviesById(allMovies);
+
             var profiles = new List<CustomerFrictionProfile>();
             foreach (var c in customers)
             {
-                var profile = BuildCustomerProfile(c, allRentals, allMovies, now);
+                List<Rental> custRentals;
+                rentalsByCustomer.TryGetValue(c.Id, out custRentals);
+                var profile = BuildCustomerProfile(c, custRentals, movieIndex, now);
                 if (profile.FrictionPoints.Count > 0)
                 {
                     profiles.Add(profile);
@@ -127,7 +133,11 @@ namespace Vidly.Services
 
             var allRentals = _rentalRepository.GetAll();
             var allMovies = _movieRepository.GetAll();
-            return BuildCustomerProfile(customer, allRentals, allMovies, _clock.Now);
+            var rentalsByCustomer = GroupRentalsByCustomer(allRentals);
+            var movieIndex = IndexMoviesById(allMovies);
+            List<Rental> custRentals;
+            rentalsByCustomer.TryGetValue(customerId, out custRentals);
+            return BuildCustomerProfile(customer, custRentals, movieIndex, _clock.Now);
         }
 
         /// <summary>
@@ -140,10 +150,15 @@ namespace Vidly.Services
             var allMovies = _movieRepository.GetAll();
             var now = _clock.Now;
 
+            var rentalsByCustomer = GroupRentalsByCustomer(allRentals);
+            var movieIndex = IndexMoviesById(allMovies);
+
             var profiles = new List<CustomerFrictionProfile>();
             foreach (var c in customers)
             {
-                var profile = BuildCustomerProfile(c, allRentals, allMovies, now);
+                List<Rental> custRentals;
+                rentalsByCustomer.TryGetValue(c.Id, out custRentals);
+                var profile = BuildCustomerProfile(c, custRentals, movieIndex, now);
                 if (profile.FrictionPoints.Count > 0)
                 {
                     profiles.Add(profile);
@@ -167,25 +182,30 @@ namespace Vidly.Services
             var allMovies = _movieRepository.GetAll();
             var trends = new List<FrictionTrend>();
 
+            var movieIndex = IndexMoviesById(allMovies);
+
             for (int i = periods - 1; i >= 0; i--)
             {
                 var periodEnd = now.AddDays(-i * periodDays);
                 var periodStart = periodEnd.AddDays(-periodDays);
 
-                // Simulate friction at that point in time by filtering rentals
+                // Simulate friction at that point in time by filtering rentals,
+                // then pre-group by customer to avoid O(C×R) nested scan.
                 var periodRentals = allRentals
                     .Where(r => r.RentalDate <= periodEnd)
                     .ToList();
+                var periodByCustomer = GroupRentalsByCustomer(periodRentals);
 
                 var categoryCounts = new Dictionary<FrictionCategory, int>();
                 int affectedCount = 0;
 
                 foreach (var c in customers)
                 {
-                    var custRentals = periodRentals.Where(r => r.CustomerId == c.Id).ToList();
-                    if (custRentals.Count == 0) continue;
+                    List<Rental> custRentals;
+                    if (!periodByCustomer.TryGetValue(c.Id, out custRentals) || custRentals.Count == 0)
+                        continue;
 
-                    var points = DetectFrictionPoints(c, custRentals, allMovies, periodEnd);
+                    var points = DetectFrictionPoints(c, custRentals, movieIndex, periodEnd);
                     if (points.Count > 0)
                     {
                         affectedCount++;
@@ -221,14 +241,48 @@ namespace Vidly.Services
 
         // ── Private Helpers ──────────────────────────────────────────
 
+        /// <summary>
+        /// Pre-group rentals by CustomerId for O(1) per-customer lookup.
+        /// Eliminates O(C×R) nested filtering across report/heatmap/trends.
+        /// </summary>
+        private static Dictionary<int, List<Rental>> GroupRentalsByCustomer(
+            IReadOnlyList<Rental> rentals)
+        {
+            var map = new Dictionary<int, List<Rental>>();
+            foreach (var r in rentals)
+            {
+                List<Rental> list;
+                if (!map.TryGetValue(r.CustomerId, out list))
+                {
+                    list = new List<Rental>();
+                    map[r.CustomerId] = list;
+                }
+                list.Add(r);
+            }
+            return map;
+        }
+
+        /// <summary>
+        /// Pre-index movies by Id for O(1) genre lookups.
+        /// Replaces O(M) FirstOrDefault scans in DetectGenreLockFriction.
+        /// </summary>
+        private static Dictionary<int, Movie> IndexMoviesById(
+            IReadOnlyList<Movie> movies)
+        {
+            var index = new Dictionary<int, Movie>(movies.Count);
+            foreach (var m in movies)
+                index[m.Id] = m;
+            return index;
+        }
+
         private CustomerFrictionProfile BuildCustomerProfile(
             Customer customer,
-            IReadOnlyList<Rental> allRentals,
-            IReadOnlyList<Movie> allMovies,
+            List<Rental> custRentals,
+            Dictionary<int, Movie> movieIndex,
             DateTime now)
         {
-            var custRentals = allRentals.Where(r => r.CustomerId == customer.Id).ToList();
-            var frictionPoints = DetectFrictionPoints(customer, custRentals, allMovies, now);
+            if (custRentals == null) custRentals = new List<Rental>();
+            var frictionPoints = DetectFrictionPoints(customer, custRentals, movieIndex, now);
 
             double overallScore = 0;
             if (frictionPoints.Count > 0)
@@ -275,14 +329,14 @@ namespace Vidly.Services
         private List<FrictionPoint> DetectFrictionPoints(
             Customer customer,
             List<Rental> custRentals,
-            IReadOnlyList<Movie> allMovies,
+            Dictionary<int, Movie> movieIndex,
             DateTime now)
         {
             var points = new List<FrictionPoint>();
             if (custRentals.Count == 0) return points;
 
             // 1. Availability friction: customer holds overdue popular movies
-            DetectAvailabilityFriction(customer, custRentals, allMovies, now, points);
+            DetectAvailabilityFriction(customer, custRentals, movieIndex, now, points);
 
             // 2. Pricing friction: recent price shock
             DetectPricingFriction(customer, custRentals, now, points);
@@ -293,8 +347,8 @@ namespace Vidly.Services
             // 4. Frequency gap friction
             DetectFrequencyFriction(customer, custRentals, now, points);
 
-            // 5. Genre lock friction
-            DetectGenreLockFriction(customer, custRentals, allMovies, now, points);
+            // 5. Genre lock friction — uses movieIndex for O(1) lookups
+            DetectGenreLockFriction(customer, custRentals, movieIndex, now, points);
 
             // 6. Return delay friction
             DetectReturnDelayFriction(customer, custRentals, now, points);
@@ -310,7 +364,7 @@ namespace Vidly.Services
 
         private void DetectAvailabilityFriction(
             Customer customer, List<Rental> custRentals,
-            IReadOnlyList<Movie> allMovies, DateTime now, List<FrictionPoint> points)
+            Dictionary<int, Movie> movieIndex, DateTime now, List<FrictionPoint> points)
         {
             var overdueRentals = custRentals
                 .Where(r => r.Status != RentalStatus.Returned && r.DueDate < now)
@@ -432,14 +486,15 @@ namespace Vidly.Services
 
         private void DetectGenreLockFriction(
             Customer customer, List<Rental> custRentals,
-            IReadOnlyList<Movie> allMovies, DateTime now, List<FrictionPoint> points)
+            Dictionary<int, Movie> movieIndex, DateTime now, List<FrictionPoint> points)
         {
             if (custRentals.Count < 5) return;
 
             var genreCounts = new Dictionary<Genre, int>();
             foreach (var r in custRentals)
             {
-                var movie = allMovies.FirstOrDefault(m => m.Id == r.MovieId);
+                Movie movie;
+                movieIndex.TryGetValue(r.MovieId, out movie);
                 if (movie != null && movie.Genre.HasValue)
                 {
                     var genre = movie.Genre.Value;
