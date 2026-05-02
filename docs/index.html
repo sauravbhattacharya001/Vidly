@@ -273,6 +273,11 @@
             <a href="#autonomous" onclick="showSection('autonomous', this)">Autonomous Engines</a>
             <a href="#engagement" onclick="showSection('engagement', this)">Engagement &amp; Games</a>
             <a href="#operations-ext" onclick="showSection('operations-ext', this)">Extended Operations</a>
+            <div class="section-label">Platform</div>
+            <a href="#platform" onclick="showSection('platform', this)">Platform Tools</a>
+            <a href="#creative" onclick="showSection('creative', this)">Creative &amp; Fun</a>
+            <a href="#journey" onclick="showSection('journey', this)">Customer Journey</a>
+            <a href="#market-intel" onclick="showSection('market-intel', this)">Market Intelligence</a>
             <div class="section-label">Testing</div>
             <a href="TESTING.md">Testing Guide</a>
         </nav>
@@ -1120,6 +1125,159 @@ dotnet test Vidly.Tests/Vidly.Tests.csproj --collect:"XPlat Code Coverage"</code
                 <h4>CatalogGapService</h4>
                 <p>Identifies gaps in the movie catalog compared to demand signals.</p>
             </div>
+        </div>
+        <!-- Platform Tools -->
+        <div id="platform" class="section">
+            <h2>Platform Tools</h2>
+            <p>Cross-cutting capabilities that power the Vidly platform — search, data export, membership cards, and security controls.</p>
+
+            <h3>🔍 Search &amp; Discovery</h3>
+            <div class="card">
+                <h4>SearchController</h4>
+                <p>Global search across movies, customers, and rentals. Accessible via the navbar search bar or <code>/Search?q=term</code>. Rate-limited to 20 requests per 60 seconds to prevent automated scraping.</p>
+            </div>
+            <div class="card">
+                <h4>DirectorsController</h4>
+                <p>Director Spotlight — browse directors, view bios, and explore their filmography available in the store with rental stats and average ratings.</p>
+            </div>
+            <div class="card">
+                <h4>WaitlistController</h4>
+                <p>Movie waitlist queue — customers join a queue for movies that are currently rented out. Tracks queue position, sends availability notifications, and manages hold-and-release when copies return.</p>
+            </div>
+
+            <h3>📤 Data &amp; Reporting</h3>
+            <div class="card">
+                <h4>ExportController</h4>
+                <p>Data export in CSV and JSON formats for movies, customers, and rentals. Rate-limited to 5 requests per 5 minutes to prevent mass data exfiltration. Returns full datasets with configurable format selection.</p>
+            </div>
+            <div class="card">
+                <h4>StatementController</h4>
+                <p>Consolidated rental statements for customers over configurable date ranges. Staff can produce printable invoices showing all rentals, costs, late fees, and summary statistics.</p>
+            </div>
+
+            <h3>🪪 Membership</h3>
+            <div class="card">
+                <h4>MembershipCardController</h4>
+                <p>Generates printable digital membership cards showing tier, customer ID, rental stats, benefits summary, and a visual barcode-style element. Supports all membership tiers from Basic through Platinum.</p>
+            </div>
+
+            <h3>⚖️ Staff Operations</h3>
+            <div class="card">
+                <h4>PenaltyWaiverController</h4>
+                <p>Penalty waiver system — staff review overdue rentals and grant full or partial late-fee waivers with documented reasons. Tracks waiver history, approval rates, and financial impact.</p>
+            </div>
+            <div class="card">
+                <h4>InventoryOptimizerController</h4>
+                <p>Inventory optimization analysis engine. Generates demand forecasts, identifies overstocked and understocked titles, computes optimal reorder points, and recommends procurement actions based on rental velocity and seasonal patterns.</p>
+            </div>
+        </div>
+
+        <!-- Creative & Fun -->
+        <div id="creative" class="section">
+            <h2>Creative &amp; Fun</h2>
+            <p>Interactive entertainment features beyond the core games — creative tools, word games, and social gifting.</p>
+
+            <h3>🎨 Creative Tools</h3>
+            <div class="card">
+                <h4>PosterController</h4>
+                <p>Movie Poster Creator — design custom movie posters with a Canvas editor. Choose a movie or start from scratch, pick layouts and colors, and download as PNG. Supports template selection and text overlay customization.</p>
+            </div>
+            <div class="card">
+                <h4>PlaylistController</h4>
+                <p>Customer movie playlists — create, manage, and share themed movie playlists. Supports CRUD operations, movie ordering, privacy settings, and collaborative playlists shared between customers.</p>
+            </div>
+
+            <h3>📝 Word Games</h3>
+            <div class="card">
+                <h4>CrosswordController</h4>
+                <p>Movie Crossword — interactive crossword puzzles with movie-themed clues. Auto-generated grids from the movie catalog with across/down clues based on plot descriptions, actor names, and trivia.</p>
+            </div>
+            <div class="card">
+                <h4>MadLibsController</h4>
+                <p>Movie Mad Libs — fill in the blanks to create hilarious movie plot remixes. Features 10+ classic film templates (The Godfather, Star Wars, Titanic) where players substitute nouns, verbs, and adjectives into iconic plot summaries.</p>
+            </div>
+            <div class="card">
+                <h4>QuotesController</h4>
+                <p>Movie Quotes Board — browse, submit, and vote on memorable movie lines. Features a community-driven quote collection with upvoting, random quote of the day, and movie attribution.</p>
+            </div>
+
+            <h3>🎁 Social &amp; Gifting</h3>
+            <div class="card">
+                <h4>GiftRegistryController</h4>
+                <p>Gift Registry — customers create public wishlists of movies they'd like to receive as gift rentals. Friends browse registries via unique share codes and fulfill items. Tracks fulfillment status and gift history.</p>
+            </div>
+            <div class="card">
+                <h4>ScreeningRoomController</h4>
+                <p>Screening Room Booking — customers book private screening rooms for movie watch parties, date nights, or team events. Features time slot availability grids, booking management, capacity tracking, and cancellation with a 24-hour policy.</p>
+            </div>
+            <div class="card">
+                <h4>TradeInController</h4>
+                <p>Movie Trade-In — customers trade physical copies (DVD, Blu-ray, 4K UHD, VHS) for rental credits. Staff review pending submissions before credits are awarded. Features credit quote calculator, format-based pricing, and condition assessment.</p>
+            </div>
+        </div>
+
+        <!-- Customer Journey -->
+        <div id="journey" class="section">
+            <h2>Customer Journey Orchestration</h2>
+            <p>End-to-end customer lifecycle management — from first rental to loyal champion.</p>
+
+            <div class="card">
+                <h4>JourneyOrchestratorService</h4>
+                <p>Autonomous customer lifecycle engine that classifies each customer into one of 8 journey stages: <strong>Newcomer → Exploring → Active → Loyal → Champion → Cooling → AtRisk → Lapsed</strong>. Tracks engagement trends, detects stage transitions, and generates stage-appropriate interventions (welcome offers, retention campaigns, win-back incentives).</p>
+            </div>
+
+            <h3>Journey Stages</h3>
+            <div class="diagram">Newcomer ──→ Exploring ──→ Active ──→ Loyal ──→ Champion
+     │             │            │          │
+     └─────────────┴────────────┴──────────┘
+                        ↓
+                    Cooling ──→ AtRisk ──→ Lapsed
+                                             │
+                                     (WinBackService)</div>
+
+            <table>
+                <tr><th>Stage</th><th>Criteria</th><th>Automated Actions</th></tr>
+                <tr><td>Newcomer</td><td>0–1 rentals, &lt;7 days</td><td>Welcome email, first-rental discount</td></tr>
+                <tr><td>Exploring</td><td>2–4 rentals, trying genres</td><td>Personalized recommendations, genre sampling nudges</td></tr>
+                <tr><td>Active</td><td>Regular rental cadence</td><td>Loyalty point bonuses, challenge invitations</td></tr>
+                <tr><td>Loyal</td><td>Consistent high activity</td><td>Tier upgrade offers, exclusive previews</td></tr>
+                <tr><td>Champion</td><td>Top decile engagement</td><td>Ambassador program, early access to new releases</td></tr>
+                <tr><td>Cooling</td><td>Declining frequency</td><td>Re-engagement offers, "we miss you" campaigns</td></tr>
+                <tr><td>AtRisk</td><td>No activity in 30+ days</td><td>Aggressive retention discounts, personal outreach</td></tr>
+                <tr><td>Lapsed</td><td>No activity in 60+ days</td><td>Win-back campaigns via WinBackService</td></tr>
+            </table>
+
+            <h3>Supporting Analytics</h3>
+            <div class="card">
+                <h4>CustomerRentalAnalytics</h4>
+                <p>Shared analytics utility layer used by ChurnPredictorService, WinBackService, and JourneyOrchestratorService. Provides O(1) per-customer rental lookups, genre distribution computation, gap analysis, and entropy calculations — eliminating duplicated logic across services.</p>
+            </div>
+        </div>
+
+        <!-- Market Intelligence -->
+        <div id="market-intel" class="section">
+            <h2>Market Intelligence</h2>
+            <p>Autonomous competitive analysis and strategic pricing intelligence.</p>
+
+            <div class="card">
+                <h4>CompetitiveIntelService</h4>
+                <p>Autonomous Competitive Intelligence Engine — analyzes Vidly's pricing and catalog positioning against simulated market benchmarks from 4 virtual competitors (StreamFlix, MovieVault, CineRent, QuickFlicks). Features include:</p>
+                <ul>
+                    <li><strong>Market Snapshot</strong> — side-by-side comparison of pricing, catalog size, customer satisfaction, and market share</li>
+                    <li><strong>Opportunity Detection</strong> — identifies underpriced titles, genre gaps, and untapped segments</li>
+                    <li><strong>Threat Analysis</strong> — detects competitor advantages in pricing or catalog breadth</li>
+                    <li><strong>Strategic Recommendations</strong> — generates actionable pricing moves and catalog expansion suggestions</li>
+                </ul>
+            </div>
+
+            <h3>Routes</h3>
+            <table>
+                <tr><th>Method</th><th>Route</th><th>Description</th></tr>
+                <tr><td><span class="badge badge-get">GET</span></td><td><code>/CompetitiveIntel</code></td><td>Full market intelligence dashboard</td></tr>
+                <tr><td><span class="badge badge-get">GET</span></td><td><code>/CompetitiveIntel/Snapshot</code></td><td>Current market snapshot (JSON)</td></tr>
+                <tr><td><span class="badge badge-get">GET</span></td><td><code>/CompetitiveIntel/Opportunities</code></td><td>Detected opportunities (JSON)</td></tr>
+                <tr><td><span class="badge badge-get">GET</span></td><td><code>/CompetitiveIntel/Threats</code></td><td>Active threats (JSON)</td></tr>
+            </table>
         </div>
     </main>
 
