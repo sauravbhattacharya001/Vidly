@@ -633,6 +633,83 @@ namespace Vidly.Services
 
         // ── Action Item Generation ───────────────────────────────────
 
+        /// <summary>
+        /// Declarative action rule: matches a signal by name and score threshold,
+        /// then produces a PulseActionItem. MetricKey (optional) is interpolated
+        /// into the description template via {0}.
+        /// </summary>
+        private struct ActionRule
+        {
+            public readonly string SignalName;
+            public readonly int MaxScore;        // signal.Score must be < this
+            public readonly int Priority;
+            public readonly string Category;
+            public readonly string Title;
+            public readonly string DescriptionTemplate;
+            public readonly string MetricKey;    // null = no interpolation
+            public readonly string Impact;
+            public readonly bool IsAutomatable;
+
+            public ActionRule(string signalName, int maxScore, int priority, string category,
+                string title, string descriptionTemplate, string metricKey, string impact, bool isAutomatable)
+            {
+                SignalName = signalName;
+                MaxScore = maxScore;
+                Priority = priority;
+                Category = category;
+                Title = title;
+                DescriptionTemplate = descriptionTemplate;
+                MetricKey = metricKey;
+                Impact = impact;
+                IsAutomatable = isAutomatable;
+            }
+        }
+
+        private static readonly ActionRule[] ActionRules = new[]
+        {
+            // Critical threshold (score < 40)
+            new ActionRule("Inventory Utilization", 40, 1, "inventory",
+                "Critical: Rebalance inventory",
+                "Utilization at {0}%. Consider purchasing additional copies of high-demand titles or running promotions on underperforming stock.",
+                "utilizationRate", "high", false),
+
+            new ActionRule("Revenue Velocity", 40, 1, "revenue",
+                "Urgent: Revenue decline detected",
+                "30-day revenue has dropped significantly. Consider launching targeted promotions, bundle deals, or seasonal campaigns.",
+                null, "high", true),
+
+            new ActionRule("Overdue Rate", 40, 1, "operations",
+                "Critical: High overdue rate",
+                "More than 25% of active rentals are overdue. Send automated reminder notifications and consider adjusting due date policies.",
+                null, "high", true),
+
+            new ActionRule("Customer Activity", 40, 2, "customers",
+                "Launch win-back campaign",
+                "{0} dormant customers identified. Send personalized re-engagement offers based on their genre preferences.",
+                "dormantCustomers", "high", true),
+
+            new ActionRule("Late Fee Burden", 40, 2, "customers",
+                "Review late fee policy",
+                "Average late fees per customer are high, risking churn. Consider grace period extensions or fee caps for loyal members.",
+                null, "medium", false),
+
+            new ActionRule("Return Compliance", 40, 1, "operations",
+                "Improve return compliance",
+                "On-time return rate is critically low. Implement automated due-date reminders and consider incentives for on-time returns.",
+                null, "high", true),
+
+            // Warning threshold (score < 60)
+            new ActionRule("Genre Diversity", 60, 3, "inventory",
+                "Diversify beyond {0}",
+                "{0} dominates rentals. Promote underrepresented genres with staff picks and featured collections.",
+                "topGenre", "medium", true),
+
+            new ActionRule("Customer Activity", 60, 3, "customers",
+                "Boost customer engagement",
+                "Customer activity is below optimal. Consider loyalty program enhancements or movie night events.",
+                null, "medium", false),
+        };
+
         private List<PulseActionItem> GenerateActionItems(
             List<PulseSignal> signals,
             List<PulseAnomaly> anomalies,
@@ -645,109 +722,29 @@ namespace Vidly.Services
 
             foreach (var signal in signals)
             {
-                if (signal.Score < 40)
+                foreach (var rule in ActionRules)
                 {
-                    if (signal.Name == "Inventory Utilization")
-                    {
-                        var item = new PulseActionItem();
-                        item.Priority = 1;
-                        item.Category = "inventory";
-                        item.Title = "Critical: Rebalance inventory";
-                        item.Description = string.Format(
-                            "Utilization at {0}%. Consider purchasing additional copies of high-demand titles or running promotions on underperforming stock.",
-                            signal.Metrics.ContainsKey("utilizationRate") ? signal.Metrics["utilizationRate"] : "N/A");
-                        item.Impact = "high";
-                        item.IsAutomatable = false;
-                        items.Add(item);
-                    }
-                    else if (signal.Name == "Revenue Velocity")
-                    {
-                        var item = new PulseActionItem();
-                        item.Priority = 1;
-                        item.Category = "revenue";
-                        item.Title = "Urgent: Revenue decline detected";
-                        item.Description = "30-day revenue has dropped significantly. Consider launching targeted promotions, bundle deals, or seasonal campaigns.";
-                        item.Impact = "high";
-                        item.IsAutomatable = true;
-                        items.Add(item);
-                    }
-                    else if (signal.Name == "Overdue Rate")
-                    {
-                        var item = new PulseActionItem();
-                        item.Priority = 1;
-                        item.Category = "operations";
-                        item.Title = "Critical: High overdue rate";
-                        item.Description = "More than 25% of active rentals are overdue. Send automated reminder notifications and consider adjusting due date policies.";
-                        item.Impact = "high";
-                        item.IsAutomatable = true;
-                        items.Add(item);
-                    }
-                    else if (signal.Name == "Customer Activity")
-                    {
-                        var item = new PulseActionItem();
-                        item.Priority = 2;
-                        item.Category = "customers";
-                        item.Title = "Launch win-back campaign";
-                        item.Description = string.Format(
-                            "{0} dormant customers identified. Send personalized re-engagement offers based on their genre preferences.",
-                            signal.Metrics.ContainsKey("dormantCustomers") ? signal.Metrics["dormantCustomers"] : "0");
-                        item.Impact = "high";
-                        item.IsAutomatable = true;
-                        items.Add(item);
-                    }
-                    else if (signal.Name == "Late Fee Burden")
-                    {
-                        var item = new PulseActionItem();
-                        item.Priority = 2;
-                        item.Category = "customers";
-                        item.Title = "Review late fee policy";
-                        item.Description = "Average late fees per customer are high, risking churn. Consider grace period extensions or fee caps for loyal members.";
-                        item.Impact = "medium";
-                        item.IsAutomatable = false;
-                        items.Add(item);
-                    }
-                    else if (signal.Name == "Return Compliance")
-                    {
-                        var item = new PulseActionItem();
-                        item.Priority = 1;
-                        item.Category = "operations";
-                        item.Title = "Improve return compliance";
-                        item.Description = "On-time return rate is critically low. Implement automated due-date reminders and consider incentives for on-time returns.";
-                        item.Impact = "high";
-                        item.IsAutomatable = true;
-                        items.Add(item);
-                    }
-                }
-                else if (signal.Score < 60)
-                {
-                    if (signal.Name == "Genre Diversity")
-                    {
-                        string topGenre = signal.Metrics.ContainsKey("topGenre")
-                            ? signal.Metrics["topGenre"].ToString()
-                            : "Unknown";
-                        var item = new PulseActionItem();
-                        item.Priority = 3;
-                        item.Category = "inventory";
-                        item.Title = string.Format("Diversify beyond {0}", topGenre);
-                        item.Description = string.Format(
-                            "{0} dominates rentals. Promote underrepresented genres with staff picks and featured collections.",
-                            topGenre);
-                        item.Impact = "medium";
-                        item.IsAutomatable = true;
-                        items.Add(item);
-                    }
+                    if (signal.Name != rule.SignalName) continue;
+                    if (signal.Score >= rule.MaxScore) continue;
 
-                    if (signal.Name == "Customer Activity")
-                    {
-                        var item = new PulseActionItem();
-                        item.Priority = 3;
-                        item.Category = "customers";
-                        item.Title = "Boost customer engagement";
-                        item.Description = "Customer activity is below optimal. Consider loyalty program enhancements or movie night events.";
-                        item.Impact = "medium";
-                        item.IsAutomatable = false;
-                        items.Add(item);
-                    }
+                    // Resolve metric value for interpolation
+                    object metricValue = rule.MetricKey != null
+                        && signal.Metrics.ContainsKey(rule.MetricKey)
+                            ? signal.Metrics[rule.MetricKey]
+                            : (rule.MetricKey != null ? (object)"N/A" : null);
+
+                    var item = new PulseActionItem();
+                    item.Priority = rule.Priority;
+                    item.Category = rule.Category;
+                    item.Title = metricValue != null
+                        ? string.Format(rule.Title, metricValue)
+                        : rule.Title;
+                    item.Description = metricValue != null
+                        ? string.Format(rule.DescriptionTemplate, metricValue)
+                        : rule.DescriptionTemplate;
+                    item.Impact = rule.Impact;
+                    item.IsAutomatable = rule.IsAutomatable;
+                    items.Add(item);
                 }
             }
 
