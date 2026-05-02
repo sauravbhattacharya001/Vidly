@@ -1,14 +1,17 @@
 # Contributing to Vidly
 
-Thanks for considering contributing to Vidly! This guide explains how to set up the project, write quality code, and submit changes.
+Thanks for considering contributing to Vidly! This guide covers everything you need to set up the project, understand the codebase, write quality code, and submit changes.
 
 ## Table of Contents
 
 - [Getting Started](#getting-started)
 - [Development Setup](#development-setup)
 - [Project Structure](#project-structure)
+- [Domain Areas](#domain-areas)
+- [Architecture & Patterns](#architecture--patterns)
 - [Coding Guidelines](#coding-guidelines)
 - [Testing](#testing)
+- [CI/CD Pipeline](#cicd-pipeline)
 - [Submitting Changes](#submitting-changes)
 - [Issue Guidelines](#issue-guidelines)
 - [Code Review Process](#code-review-process)
@@ -32,6 +35,7 @@ Thanks for considering contributing to Vidly! This guide explains how to set up 
 
 - [.NET SDK 8.0+](https://dotnet.microsoft.com/download/dotnet/8.0) (for building and running tests)
 - [Visual Studio 2022](https://visualstudio.microsoft.com/) or [VS Code](https://code.visualstudio.com/) with the C# extension
+- [Docker](https://www.docker.com/) (optional — for containerized builds)
 - Git
 
 ### Building
@@ -59,32 +63,106 @@ dotnet test Vidly.Tests/Vidly.Tests.csproj \
   --results-directory ./TestResults
 ```
 
+### Docker Build
+
+```bash
+docker build -t vidly .
+```
+
 ## Project Structure
+
+Vidly is a large ASP.NET MVC application with **110 controllers**, **111 services**, **95 model files**, and **56 repository classes** organized into clear layers:
 
 ```
 Vidly/
-├── Vidly/                          # Main ASP.NET MVC application
-│   ├── Controllers/                # MVC controllers (Home, Movies, Customers, Rentals)
-│   ├── Models/                     # Domain models (Movie, Customer, Rental + enums)
-│   ├── ViewModels/                 # View-specific data containers
-│   ├── Repositories/               # Data access layer (interfaces + in-memory implementations)
-│   ├── Filters/                    # Action filters (SecurityHeadersAttribute)
-│   └── App_Start/                  # Startup configuration (routes, bundles, filters)
-├── Vidly.Tests/                    # MSTest unit tests
-├── docs/                           # Documentation site
-├── .github/                        # CI/CD workflows, issue templates, Copilot config
-├── ARCHITECTURE.md                 # Detailed architecture guide
-└── SECURITY.md                     # Security policy
+├── Vidly/                           # Main ASP.NET MVC 5 application
+│   ├── Controllers/    (110 files)  # MVC controllers — one per feature area
+│   ├── Services/       (111 files)  # Business logic — service layer
+│   ├── Models/          (95 files)  # Domain models and DTOs
+│   ├── Repositories/    (56 files)  # Data access (interfaces + in-memory implementations)
+│   ├── ViewModels/      (65 files)  # View-specific data containers
+│   ├── Filters/          (2 files)  # Action filters (SecurityHeaders, RateLimit)
+│   ├── Utilities/        (2 files)  # Shared helpers (JsonSerializer, SortHelper)
+│   └── App_Start/                   # Startup configuration (routes, bundles, filters)
+├── Vidly.Tests/        (111 files)  # MSTest unit tests
+├── docs/                            # Documentation site (GitHub Pages)
+├── .github/                         # CI/CD, issue templates, Copilot config
+│   ├── workflows/                   # CI, CodeQL, Docker, NuGet, Pages, auto-assign, etc.
+│   ├── ISSUE_TEMPLATE/              # Bug report, feature request, perf, refactoring, etc.
+│   └── PULL_REQUEST_TEMPLATE.md     # PR template
+├── ARCHITECTURE.md                  # Detailed architecture guide
+├── SECURITY.md                      # Security policy
+├── Dockerfile                       # Multi-stage Docker build
+└── Vidly.sln                        # Solution file
 ```
 
-### Key Architectural Decisions
+## Domain Areas
 
-- **Repository pattern**: All data access goes through `IRepository<T>` and domain-specific interfaces (`IMovieRepository`, `ICustomerRepository`, `IRentalRepository`)
-- **Thread-safe in-memory stores**: Repositories use `Dictionary<int, T>` with explicit locking and defensive cloning
-- **Constructor injection**: Controllers accept repository interfaces for testability
-- **No external database**: Data is stored in-memory with static collections (designed for demo/learning purposes)
+The codebase is organized around these functional domains. When contributing, identify which area your change belongs to:
 
-For a deeper dive, see [ARCHITECTURE.md](ARCHITECTURE.md).
+### Core Rental Operations
+Controllers/services for the fundamental rental business: `Movies`, `Customers`, `Rentals`, `LateeFees`, `Refunds`, `Reservations`, `Inventory`, `PenaltyWaiver`, `RentalCalendar`, `RentalExtension`, `RentalReturn`, `RentalSwap`, `RentalReceipt`, `RentalInsurance`, `Damage`, `LostAndFound`, `TradeIn`
+
+### Customer Intelligence
+Customer-facing analytics and lifecycle: `CustomerHealth`, `CustomerInsights`, `CustomerLifetimeValue`, `CustomerMerge`, `ChurnPredictor`, `CohortSurvival`, `Segmentation`, `TasteDna`, `TasteEvolution`, `HabitCoach`, `WinBack`, `Connections`, `AffinityNetwork`, `CustomerWrapped`
+
+### Revenue & Business Analytics
+Financial and operational intelligence: `Dashboard`, `RevenueAlerts`, `RevenueWeather`, `Budget`, `DemandForecast`, `CatalogGap`, `CatalogVelocity`, `StorePulse`, `PricingEngine`, `Pricing`, `RevenueLeakage`, `Strategy`, `ShelfOptimizer`, `InventoryOptimizer`, `Procurement`
+
+### Discovery & Recommendations
+Content discovery and curation: `Recommendations`, `Search`, `Mood`, `SeasonalRecommender`, `Playlist`, `Watchlist`, `WatchParty`, `Compare`, `Decade`, `Series`, `Franchise`, `Soundtrack`, `Directors`, `GenreEcosystem`, `StaffPicks`, `MovieCuration`, `MovieInsights`, `MovieSimilarity`
+
+### Engagement & Gamification
+Interactive and fun features: `Quiz`, `Trivia`, `Bingo`, `Crossword`, `DrinkingGame`, `EmojiStory`, `MadLibs`, `Roulette`, `Showdown`, `Tournament`, `Challenges`, `Achievements`, `Awards`, `MovieClub`, `MovieNight`, `Marathon`, `Predictions`, `Alphabet`
+
+### Operations & Staff
+Store management and staff tools: `StaffSchedule`, `StaffPerformance`, `StoreInfo`, `Announcements`, `ScreeningRoom`, `Autopilot`, `Calendar`, `Export`, `Statement`, `MembershipCard`, `StoreEvents`
+
+### Promotions & Loyalty
+Marketing and retention: `Coupons`, `GiftCards`, `GiftRegistry`, `Promotions`, `Loyalty`, `Referrals`, `Subscription`, `Bundles`, `MovieRequests`, `Waitlist`, `SeasonalPromotion`
+
+### Trust & Safety
+Fraud prevention and content moderation: `FraudDetector`, `AnomalyWatchdog`, `FrictionDetector`, `ParentalControl`, `Dispute`, `Negotiator`, `Survey`, `Reviews`
+
+### Infrastructure
+Cross-cutting concerns: `Notification`, `Activity`, `Timeline`, `Journey`, `Trends`, `Collections`, `Tags`, `Availability`, `SecurityHeadersAttribute`, `RateLimitAttribute`, `IClock`
+
+## Architecture & Patterns
+
+### Layered Architecture
+
+```
+Controller → Service → Repository → Static In-Memory Store
+```
+
+- **Controllers** handle HTTP, validate input, call services, return views/JSON
+- **Services** contain business logic and orchestration
+- **Repositories** abstract data access behind interfaces (`IRepository<T>`, plus domain-specific interfaces)
+- **Models** are plain C# classes — no ORM, no database annotations
+
+### Key Conventions
+
+- **Repository pattern everywhere.** All data access goes through `IRepository<T>` and domain-specific interfaces (e.g., `IMovieRepository`, `IRentalRepository`)
+- **Thread-safe in-memory stores.** Repositories use `Dictionary<int, T>` with explicit `lock (_lock)` and defensive cloning
+- **Constructor injection.** Controllers accept repository/service interfaces for testability
+- **No external database.** Data is stored in-memory with static collections (designed for demo/learning)
+- **One controller, one service.** Each feature area has its own controller backed by a dedicated service class
+
+For more detail, see [ARCHITECTURE.md](ARCHITECTURE.md).
+
+### Adding a New Feature Area
+
+When adding a new feature (e.g., a "Popcorn" feature):
+
+1. **Model:** Create `Models/PopcornModels.cs` with domain classes
+2. **Repository interface:** Create `Repositories/IPopcornRepository.cs`
+3. **Repository implementation:** Create `Repositories/InMemoryPopcornRepository.cs` (thread-safe with lock + defensive copies)
+4. **Service:** Create `Services/PopcornService.cs` with business logic
+5. **ViewModel:** Create `ViewModels/PopcornViewModel.cs`
+6. **Controller:** Create `Controllers/PopcornController.cs` — inject service/repos via constructor
+7. **Tests:** Create `Vidly.Tests/PopcornServiceTests.cs` (and controller tests if applicable)
+
+Follow the naming and structure of existing features. The codebase is consistent — pick any recent feature as a template.
 
 ## Coding Guidelines
 
@@ -98,24 +176,27 @@ For a deeper dive, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ### Architecture Rules
 
-- **Never bypass the repository layer.** Controllers should not manipulate static collections directly.
+- **Never bypass the repository layer.** Controllers and services must not manipulate static collections directly.
 - **Always return defensive copies** from repositories to prevent callers from mutating internal state.
 - **Lock discipline:** All reads and writes to shared static state must be inside `lock (_lock)`.
 - **Null checks:** Validate parameters with `?? throw new ArgumentNullException(nameof(...))` in constructors and public methods.
-- **No breaking changes** to `IRepository<T>`, `IMovieRepository`, `ICustomerRepository`, or `IRentalRepository` without discussion in an issue first.
+- **No breaking changes** to core interfaces (`IRepository<T>`, `IMovieRepository`, `ICustomerRepository`, `IRentalRepository`) without discussion in an issue first.
+- **Service isolation:** Services should depend on repository interfaces, not on other services directly (prefer controller-level orchestration for cross-domain operations).
 
 ### Commit Messages
 
 Use [Conventional Commits](https://www.conventionalcommits.org/):
 
 ```
-feat: add customer search by phone number
-fix: prevent duplicate rental for same movie
-perf: use Dictionary for O(1) lookups
-refactor: extract late fee calculation to helper
-test: add concurrency tests for Checkout
-docs: update API examples in README
+feat(loyalty): add tier upgrade notifications
+fix(rentals): prevent duplicate rental for same movie
+perf(fraud): use Dictionary for O(1) lookups in FraudDetectorService
+refactor(pricing): extract late fee calculation to helper
+test(churn): add regression tests for ChurnPredictorService
+docs: update domain areas in CONTRIBUTING.md
 ```
+
+Scope should match the domain area (e.g., `rentals`, `loyalty`, `fraud`, `inventory`).
 
 ## Testing
 
@@ -124,7 +205,8 @@ docs: update API examples in README
 - **All new features must include tests.** No exceptions.
 - **All bug fixes should include a regression test** that fails without the fix.
 - Tests use [MSTest](https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-with-mstest) (`[TestClass]`, `[TestMethod]`, `Assert.*`)
-- Test files go in `Vidly.Tests/` and follow the naming convention `<ClassName>Tests.cs`
+- Test files go in `Vidly.Tests/` following the convention `<ClassName>Tests.cs`
+- Currently **111 test files** — maintain or improve coverage.
 
 ### Test Patterns
 
@@ -146,7 +228,7 @@ public void MethodName_Scenario_ExpectedBehavior()
 
 ### Important: Shared Static State
 
-The in-memory repositories use **static** backing stores. Tests share this state across test methods. Always **clean up** anything you add:
+The in-memory repositories use **static** backing stores. Tests share state across test methods. Always **clean up** anything you add:
 
 ```csharp
 repo.Add(entity);
@@ -171,12 +253,34 @@ dotnet build Vidly.Tests/Vidly.Tests.csproj --configuration Release --no-restore
 dotnet test Vidly.Tests/Vidly.Tests.csproj --configuration Release --no-build
 ```
 
+## CI/CD Pipeline
+
+Vidly has a comprehensive CI/CD setup in `.github/workflows/`:
+
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| `ci.yml` | Push/PR to `master` | Build, test, coverage |
+| `codeql.yml` | Push/PR/schedule | Security scanning (CodeQL) |
+| `docker.yml` | Push to `master` | Docker image build & push |
+| `nuget-publish.yml` | Release published | Publish NuGet package |
+| `pages.yml` | Push to `master` | Deploy docs to GitHub Pages |
+| `labeler.yml` | PR opened | Auto-label PRs by file path |
+| `issue-labeler.yml` | Issue opened | Auto-label issues by content |
+| `release-drafter.yml` | PR merged | Draft release notes |
+| `stale.yml` | Schedule | Close stale issues/PRs |
+| `welcome.yml` | First contribution | Welcome message |
+| `pr-size.yml` | PR opened | Label PR size (XS–XXL) |
+| `auto-assign.yml` | PR opened | Auto-assign reviewers |
+| `triage.yml` | Issue opened | Triage new issues |
+
+All CI checks must pass before merge. Run `dotnet test` locally to catch issues early.
+
 ## Submitting Changes
 
 1. Ensure all tests pass locally
 2. Keep commits focused — one logical change per commit
 3. Push your branch and open a **Pull Request** against `master`
-4. Fill in the PR template with a clear description of what and why
+4. Fill in the [PR template](.github/PULL_REQUEST_TEMPLATE.md) with a clear description
 5. Link any related issues (e.g., "Closes #12")
 
 ### PR Checklist
@@ -184,8 +288,9 @@ dotnet test Vidly.Tests/Vidly.Tests.csproj --configuration Release --no-build
 - [ ] Tests pass (`dotnet test`)
 - [ ] New code has test coverage
 - [ ] No unrelated changes mixed in
-- [ ] Commit messages follow conventional commits
+- [ ] Commit messages follow conventional commits (with scope)
 - [ ] Documentation updated if behavior changed
+- [ ] New feature follows the layered architecture (Controller → Service → Repository)
 
 ## Issue Guidelines
 
@@ -195,6 +300,7 @@ Use the [bug report template](.github/ISSUE_TEMPLATE/bug_report.yml). Include:
 
 - Steps to reproduce
 - Expected vs actual behavior
+- Which domain area is affected
 - Environment details (.NET version, OS)
 
 ### Feature Requests
@@ -202,13 +308,28 @@ Use the [bug report template](.github/ISSUE_TEMPLATE/bug_report.yml). Include:
 Use the [feature request template](.github/ISSUE_TEMPLATE/feature_request.yml). Explain:
 
 - The problem you're trying to solve
+- Which domain area it belongs to
 - Your proposed solution
-- Any alternatives you've considered
+- Any alternatives considered
+
+### Specialized Templates
+
+We also have templates for:
+
+- **Performance issues** — `performance_issue.yml`
+- **Refactoring proposals** — `refactoring_proposal.yml`
+- **Documentation issues** — `documentation_issue.yml`
+- **API/Database issues** — `api_database_issue.yml`
 
 ## Code Review Process
 
 - PRs require at least one approval before merging
-- Reviewers check for correctness, test coverage, style consistency, and architecture alignment
+- Reviewers check for:
+  - Correctness and edge cases
+  - Test coverage (new code must be tested)
+  - Adherence to layered architecture
+  - Thread safety in repository code
+  - Style consistency with existing code
 - Be responsive to feedback — we aim to merge quickly
 - Squash-merge is preferred for clean history
 
