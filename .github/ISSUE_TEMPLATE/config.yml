@@ -12,3 +12,6 @@ contact_links:
   - name: "🤝 Contributing Guide"
     url: https://github.com/sauravbhattacharya001/Vidly/blob/master/CONTRIBUTING.md
     about: Read the contributing guide before submitting PRs
+  - name: "🧪 Testing Guide"
+    url: https://github.com/sauravbhattacharya001/Vidly/blob/master/TESTING.md
+    about: Read the testing guide for test conventions and coverage info

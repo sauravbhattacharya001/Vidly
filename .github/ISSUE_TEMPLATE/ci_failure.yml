@@ -1,0 +1,98 @@
+name: 🔧 CI / Deployment Failure
+description: Report a CI workflow failure or deployment issue
+title: "[CI]: "
+labels: ["ci/cd", "infrastructure"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for CI pipeline failures, deployment issues, or GitHub Actions problems.
+
+  - type: dropdown
+    id: workflow
+    attributes:
+      label: Affected Workflow
+      description: Which workflow is failing?
+      options:
+        - CI (ci.yml — build/test/lint)
+        - CodeQL (codeql.yml — security scanning)
+        - Docker (docker.yml — image build/push)
+        - NuGet Publish (nuget-publish.yml)
+        - GitHub Pages (pages.yml)
+        - Issue Labeler / Triage
+        - Stale / Auto-assign
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: failure-type
+    attributes:
+      label: Failure Type
+      description: What kind of failure is this?
+      options:
+        - Build failure (MSBuild / NuGet restore)
+        - Test failure
+        - Lint / analysis failure
+        - Deployment failure
+        - Timeout
+        - Permission / token error
+        - Action version incompatibility
+        - Flaky / intermittent failure
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: Frequency
+      description: How often does this failure occur?
+      options:
+        - Every run (100%)
+        - Most runs (>50%)
+        - Intermittent (<50%)
+        - One-time occurrence
+    validations:
+      required: true
+
+  - type: input
+    id: run-url
+    attributes:
+      label: Failed Run URL
+      description: Link to the failing GitHub Actions run.
+      placeholder: "https://github.com/sauravbhattacharya001/Vidly/actions/runs/..."
+    validations:
+      required: true
+
+  - type: input
+    id: branch
+    attributes:
+      label: Branch
+      description: Which branch triggered the failure?
+      placeholder: "master"
+
+  - type: textarea
+    id: error-output
+    attributes:
+      label: Error Output
+      description: Paste the relevant error logs from the failed step.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Any relevant context — recent commits, dependency changes, or suspected cause.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      options:
+        - label: I have linked the failing workflow run above
+          required: true
+        - label: I have checked that this is not a known transient GitHub Actions outage
+          required: true
