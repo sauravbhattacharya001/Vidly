@@ -26,7 +26,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Determine version
         id: version
@@ -142,7 +142,7 @@ jobs:
           echo "PACKAGE_NAME=$($pkg.Name)" >> $env:GITHUB_ENV
 
       - name: Upload package artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: nuget-packages
           path: |
@@ -150,6 +150,11 @@ jobs:
             ./nupkg/*.snupkg
             ./nupkg/*-sbom.cdx.json
           retention-days: 90
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: ./nupkg/*.nupkg
 
       - name: Push to GitHub Packages
         run: |
