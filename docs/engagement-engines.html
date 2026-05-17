@@ -3,7 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vidly — Engagement & Trajectory Engines</title>
+<title>Vidly — Engagement &amp; Trajectory Engines</title>
+<meta name="description" content="Vidly's engagement and trajectory engines: lifecycle scoring, retention modeling, churn prediction, and gamified rental journeys." />
+<meta name="theme-color" content="#0f0f1a" />
+<link rel="canonical" href="https://sauravbhattacharya001.github.io/Vidly/engagement-engines.html" />
+<meta property="og:type" content="article" />
+<meta property="og:title" content="Vidly — Engagement &amp; Trajectory Engines" />
+<meta property="og:description" content="Lifecycle scoring, retention modeling, churn prediction, and gamified rental journeys." />
+<meta property="og:url" content="https://sauravbhattacharya001.github.io/Vidly/engagement-engines.html" />
+<meta property="og:image" content="https://opengraph.githubassets.com/1/sauravbhattacharya001/Vidly" />
+<meta name="twitter:card" content="summary_large_image" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#0f0f1a;--card:#1a1a2e;--accent:#e94560;--accent2:#0f3460;--text:#eee;--muted:#888;--green:#22c55e;--amber:#f59e0b;--blue:#3b82f6;--purple:#a855f7;--teal:#14b8a6;--rose:#f43f5e}
@@ -113,13 +123,13 @@ pre code{background:none;padding:0}
             <div class="card">
                 <h3>⚙️ Sub-Engines</h3>
                 <ul class="engine-list">
-                    <li><strong>Streak Calculator</strong> — ISO-week consecutive rental detection using EMA-smoothed intervals</li>
-                    <li><strong>Streak Risk Detector</strong> — identifies active streaks at risk of breaking (≤3 days remaining, no rental this week)</li>
-                    <li><strong>Milestone Detector</strong> — Bronze (4w) → Silver (8w) → Gold (12w) → Platinum (26w) → Diamond (52w)</li>
-                    <li><strong>Rescue Recommender</strong> — genre-aware movie suggestions for at-risk customers</li>
-                    <li><strong>Engagement Scorer</strong> — composite 0–100 score (streak 40%, frequency 30%, genre diversity 20%, recency 10%)</li>
-                    <li><strong>Fleet Health Scorer</strong> — store-wide streak health with tier classification</li>
-                    <li><strong>Insight Generator</strong> — natural-language insights for dashboard display</li>
+                    <li><strong>Streak Calculator</strong> - ISO-week consecutive rental detection using EMA-smoothed intervals</li>
+                    <li><strong>Streak Risk Detector</strong> - identifies active streaks at risk of breaking (≤3 days remaining, no rental this week)</li>
+                    <li><strong>Milestone Detector</strong> - Bronze (4w) → Silver (8w) → Gold (12w) → Platinum (26w) → Diamond (52w)</li>
+                    <li><strong>Rescue Recommender</strong> - genre-aware movie suggestions for at-risk customers</li>
+                    <li><strong>Engagement Scorer</strong> - composite 0-100 score (streak 40%, frequency 30%, genre diversity 20%, recency 10%)</li>
+                    <li><strong>Fleet Health Scorer</strong> - store-wide streak health with tier classification</li>
+                    <li><strong>Insight Generator</strong> - natural-language insights for dashboard display</li>
                 </ul>
             </div>
             <div class="card">
@@ -134,9 +144,9 @@ pre code{background:none;padding:0}
                 <h3 style="margin-top:1rem">📊 Fleet Health Tiers</h3>
                 <table>
                     <tr><td><code>Thriving</code></td><td>≥80</td><td class="badge badge-green">Excellent</td></tr>
-                    <tr><td><code>Healthy</code></td><td>60–79</td><td class="badge badge-teal">Good</td></tr>
-                    <tr><td><code>Moderate</code></td><td>40–59</td><td class="badge badge-amber">Fair</td></tr>
-                    <tr><td><code>Concerning</code></td><td>20–39</td><td class="badge badge-rose">Warning</td></tr>
+                    <tr><td><code>Healthy</code></td><td>60-79</td><td class="badge badge-teal">Good</td></tr>
+                    <tr><td><code>Moderate</code></td><td>40-59</td><td class="badge badge-amber">Fair</td></tr>
+                    <tr><td><code>Concerning</code></td><td>20-39</td><td class="badge badge-rose">Warning</td></tr>
                     <tr><td><code>Critical</code></td><td>&lt;20</td><td class="badge badge-rose">Alert</td></tr>
                 </table>
             </div>
@@ -158,7 +168,7 @@ pre code{background:none;padding:0}
         </div>
 
         <div class="card" style="margin-top:1rem">
-            <h3>⚙️ Configuration — <code>StreakConfig</code></h3>
+            <h3>⚙️ Configuration - <code>StreakConfig</code></h3>
             <table class="param-table">
                 <thead><tr><th>Property</th><th>Default</th><th>Description</th></tr></thead>
                 <tbody>
@@ -173,10 +183,10 @@ pre code{background:none;padding:0}
         <div class="card" style="margin-top:1rem">
             <h3>💡 Engagement Score Formula</h3>
 <pre><code>EngagementScore = min(100,
-    StreakComponent   (40%) — min(currentStreakWeeks / 52, 1.0) × 40
-  + FrequencyComponent(30%) — min(activeWeeks / windowWeeks, 1.0) × 30
-  + DiversityComponent(20%) — Shannon entropy of genre distribution × 20
-  + RecencyComponent  (10%) — max(0, 1 - daysSinceLastRental / 30) × 10
+    StreakComponent   (40%) - min(currentStreakWeeks / 52, 1.0) × 40
+  + FrequencyComponent(30%) - min(activeWeeks / windowWeeks, 1.0) × 30
+  + DiversityComponent(20%) - Shannon entropy of genre distribution × 20
+  + RecencyComponent  (10%) - max(0, 1 - daysSinceLastRental / 30) × 10
 )</code></pre>
         </div>
     </div>
@@ -186,19 +196,19 @@ pre code{background:none;padding:0}
     <!-- ═══════════════════════════════════════════════════════════════ -->
     <div class="section" id="rental-contagion">
         <h2>🦠 Rental Contagion Engine</h2>
-        <p style="margin-bottom:1rem">Treats rental behavior like epidemiology — tracks how movie choices spread between customers through social influence, identifies super-spreaders, maps genre contagion, and generates social-proof recommendations.</p>
+        <p style="margin-bottom:1rem">Treats rental behavior like epidemiology - tracks how movie choices spread between customers through social influence, identifies super-spreaders, maps genre contagion, and generates social-proof recommendations.</p>
 
         <div class="grid">
             <div class="card">
                 <h3>⚙️ Sub-Engines</h3>
                 <ul class="engine-list">
-                    <li><strong>Social Network Builder</strong> — constructs customer co-rental graph with weighted edges</li>
-                    <li><strong>Contagion Event Detector</strong> — identifies when one customer's rental influences another within a time window</li>
-                    <li><strong>Influencer Scorer</strong> — ranks customers by influence: SuperSpreader → Influencer → Connector → Follower → Immune</li>
-                    <li><strong>Genre Contagion Mapper</strong> — tracks which genres spread virally and classifies as Pandemic/Epidemic/Endemic/Sporadic</li>
-                    <li><strong>Contagion Chain Tracker</strong> — traces multi-hop influence chains (patient zero → infected → secondary infections)</li>
-                    <li><strong>Social Proof Generator</strong> — "customers like you also rented" recommendations powered by actual contagion data</li>
-                    <li><strong>Insight Generator</strong> — natural-language epidemic intelligence briefings</li>
+                    <li><strong>Social Network Builder</strong> - constructs customer co-rental graph with weighted edges</li>
+                    <li><strong>Contagion Event Detector</strong> - identifies when one customer's rental influences another within a time window</li>
+                    <li><strong>Influencer Scorer</strong> - ranks customers by influence: SuperSpreader → Influencer → Connector → Follower → Immune</li>
+                    <li><strong>Genre Contagion Mapper</strong> - tracks which genres spread virally and classifies as Pandemic/Epidemic/Endemic/Sporadic</li>
+                    <li><strong>Contagion Chain Tracker</strong> - traces multi-hop influence chains (patient zero → infected → secondary infections)</li>
+                    <li><strong>Social Proof Generator</strong> - "customers like you also rented" recommendations powered by actual contagion data</li>
+                    <li><strong>Insight Generator</strong> - natural-language epidemic intelligence briefings</li>
                 </ul>
             </div>
             <div class="card">
@@ -231,18 +241,18 @@ pre code{background:none;padding:0}
             </table>
             <h4 style="margin-top:.8rem;font-size:.85rem">ContagionReport Properties</h4>
             <table class="param-table">
-                <tr><td>SocialNetwork</td><td><code>List&lt;SocialEdge&gt;</code> — customer co-rental graph edges</td></tr>
-                <tr><td>ContagionEvents</td><td><code>List&lt;ContagionEvent&gt;</code> — detected influence events</td></tr>
-                <tr><td>InfluencerProfiles</td><td><code>List&lt;InfluencerProfile&gt;</code> — scored customer influence rankings</td></tr>
-                <tr><td>GenreContagion</td><td><code>List&lt;GenreContagion&gt;</code> — genre viral spread metrics</td></tr>
-                <tr><td>Chains</td><td><code>List&lt;ContagionChain&gt;</code> — multi-hop influence chains</td></tr>
-                <tr><td>Recommendations</td><td><code>List&lt;SocialProofRecommendation&gt;</code> — social-proof suggestions</td></tr>
-                <tr><td>Insights</td><td><code>List&lt;string&gt;</code> — natural-language briefings</td></tr>
+                <tr><td>SocialNetwork</td><td><code>List&lt;SocialEdge&gt;</code> - customer co-rental graph edges</td></tr>
+                <tr><td>ContagionEvents</td><td><code>List&lt;ContagionEvent&gt;</code> - detected influence events</td></tr>
+                <tr><td>InfluencerProfiles</td><td><code>List&lt;InfluencerProfile&gt;</code> - scored customer influence rankings</td></tr>
+                <tr><td>GenreContagion</td><td><code>List&lt;GenreContagion&gt;</code> - genre viral spread metrics</td></tr>
+                <tr><td>Chains</td><td><code>List&lt;ContagionChain&gt;</code> - multi-hop influence chains</td></tr>
+                <tr><td>Recommendations</td><td><code>List&lt;SocialProofRecommendation&gt;</code> - social-proof suggestions</td></tr>
+                <tr><td>Insights</td><td><code>List&lt;string&gt;</code> - natural-language briefings</td></tr>
             </table>
         </div>
 
         <div class="card" style="margin-top:1rem">
-            <h3>⚙️ Configuration — <code>ContagionEngineConfig</code></h3>
+            <h3>⚙️ Configuration - <code>ContagionEngineConfig</code></h3>
             <table class="param-table">
                 <thead><tr><th>Property</th><th>Default</th><th>Description</th></tr></thead>
                 <tbody>
@@ -261,19 +271,19 @@ pre code{background:none;padding:0}
     <!-- ═══════════════════════════════════════════════════════════════ -->
     <div class="section" id="trajectory">
         <h2>📈 Customer Lifetime Trajectory Engine</h2>
-        <p style="margin-bottom:1rem">Predicts each customer's future behavior by analyzing rental velocity trends, genre evolution, spending patterns, lifecycle phase, and churn risk — projecting lifetime value for the entire fleet.</p>
+        <p style="margin-bottom:1rem">Predicts each customer's future behavior by analyzing rental velocity trends, genre evolution, spending patterns, lifecycle phase, and churn risk - projecting lifetime value for the entire fleet.</p>
 
         <div class="grid">
             <div class="card">
                 <h3>⚙️ Sub-Engines</h3>
                 <ul class="engine-list">
-                    <li><strong>Rental Velocity Forecaster</strong> — EMA-smoothed interval prediction (when will they rent next?)</li>
-                    <li><strong>Genre Evolution Predictor</strong> — tracks genre preference drift over time</li>
-                    <li><strong>Spending Trajectory Analyzer</strong> — forecasts future spending using trend analysis</li>
-                    <li><strong>Lifecycle Phase Classifier</strong> — New → Growing → Loyal → Declining → Dormant → Churned</li>
-                    <li><strong>Churn Risk Estimator</strong> — Safe → Watch → Warning → Critical tier classification</li>
-                    <li><strong>Lifetime Value Projector</strong> — 90-day revenue projection per customer</li>
-                    <li><strong>Insight Generator</strong> — fleet-wide trajectory intelligence briefings</li>
+                    <li><strong>Rental Velocity Forecaster</strong> - EMA-smoothed interval prediction (when will they rent next?)</li>
+                    <li><strong>Genre Evolution Predictor</strong> - tracks genre preference drift over time</li>
+                    <li><strong>Spending Trajectory Analyzer</strong> - forecasts future spending using trend analysis</li>
+                    <li><strong>Lifecycle Phase Classifier</strong> - New → Growing → Loyal → Declining → Dormant → Churned</li>
+                    <li><strong>Churn Risk Estimator</strong> - Safe → Watch → Warning → Critical tier classification</li>
+                    <li><strong>Lifetime Value Projector</strong> - 90-day revenue projection per customer</li>
+                    <li><strong>Insight Generator</strong> - fleet-wide trajectory intelligence briefings</li>
                 </ul>
             </div>
             <div class="card">
@@ -307,19 +317,19 @@ pre code{background:none;padding:0}
             </table>
             <h4 style="margin-top:.8rem;font-size:.85rem">TrajectoryReport Properties</h4>
             <table class="param-table">
-                <tr><td>Trajectories</td><td><code>List&lt;CustomerTrajectory&gt;</code> — per-customer trajectory analysis</td></tr>
-                <tr><td>FleetHealth</td><td><code>FleetTrajectoryHealth</code> — aggregate fleet metrics</td></tr>
-                <tr><td>Insights</td><td><code>List&lt;string&gt;</code> — natural-language fleet intelligence</td></tr>
-                <tr><td>TrajectoryScore</td><td><code>double</code> — overall fleet health score (0–100)</td></tr>
+                <tr><td>Trajectories</td><td><code>List&lt;CustomerTrajectory&gt;</code> - per-customer trajectory analysis</td></tr>
+                <tr><td>FleetHealth</td><td><code>FleetTrajectoryHealth</code> - aggregate fleet metrics</td></tr>
+                <tr><td>Insights</td><td><code>List&lt;string&gt;</code> - natural-language fleet intelligence</td></tr>
+                <tr><td>TrajectoryScore</td><td><code>double</code> - overall fleet health score (0-100)</td></tr>
             </table>
             <h4 style="margin-top:.8rem;font-size:.85rem">CustomerTrajectory Sub-Objects</h4>
             <table class="param-table">
-                <tr><td>Velocity</td><td><code>RentalVelocityForecast</code> — avg interval, predicted next rental, trend (Accelerating/Steady/Decelerating/Stalled), confidence %</td></tr>
+                <tr><td>Velocity</td><td><code>RentalVelocityForecast</code> - avg interval, predicted next rental, trend (Accelerating/Steady/Decelerating/Stalled), confidence %</td></tr>
                 <tr><td>GenreEvolution</td><td>Genre preference drift analysis</td></tr>
                 <tr><td>SpendingTrajectory</td><td>Revenue trend analysis</td></tr>
-                <tr><td>Lifecycle</td><td><code>LifecycleClassification</code> — current phase + phase history</td></tr>
-                <tr><td>ChurnRisk</td><td><code>ChurnRiskAssessment</code> — tier + risk factors</td></tr>
-                <tr><td>LTV</td><td><code>LifetimeValueProjection</code> — 90-day projected revenue</td></tr>
+                <tr><td>Lifecycle</td><td><code>LifecycleClassification</code> - current phase + phase history</td></tr>
+                <tr><td>ChurnRisk</td><td><code>ChurnRiskAssessment</code> - tier + risk factors</td></tr>
+                <tr><td>LTV</td><td><code>LifetimeValueProjection</code> - 90-day projected revenue</td></tr>
             </table>
         </div>
 
@@ -344,19 +354,19 @@ confidence = max(0, min(100, (1 - CV) × 100))</code></pre>
     <!-- ═══════════════════════════════════════════════════════════════ -->
     <div class="section" id="seasonality">
         <h2>🌦️ Seasonality Engine</h2>
-        <p style="margin-bottom:1rem">Detects seasonal rental patterns, holiday effects, genre-season affinity, and generates demand forecasts with proactive stocking recommendations — enabling data-driven inventory planning.</p>
+        <p style="margin-bottom:1rem">Detects seasonal rental patterns, holiday effects, genre-season affinity, and generates demand forecasts with proactive stocking recommendations - enabling data-driven inventory planning.</p>
 
         <div class="grid">
             <div class="card">
                 <h3>⚙️ Sub-Engines</h3>
                 <ul class="engine-list">
-                    <li><strong>Monthly Volume Profiler</strong> — establishes baseline rental volume curves by month</li>
-                    <li><strong>Genre-Season Affinity Mapper</strong> — correlates genres to seasons (e.g., horror peaks in October)</li>
-                    <li><strong>Holiday Effect Detector</strong> — identifies rental spikes/dips around holidays (Christmas, Halloween, summer break)</li>
-                    <li><strong>Day-of-Week Rhythm Analyzer</strong> — weekday vs weekend rental distribution patterns</li>
-                    <li><strong>Demand Forecaster</strong> — predicts next N months' demand by genre using historical patterns</li>
-                    <li><strong>Stocking Recommender</strong> — proactive inventory recommendations based on forecasted demand</li>
-                    <li><strong>Insight Generator</strong> — natural-language seasonal intelligence briefings</li>
+                    <li><strong>Monthly Volume Profiler</strong> - establishes baseline rental volume curves by month</li>
+                    <li><strong>Genre-Season Affinity Mapper</strong> - correlates genres to seasons (e.g., horror peaks in October)</li>
+                    <li><strong>Holiday Effect Detector</strong> - identifies rental spikes/dips around holidays (Christmas, Halloween, summer break)</li>
+                    <li><strong>Day-of-Week Rhythm Analyzer</strong> - weekday vs weekend rental distribution patterns</li>
+                    <li><strong>Demand Forecaster</strong> - predicts next N months' demand by genre using historical patterns</li>
+                    <li><strong>Stocking Recommender</strong> - proactive inventory recommendations based on forecasted demand</li>
+                    <li><strong>Insight Generator</strong> - natural-language seasonal intelligence briefings</li>
                 </ul>
             </div>
             <div class="card">
@@ -369,7 +379,7 @@ confidence = max(0, min(100, (1 - CV) × 100))</code></pre>
                     <tr><td><strong>Weekly rhythm</strong></td><td>Rental distribution across days (Friday/Saturday peaks)</td></tr>
                 </table>
                 <h4 style="margin-top:1rem;font-size:.85rem;color:var(--muted)">Forecasting</h4>
-                <p>Combines monthly profiles, genre affinity, and trend data to produce per-genre demand forecasts with confidence intervals — feeding directly into stocking recommendations.</p>
+                <p>Combines monthly profiles, genre affinity, and trend data to produce per-genre demand forecasts with confidence intervals - feeding directly into stocking recommendations.</p>
             </div>
         </div>
 
@@ -400,7 +410,7 @@ confidence = max(0, min(100, (1 - CV) × 100))</code></pre>
                     <tr>
                         <td><strong>Streak-at-Risk + Contagion</strong></td>
                         <td>Streak → Contagion</td>
-                        <td>When an influencer's streak is at risk, their connected customers may also disengage — prioritize rescue</td>
+                        <td>When an influencer's streak is at risk, their connected customers may also disengage - prioritize rescue</td>
                     </tr>
                     <tr>
                         <td><strong>Trajectory + Seasonality</strong></td>
@@ -410,12 +420,12 @@ confidence = max(0, min(100, (1 - CV) × 100))</code></pre>
                     <tr>
                         <td><strong>Contagion + Seasonality</strong></td>
                         <td>Contagion → Seasonality</td>
-                        <td>Viral genre spread intensifies during peak seasons — amplify social-proof recommendations during holidays</td>
+                        <td>Viral genre spread intensifies during peak seasons - amplify social-proof recommendations during holidays</td>
                     </tr>
                     <tr>
                         <td><strong>Streak + Trajectory</strong></td>
                         <td>Streak → Trajectory</td>
-                        <td>Diamond-tier streakers are almost always in Loyal lifecycle phase — use streak data to validate trajectory predictions</td>
+                        <td>Diamond-tier streakers are almost always in Loyal lifecycle phase - use streak data to validate trajectory predictions</td>
                     </tr>
                 </tbody>
             </table>
@@ -442,7 +452,7 @@ confidence = max(0, min(100, (1 - CV) × 100))</code></pre>
 </div>
 
 <div class="footer">
-    <p>Vidly Documentation — Engagement &amp; Trajectory Engines • 4 autonomous engines • 28 sub-engines</p>
+    <p>Vidly Documentation - Engagement &amp; Trajectory Engines • 4 autonomous engines • 28 sub-engines</p>
     <p style="margin-top:.3rem"><a href="index.html" style="color:var(--accent);text-decoration:none">← Back to Overview</a></p>
 </div>
 

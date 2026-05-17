@@ -4,6 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vidly — Smart Movie Mood Engine</title>
+<meta name="description" content="How Vidly's Mood Engine maps user emotional state to movie recommendations using sentiment scoring, contextual signals, and ensemble ranking." />
+<meta name="theme-color" content="#0f0f1a" />
+<link rel="canonical" href="https://sauravbhattacharya001.github.io/Vidly/mood-engine.html" />
+<meta property="og:type" content="article" />
+<meta property="og:title" content="Vidly — Smart Movie Mood Engine" />
+<meta property="og:description" content="How Vidly's Mood Engine maps user emotional state to movie recommendations." />
+<meta property="og:url" content="https://sauravbhattacharya001.github.io/Vidly/mood-engine.html" />
+<meta property="og:image" content="https://opengraph.githubassets.com/1/sauravbhattacharya001/Vidly" />
+<meta name="twitter:card" content="summary_large_image" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#0f0f1a;--card:#1a1a2e;--accent:#e94560;--accent2:#0f3460;--text:#eee;--muted:#888;--green:#22c55e;--amber:#f59e0b;--blue:#3b82f6;--purple:#a855f7}
@@ -411,7 +421,7 @@ function analyze(){
   const traj = computeTrajectory(cust.history);
   drawTrajectory(traj);
   const shifts = traj.filter((p,i)=>i>0&&p.dominant!==traj[i-1].dominant).length;
-  document.getElementById('trajectoryInsight').textContent = shifts>3?'⚠️ High mood volatility — customer may benefit from curated stability picks':shifts>1?'📊 Moderate mood shifts detected — adaptive strategy recommended':'✅ Stable mood pattern — current genre preferences are consistent';
+  document.getElementById('trajectoryInsight').textContent = shifts>3?'⚠️ High mood volatility - customer may benefit from curated stability picks':shifts>1?'📊 Moderate mood shifts detected - adaptive strategy recommended':'✅ Stable mood pattern - current genre preferences are consistent';
 
   // Transitions
   const trans = detectTransitions(cust.history);
@@ -461,18 +471,18 @@ function generateInsights(cust, result, traj, trans){
   if(prev){
     for(const m of MOOD_NAMES){
       if(m!==dominant && (result.scores[m]||0)-(prev.scores[m]||0)>0.3)
-        insights.push({icon:'📈',text:`Emerging interest in <b>${m}</b> content — consider featuring ${MOODS[m].genres.slice(0,2).join('/')} titles.`,type:'info'});
+        insights.push({icon:'📈',text:`Emerging interest in <b>${m}</b> content - consider featuring ${MOODS[m].genres.slice(0,2).join('/')} titles.`,type:'info'});
     }
   }
 
   // Weekend binge pattern
   const weekendRentals = result.recent.filter(r=>r.date.getDay()===0||r.date.getDay()===6).length;
-  if(weekendRentals > result.recent.length*0.6) insights.push({icon:'📅',text:`Weekend binger detected — ${weekendRentals}/${result.recent.length} rentals on weekends. Time promotions for Friday evenings.`,type:'opportunity'});
+  if(weekendRentals > result.recent.length*0.6) insights.push({icon:'📅',text:`Weekend binger detected - ${weekendRentals}/${result.recent.length} rentals on weekends. Time promotions for Friday evenings.`,type:'opportunity'});
 
   // Mood stability
   const vals = Object.values(scores);
   const variance = vals.reduce((a,b)=>a+(b-vals.reduce((x,y)=>x+y,0)/vals.length)**2,0)/vals.length;
-  if(variance<0.03) insights.push({icon:'🎯',text:'Very focused taste profile — this customer knows what they like. Prioritize depth over breadth in recommendations.',type:'info'});
+  if(variance<0.03) insights.push({icon:'🎯',text:'Very focused taste profile - this customer knows what they like. Prioritize depth over breadth in recommendations.',type:'info'});
   if(variance>0.15) insights.push({icon:'🌈',text:'Eclectic viewer with diverse mood patterns. Cast a wide net with varied genre recommendations.',type:'info'});
 
   // Churn risk from melancholy
@@ -523,7 +533,7 @@ function updateFleet(){
 let monitorInterval = null;
 function startAutoMonitor(){
   if(monitorInterval) return;
-  log('🤖 <b>Auto-Monitor started</b> — analyzing all customers every 8s');
+  log('🤖 <b>Auto-Monitor started</b> - analyzing all customers every 8s');
   let idx=0;
   monitorInterval = setInterval(()=>{
     selC.value = customers[idx%customers.length].id;
