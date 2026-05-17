@@ -1,0 +1,34 @@
+# Code Owners for Vidly
+#
+# These owners will be the default reviewers for any PR that touches the listed
+# paths. Order matters: the last matching pattern wins.
+#
+# See: https://docs.github.com/en/repositories/managing-your-repositories-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for everything in the repo
+*                                       @sauravbhattacharya001
+
+# Build / CI / Release infrastructure
+/.github/                               @sauravbhattacharya001
+/.github/workflows/                     @sauravbhattacharya001
+/Dockerfile                             @sauravbhattacharya001
+/.dockerignore                          @sauravbhattacharya001
+/Vidly.nuspec                           @sauravbhattacharya001
+/Vidly.sln                              @sauravbhattacharya001
+
+# Documentation site (GitHub Pages)
+/docs/                                  @sauravbhattacharya001
+/README.md                              @sauravbhattacharya001
+/ARCHITECTURE.md                        @sauravbhattacharya001
+/CONTRIBUTING.md                        @sauravbhattacharya001
+/SECURITY.md                            @sauravbhattacharya001
+
+# Application code
+/Vidly/Controllers/                     @sauravbhattacharya001
+/Vidly/Models/                          @sauravbhattacharya001
+/Vidly/Services/                        @sauravbhattacharya001
+/Vidly/Repositories/                    @sauravbhattacharya001
+/Vidly/App_Start/                       @sauravbhattacharya001
+
+# Tests
+/Vidly.Tests/                           @sauravbhattacharya001
