@@ -124,6 +124,7 @@
     <Compile Include="Controllers\HomeController.cs" />
     <Compile Include="Models\AutopilotModels.cs" />
     <Compile Include="Services\AutopilotService.cs" />
+    <Compile Include="Services\ReviewIntelligenceService.cs" />
     <Compile Include="Controllers\CompareController.cs" />
     <Compile Include="Controllers\MoviesController.cs" />
     <Compile Include="Global.asax.cs">
