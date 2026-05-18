@@ -13,16 +13,97 @@ namespace Vidly.Services
     /// patterns, and weekend surges. Produces composite risk scores with
     /// tiered classification and evidence-backed fraud signals.
     /// </summary>
+    /// <summary>
+    /// Tunable thresholds for <see cref="FraudDetectorService"/>.
+    /// All knobs are intentionally explicit so the service stays testable
+    /// and the historically-magic numbers in the detection rules become
+    /// discoverable in one place.
+    /// </summary>
+    public class FraudDetectorConfig
+    {
+        // Velocity ---------------------------------------------------
+        /// <summary>Rental count in last 24h above which Critical velocity fires.</summary>
+        public int Velocity24hCritical { get; set; } = 5;
+        /// <summary>Divisor used to scale 24h velocity into a confidence value (0..1).</summary>
+        public double Velocity24hConfidenceDivisor { get; set; } = 10.0;
+        /// <summary>Rental count in last 7d above which High velocity fires.</summary>
+        public int Velocity7dHigh { get; set; } = 15;
+        /// <summary>Divisor used to scale 7d velocity into a confidence value (0..1).</summary>
+        public double Velocity7dConfidenceDivisor { get; set; } = 20.0;
+
+        // Late pattern -----------------------------------------------
+        /// <summary>Minimum returned rentals required to evaluate late pattern.</summary>
+        public int LatePatternMinReturned { get; set; } = 5;
+        /// <summary>Late-return rate above which Medium late pattern fires.</summary>
+        public double LatePatternMediumRate { get; set; } = 0.6;
+        /// <summary>Late-return rate above which the signal escalates to High.</summary>
+        public double LatePatternHighRate { get; set; } = 0.8;
+
+        // New account burst ------------------------------------------
+        /// <summary>Account age (days) below which new-burst rule is in scope.</summary>
+        public int NewBurstAccountAgeDays { get; set; } = 7;
+        /// <summary>Rental count above which a new account is flagged.</summary>
+        public int NewBurstRentalCount { get; set; } = 3;
+        /// <summary>Divisor used to scale new-burst rental count into confidence.</summary>
+        public double NewBurstConfidenceDivisor { get; set; } = 6.0;
+
+        // High-value targeting ---------------------------------------
+        /// <summary>Minimum rentals required to evaluate high-value targeting.</summary>
+        public int HighValueMinRentals { get; set; } = 3;
+        /// <summary>Daily rate above which a rental counts as "high-value".</summary>
+        public decimal HighValueDailyRate { get; set; } = 4.00m;
+        /// <summary>Share of high-value rentals above which the signal fires.</summary>
+        public double HighValueRate { get; set; } = 0.7;
+
+        // Concurrent overload — per-tier active rental limits --------
+        public int ConcurrentLimitDefault { get; set; } = 3;
+        public int ConcurrentLimitSilver { get; set; } = 5;
+        public int ConcurrentLimitGold { get; set; } = 8;
+        public int ConcurrentLimitPlatinum { get; set; } = 12;
+
+        // Damage pattern ---------------------------------------------
+        /// <summary>Minimum returned rentals required to evaluate damage pattern.</summary>
+        public int DamagePatternMinReturned { get; set; } = 3;
+        /// <summary>Damage rate above which Medium damage pattern fires.</summary>
+        public double DamagePatternMediumRate { get; set; } = 0.4;
+        /// <summary>Damage rate above which the signal escalates to High.</summary>
+        public double DamagePatternHighRate { get; set; } = 0.6;
+
+        // Weekend surge ----------------------------------------------
+        /// <summary>Minimum rentals required to evaluate weekend surge.</summary>
+        public int WeekendSurgeMinRentals { get; set; } = 5;
+        /// <summary>Share of weekend rentals above which the signal fires.</summary>
+        public double WeekendSurgeRate { get; set; } = 0.8;
+
+        // Composite scoring ------------------------------------------
+        /// <summary>Weight multiplier applied per signal when summing the risk score.</summary>
+        public double SignalWeight { get; set; } = 15.0;
+        /// <summary>Risk-tier thresholds (exclusive upper bounds for the lower tiers).</summary>
+        public double WatchTierMin { get; set; } = 20.0;
+        public double SuspectTierMin { get; set; } = 50.0;
+        public double BlockedTierMin { get; set; } = 80.0;
+    }
+
     public class FraudDetectorService
     {
         private readonly ICustomerRepository _customerRepo;
         private readonly IRentalRepository _rentalRepo;
         private readonly IMovieRepository _movieRepo;
+        private readonly FraudDetectorConfig _config;
 
         public FraudDetectorService(
             ICustomerRepository customerRepo,
             IRentalRepository rentalRepo,
             IMovieRepository movieRepo)
+            : this(customerRepo, rentalRepo, movieRepo, null)
+        {
+        }
+
+        public FraudDetectorService(
+            ICustomerRepository customerRepo,
+            IRentalRepository rentalRepo,
+            IMovieRepository movieRepo,
+            FraudDetectorConfig config)
         {
             _customerRepo = customerRepo
                 ?? throw new ArgumentNullException(nameof(customerRepo));
@@ -30,7 +111,11 @@ namespace Vidly.Services
                 ?? throw new ArgumentNullException(nameof(rentalRepo));
             _movieRepo = movieRepo
                 ?? throw new ArgumentNullException(nameof(movieRepo));
+            _config = config ?? new FraudDetectorConfig();
         }
+
+        /// <summary>Active configuration (exposed for diagnostics and tests).</summary>
+        public FraudDetectorConfig Config { get { return _config; } }
 
         // ── Individual Analysis ─────────────────────────────────────
 
@@ -117,11 +202,11 @@ namespace Vidly.Services
             CheckWeekendSurge(allRentals, signals);
 
             double riskScore = Math.Min(100.0,
-                signals.Sum(s => (int)s.Severity * s.Confidence * 15.0));
+                signals.Sum(s => (int)s.Severity * s.Confidence * _config.SignalWeight));
 
-            string riskTier = riskScore < 20 ? "Clean"
-                : riskScore < 50 ? "Watch"
-                : riskScore < 80 ? "Suspect"
+            string riskTier = riskScore < _config.WatchTierMin ? "Clean"
+                : riskScore < _config.SuspectTierMin ? "Watch"
+                : riskScore < _config.BlockedTierMin ? "Suspect"
                 : "Blocked";
 
             return new FraudProfile
@@ -146,7 +231,7 @@ namespace Vidly.Services
             var last24h = rentals.Count(r => (asOfDate - r.RentalDate).TotalHours <= 24);
             var last7d = rentals.Count(r => (asOfDate - r.RentalDate).TotalDays <= 7);
 
-            if (last24h > 5)
+            if (last24h > _config.Velocity24hCritical)
             {
                 signals.Add(new FraudSignal
                 {
@@ -154,11 +239,11 @@ namespace Vidly.Services
                     RuleName = "Velocity Check",
                     Description = "Abnormally high rental frequency detected",
                     Severity = FraudSeverity.Critical,
-                    Confidence = Math.Min(1.0, last24h / 10.0),
-                    Evidence = $"{last24h} rentals in last 24h (threshold: 5)"
+                    Confidence = Math.Min(1.0, last24h / _config.Velocity24hConfidenceDivisor),
+                    Evidence = $"{last24h} rentals in last 24h (threshold: {_config.Velocity24hCritical})"
                 });
             }
-            else if (last7d > 15)
+            else if (last7d > _config.Velocity7dHigh)
             {
                 signals.Add(new FraudSignal
                 {
@@ -166,8 +251,8 @@ namespace Vidly.Services
                     RuleName = "Velocity Check",
                     Description = "High rental frequency over past week",
                     Severity = FraudSeverity.High,
-                    Confidence = Math.Min(1.0, last7d / 20.0),
-                    Evidence = $"{last7d} rentals in last 7d (threshold: 15)"
+                    Confidence = Math.Min(1.0, last7d / _config.Velocity7dConfidenceDivisor),
+                    Evidence = $"{last7d} rentals in last 7d (threshold: {_config.Velocity7dHigh})"
                 });
             }
         }
@@ -175,19 +260,19 @@ namespace Vidly.Services
         private void CheckLatePattern(List<Rental> rentals, List<FraudSignal> signals)
         {
             var returned = rentals.Where(r => r.ReturnDate.HasValue).ToList();
-            if (returned.Count < 5) return;
+            if (returned.Count < _config.LatePatternMinReturned) return;
 
             int lateCount = returned.Count(r => r.ReturnDate > r.DueDate);
             double lateRate = (double)lateCount / returned.Count;
 
-            if (lateRate > 0.6)
+            if (lateRate > _config.LatePatternMediumRate)
             {
                 signals.Add(new FraudSignal
                 {
                     RuleId = "LATE_PATTERN",
                     RuleName = "Late Return Pattern",
                     Description = "Chronic late returns indicate disregard for rental terms",
-                    Severity = lateRate > 0.8 ? FraudSeverity.High : FraudSeverity.Medium,
+                    Severity = lateRate > _config.LatePatternHighRate ? FraudSeverity.High : FraudSeverity.Medium,
                     Confidence = lateRate,
                     Evidence = $"{lateCount}/{returned.Count} returns late ({lateRate:P0})"
                 });
@@ -199,9 +284,9 @@ namespace Vidly.Services
         {
             if (!customer.MemberSince.HasValue) return;
             var accountAge = (asOfDate - customer.MemberSince.Value).TotalDays;
-            if (accountAge > 7) return;
+            if (accountAge > _config.NewBurstAccountAgeDays) return;
 
-            if (rentals.Count > 3)
+            if (rentals.Count > _config.NewBurstRentalCount)
             {
                 signals.Add(new FraudSignal
                 {
@@ -209,7 +294,7 @@ namespace Vidly.Services
                     RuleName = "New Account Burst",
                     Description = "New account with suspiciously high rental activity",
                     Severity = FraudSeverity.High,
-                    Confidence = Math.Min(1.0, rentals.Count / 6.0),
+                    Confidence = Math.Min(1.0, rentals.Count / _config.NewBurstConfidenceDivisor),
                     Evidence = $"{rentals.Count} rentals within {accountAge:F0} days of account creation"
                 });
             }
@@ -217,12 +302,12 @@ namespace Vidly.Services
 
         private void CheckHighValueTargeting(List<Rental> rentals, List<FraudSignal> signals)
         {
-            if (rentals.Count < 3) return;
+            if (rentals.Count < _config.HighValueMinRentals) return;
 
-            int highValue = rentals.Count(r => r.DailyRate > 4.00m);
+            int highValue = rentals.Count(r => r.DailyRate > _config.HighValueDailyRate);
             double hvRate = (double)highValue / rentals.Count;
 
-            if (hvRate > 0.7)
+            if (hvRate > _config.HighValueRate)
             {
                 signals.Add(new FraudSignal
                 {
@@ -242,10 +327,10 @@ namespace Vidly.Services
             int limit;
             switch (customer.MembershipType)
             {
-                case Models.MembershipType.Silver: limit = 5; break;
-                case Models.MembershipType.Gold: limit = 8; break;
-                case Models.MembershipType.Platinum: limit = 12; break;
-                default: limit = 3; break;
+                case Models.MembershipType.Silver: limit = _config.ConcurrentLimitSilver; break;
+                case Models.MembershipType.Gold: limit = _config.ConcurrentLimitGold; break;
+                case Models.MembershipType.Platinum: limit = _config.ConcurrentLimitPlatinum; break;
+                default: limit = _config.ConcurrentLimitDefault; break;
             }
 
             if (active.Count > limit)
@@ -265,19 +350,19 @@ namespace Vidly.Services
         private void CheckDamagePattern(List<Rental> rentals, List<FraudSignal> signals)
         {
             var returned = rentals.Where(r => r.ReturnDate.HasValue).ToList();
-            if (returned.Count < 3) return;
+            if (returned.Count < _config.DamagePatternMinReturned) return;
 
             int damaged = returned.Count(r => r.DamageCharge > 0);
             double dmgRate = (double)damaged / returned.Count;
 
-            if (dmgRate > 0.4)
+            if (dmgRate > _config.DamagePatternMediumRate)
             {
                 signals.Add(new FraudSignal
                 {
                     RuleId = "DAMAGE",
                     RuleName = "Damage Pattern",
                     Description = "Abnormally high rate of damaged returns",
-                    Severity = dmgRate > 0.6 ? FraudSeverity.High : FraudSeverity.Medium,
+                    Severity = dmgRate > _config.DamagePatternHighRate ? FraudSeverity.High : FraudSeverity.Medium,
                     Confidence = dmgRate,
                     Evidence = $"{damaged}/{returned.Count} returns damaged ({dmgRate:P0})"
                 });
@@ -286,14 +371,14 @@ namespace Vidly.Services
 
         private void CheckWeekendSurge(List<Rental> rentals, List<FraudSignal> signals)
         {
-            if (rentals.Count < 5) return;
+            if (rentals.Count < _config.WeekendSurgeMinRentals) return;
 
             int weekend = rentals.Count(r =>
                 r.RentalDate.DayOfWeek == DayOfWeek.Saturday ||
                 r.RentalDate.DayOfWeek == DayOfWeek.Sunday);
             double weekendRate = (double)weekend / rentals.Count;
 
-            if (weekendRate > 0.8)
+            if (weekendRate > _config.WeekendSurgeRate)
             {
                 signals.Add(new FraudSignal
                 {
