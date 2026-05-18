@@ -157,8 +157,8 @@
 <script>
 // ── Donut Chart ────────────────────────────────────────────
 (function() {
-    var data = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(
-        Model.Summaries.Select(s => new { s.Segment, s.Count, s.Percentage, s.Color })));
+    var data = @Vidly.Utilities.JsonForScript.Serialize(
+        Model.Summaries.Select(s => new { s.Segment, s.Count, s.Percentage, s.Color }));
     var c = document.getElementById('donutCanvas');
     var ctx = c.getContext('2d');
     var cx = 110, cy = 110, r = 90, ir = 55;

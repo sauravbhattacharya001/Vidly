@@ -220,7 +220,7 @@
 <script>
 // Donut chart
 (function(){
-    var tiers = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.TierBreakdown));
+    var tiers = @Vidly.Utilities.JsonForScript.Serialize(Model.TierBreakdown);
     var canvas = document.getElementById('donutChart');
     var ctx = canvas.getContext('2d');
     canvas.width = canvas.offsetWidth * 2; canvas.height = 520;
@@ -255,7 +255,7 @@
 
 // Trend chart
 (function(){
-    var trend = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.Trend));
+    var trend = @Vidly.Utilities.JsonForScript.Serialize(Model.Trend);
     var canvas = document.getElementById('trendChart');
     var ctx = canvas.getContext('2d');
     canvas.width = canvas.offsetWidth * 2; canvas.height = 520;

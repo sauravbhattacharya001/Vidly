@@ -175,6 +175,9 @@
     <Compile Include="Models\StorePulseModels.cs" />
     <Compile Include="Services\StorePulseService.cs" />
     <Compile Include="Controllers\StorePulseController.cs" />
+    <Compile Include="Utilities\JsonSerializer.cs" />
+    <Compile Include="Utilities\SortHelper.cs" />
+    <Compile Include="Utilities\JsonForScript.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Content\bootstrap-lumen.css" />

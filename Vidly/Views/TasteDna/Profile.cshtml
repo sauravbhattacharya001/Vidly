@@ -96,8 +96,8 @@
 
     <script>
     (function(){
-        var dims = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(
-            Model.Dimensions.Select(d => new { d.Name, d.Score })));
+        var dims = @Vidly.Utilities.JsonForScript.Serialize(
+            Model.Dimensions.Select(d => new { d.Name, d.Score }));
         var canvas = document.getElementById('radar');
         var ctx = canvas.getContext('2d');
         var cx = 210, cy = 210, R = 160, n = dims.length;

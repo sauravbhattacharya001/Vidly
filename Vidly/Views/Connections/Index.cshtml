@@ -49,8 +49,8 @@
 <script>
 (function () {
     // Puzzle data from server
-    var groups = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(
-        puzzle.Groups.Select(g => new { category = g.Category, difficulty = g.Difficulty, items = g.Items })));
+    var groups = @Vidly.Utilities.JsonForScript.Serialize(
+        puzzle.Groups.Select(g => new { category = g.Category, difficulty = g.Difficulty, items = g.Items }));
 
     var allItems = [];
     var answerMap = {}; // item -> group index

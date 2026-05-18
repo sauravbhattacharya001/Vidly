@@ -181,8 +181,8 @@
         canvas.width = canvas.parentElement.clientWidth - 40;
         canvas.height = 180;
 
-        var snapshots = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.Snapshots.Select(s => new { date = s.Date.ToString("M/d"), revenue = s.TotalRevenue })));
-        var forecasts = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.Forecast.Select(f => new { date = f.Date.ToString("M/d"), revenue = f.PredictedRevenue })));
+        var snapshots = @Vidly.Utilities.JsonForScript.Serialize(Model.Snapshots.Select(s => new { date = s.Date.ToString("M/d"), revenue = s.TotalRevenue }));
+        var forecasts = @Vidly.Utilities.JsonForScript.Serialize(Model.Forecast.Select(f => new { date = f.Date.ToString("M/d"), revenue = f.PredictedRevenue }));
 
         var allData = snapshots.map(s => s.revenue).concat(forecasts.map(f => f.revenue));
         var maxVal = Math.max.apply(null, allData.length ? allData : [1]);

@@ -156,7 +156,7 @@
     // Genre bar chart
     (function(){
         var c=document.getElementById('genreChart'),ctx=c.getContext('2d');
-        var genres=@Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.Summary.GenreBreakdown));
+        var genres=@Vidly.Utilities.JsonForScript.Serialize(Model.Summary.GenreBreakdown);
         var hc={'Thriving':'#3fb950','Stable':'#58a6ff','Aging':'#d29922','Critical':'#f85149'};
         var y=20,bh=24;
         genres.forEach(function(g){
@@ -192,7 +192,7 @@
     }
 
     function exportJson(){
-        var d=@Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model));
+        var d=@Vidly.Utilities.JsonForScript.Serialize(Model);
         var b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});
         var a=document.createElement('a');a.href=URL.createObjectURL(b);
         a.download='retirement-plan.json';a.click();

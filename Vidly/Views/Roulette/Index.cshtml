@@ -149,8 +149,8 @@
         var cy = canvas.height / 2;
         var radius = cx - 10;
 
-        var movies = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(
-            Model.WheelMovies.Select(m => new { name = m.Name, genre = m.Genre?.ToString() ?? "Unknown" })));
+        var movies = @Vidly.Utilities.JsonForScript.Serialize(
+            Model.WheelMovies.Select(m => new { name = m.Name, genre = m.Genre?.ToString() ?? "Unknown" }));
 
         var colors = {
             'Action': '#e74c3c', 'Comedy': '#f39c12', 'Drama': '#3498db',

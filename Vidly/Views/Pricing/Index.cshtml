@@ -241,7 +241,7 @@
     canvas.height = 200;
 
     var days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-    var heatmapData = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.DemandHeatmap));
+    var heatmapData = @Vidly.Utilities.JsonForScript.Serialize(Model.DemandHeatmap);
 
     var cellW = (canvas.width - 50) / 24;
     var cellH = (canvas.height - 30) / 7;
@@ -277,7 +277,7 @@
     chartCanvas.width = chartCanvas.offsetWidth;
     chartCanvas.height = 250;
 
-    var snapshots = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.Snapshots));
+    var snapshots = @Vidly.Utilities.JsonForScript.Serialize(Model.Snapshots);
     if (!snapshots.length) return;
 
     var w = chartCanvas.width, h = chartCanvas.height;

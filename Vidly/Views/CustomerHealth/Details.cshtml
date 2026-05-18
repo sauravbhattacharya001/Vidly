@@ -90,7 +90,7 @@ h1{font-size:1.6em;margin-bottom:4px;color:#fff}
 <script>
 (function(){
     var c=document.getElementById('genreChart'),ctx=c.getContext('2d');
-    var genres=@Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.GenreDistribution));
+    var genres=@Vidly.Utilities.JsonForScript.Serialize(Model.GenreDistribution);
     var keys=Object.keys(genres),vals=keys.map(function(k){return genres[k]});
     var total=vals.reduce(function(a,b){return a+b},0);
     if(!total)return;

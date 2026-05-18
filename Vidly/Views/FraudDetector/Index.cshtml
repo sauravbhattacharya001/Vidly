@@ -200,7 +200,7 @@
 <script>
 // Tier donut chart
 (function() {
-    var profiles = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.AllProfiles.Select(p => p.RiskTier)));
+    var profiles = @Vidly.Utilities.JsonForScript.Serialize(Model.AllProfiles.Select(p => p.RiskTier));
     var counts = { Clean: 0, Watch: 0, Suspect: 0, Blocked: 0 };
     profiles.forEach(function(t) { counts[t] = (counts[t] || 0) + 1; });
     var data = [
@@ -243,7 +243,7 @@
 
 // Signal heatmap bar chart
 (function() {
-    var dist = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.SignalDistribution));
+    var dist = @Vidly.Utilities.JsonForScript.Serialize(Model.SignalDistribution);
     var labels = Object.keys(dist);
     var values = labels.map(function(l) { return dist[l]; });
     var canvas = document.getElementById('signalChart');
