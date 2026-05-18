@@ -24,9 +24,9 @@ namespace Vidly.Services
             IRentalRepository rentalRepository,
             IMovieRepository movieRepository,
             IReviewRepository reviewRepository = null,
-            IClock clock)
+            IClock clock = null)
         {
-            _clock = clock ?? throw new ArgumentNullException(nameof(clock));
+            _clock = clock ?? new SystemClock();
             _customerRepository = customerRepository
                 ?? throw new ArgumentNullException(nameof(customerRepository));
             _rentalRepository = rentalRepository

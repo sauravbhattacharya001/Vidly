@@ -69,9 +69,9 @@ namespace Vidly.Services
             IRentalRepository rentalRepo,
             Dictionary<MembershipType, TierConfig> customConfigs,
             int evaluationPeriodDays = 90,
-            IClock clock)
+            IClock clock = null)
         {
-            _clock = clock ?? throw new ArgumentNullException(nameof(clock));
+            _clock = clock ?? new SystemClock();
             _customerRepo = customerRepo ?? throw new ArgumentNullException(nameof(customerRepo));
             _rentalRepo = rentalRepo ?? throw new ArgumentNullException(nameof(rentalRepo));
             _evaluationPeriodDays = evaluationPeriodDays > 0 ? evaluationPeriodDays : 90;
