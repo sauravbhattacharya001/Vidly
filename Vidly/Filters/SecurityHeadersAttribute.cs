@@ -29,19 +29,32 @@ namespace Vidly.Filters
             // Restrict browser feature access
             SetHeaderIfMissing(response, "Permissions-Policy", "camera=(), microphone=(), geolocation=()");
 
-            // HTTP Strict Transport Security — force HTTPS for 1 year, include subdomains
+            // HTTP Strict Transport Security - force HTTPS for 1 year, include subdomains
             if (filterContext.HttpContext.Request.IsSecureConnection)
             {
                 SetHeaderIfMissing(response, "Strict-Transport-Security", "max-age=31536000; includeSubDomains");
             }
 
-            // Content Security Policy — allow self-hosted resources plus CDN for Bootstrap/jQuery
+            // Content Security Policy - allow self-hosted resources plus CDN for Bootstrap/jQuery.
+            //
+            // Hardening notes (defense-in-depth):
+            //   - object-src 'none'  blocks legacy plugin content (<object>, <embed>, <applet>) which
+            //                        is a historical XSS / data-exfiltration sink (CWE-1021).
+            //   - base-uri 'self'    prevents an attacker-injected <base href="//evil"> from rewriting
+            //                        every relative URL on the page (CWE-94 base-href hijacking).
+            //   - form-action 'self' restricts where forms can submit, blunting credential exfil if
+            //                        an XSS payload ever slips past the other layers.
+            // These directives have no compatibility cost for this app (no plugins, no <base>, no
+            // cross-origin form posts) and meaningfully shrink the post-exploitation surface.
             SetHeaderIfMissing(response, "Content-Security-Policy",
                 "default-src 'self'; " +
                 "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; " +
                 "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; " +
                 "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; " +
                 "img-src 'self' data:; " +
+                "object-src 'none'; " +
+                "base-uri 'self'; " +
+                "form-action 'self'; " +
                 "frame-ancestors 'none'");
 
             // Prevent browsers from caching sensitive pages (customer data, rentals)
