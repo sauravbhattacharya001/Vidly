@@ -49,6 +49,8 @@ namespace Vidly.Tests
             public Rental Checkout(Rental r) { Add(r); return r; }
             public Rental Checkout(Rental r, int max) { Add(r); return r; }
             public RentalStats GetStats() => new RentalStats { TotalRentals = _rentals.Count };
+            public Rental ExtendRental(int rentalId, int days) { throw new NotImplementedException(); }
+            public bool IsExtended(int rentalId) => false;
         }
 
         // ── Helpers ──────────────────────────────────────────────

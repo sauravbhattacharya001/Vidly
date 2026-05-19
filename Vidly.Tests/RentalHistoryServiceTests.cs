@@ -63,6 +63,8 @@ namespace Vidly.Tests
                 return Checkout(rental);
             }
             public RentalStats GetStats() => new RentalStats { TotalRentals = _rentals.Count };
+            public Rental ExtendRental(int rentalId, int days) { throw new NotImplementedException(); }
+            public bool IsExtended(int rentalId) => false;
         }
 
         private class TestCustomerRepository : ICustomerRepository

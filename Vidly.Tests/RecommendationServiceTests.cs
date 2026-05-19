@@ -120,6 +120,8 @@ namespace Vidly.Tests
                 OverdueRentals = _rentals.Count(r => r.Status == RentalStatus.Overdue),
                 ReturnedRentals = _rentals.Count(r => r.Status == RentalStatus.Returned)
             };
+            public Rental ExtendRental(int rentalId, int days) { throw new NotImplementedException(); }
+            public bool IsExtended(int rentalId) => false;
         }
 
         private static Movie CreateMovie(int id, string name, Genre? genre = null, int? rating = null)

@@ -29,6 +29,9 @@ namespace Vidly.Tests
             public Rental Checkout(Rental rental) { Add(rental); return rental; }
             public Rental Checkout(Rental rental, int max) => Checkout(rental);
             public RentalStats GetStats() => new RentalStats { TotalRentals = _r.Count };
+            public IReadOnlyList<Rental> GetByCustomer(int customerId) => GetAll().Where(r => r.CustomerId == customerId).ToList().AsReadOnly();
+            public Rental ExtendRental(int rentalId, int days) { throw new NotImplementedException(); }
+            public bool IsExtended(int rentalId) => false;
         }
 
         private class TestMovieRepo : IMovieRepository

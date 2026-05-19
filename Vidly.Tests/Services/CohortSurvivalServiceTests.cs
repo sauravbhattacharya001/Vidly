@@ -441,7 +441,8 @@ namespace Vidly.Tests.Services
         {
             private readonly DateTime _now;
             public TestClock(DateTime now) { _now = now; }
-            public DateTime UtcNow => _now;
+            public DateTime Now => _now;
+            public DateTime Today => _now.Date;
         }
     }
 }

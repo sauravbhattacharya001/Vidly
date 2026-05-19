@@ -45,6 +45,9 @@ namespace Vidly.Tests
             public Rental Checkout(Rental rental) { Add(rental); return rental; }
             public Rental Checkout(Rental rental, int maxConcurrentRentals) { Add(rental); return rental; }
             public RentalStats GetStats() => new RentalStats();
+            public IReadOnlyList<Rental> GetByCustomer(int customerId) => GetAll().Where(r => r.CustomerId == customerId).ToList().AsReadOnly();
+            public Rental ExtendRental(int rentalId, int days) { throw new NotImplementedException(); }
+            public bool IsExtended(int rentalId) => false;
         }
 
         private TestMovieRepository _movieRepo;

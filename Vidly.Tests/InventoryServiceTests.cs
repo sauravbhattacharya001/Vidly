@@ -119,6 +119,8 @@ namespace Vidly.Tests
                 ActiveRentals = _rentals.Values.Count(r => r.Status == RentalStatus.Active),
                 OverdueRentals = _rentals.Values.Count(r => r.Status == RentalStatus.Overdue)
             };
+            public Rental ExtendRental(int rentalId, int days) { throw new NotImplementedException(); }
+            public bool IsExtended(int rentalId) => false;
         }
 
         private TestMovieRepository _movieRepo;

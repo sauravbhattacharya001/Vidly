@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Vidly.Models;
+using Vidly.Repositories;
 using Vidly.Services;
 
 namespace Vidly.Tests.Services
@@ -486,6 +487,7 @@ namespace Vidly.Tests.Services
         private class FakeClock : IClock
         {
             public DateTime Now { get; }
+            public DateTime Today => Now.Date;
             public FakeClock(DateTime now) { Now = now; }
         }
 

@@ -156,6 +156,8 @@ namespace Vidly.Tests
                 }
                 return stats;
             }
+            public Rental ExtendRental(int rentalId, int days) { throw new NotImplementedException(); }
+            public bool IsExtended(int rentalId) => false;
         }
 
         private TestMovieRepository _movieRepo;

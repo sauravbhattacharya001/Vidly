@@ -51,6 +51,8 @@ namespace Vidly.Tests
                 return Checkout(rental);
             }
             public RentalStats GetStats() => new RentalStats();
+            public Rental ExtendRental(int rentalId, int days) { throw new NotImplementedException(); }
+            public bool IsExtended(int rentalId) => false;
         }
 
         private static Movie CreateMovie(int id, string name, Genre? genre = null, int? rating = null)

@@ -51,6 +51,8 @@ namespace Vidly.Tests
             public Rental Checkout(Rental r) { Add(r); return r; }
             public Rental Checkout(Rental r, int maxConcurrentRentals) { return Checkout(r); }
             public RentalStats GetStats() => new RentalStats();
+            public Rental ExtendRental(int rentalId, int days) { throw new NotImplementedException(); }
+            public bool IsExtended(int rentalId) => false;
         }
 
         private static Movie MakeMovie(string name, Genre genre, int rating, DateTime? release = null) =>
