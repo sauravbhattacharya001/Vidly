@@ -754,6 +754,7 @@ namespace Vidly.Tests.Services
         private class FakeClock : IClock
         {
             public DateTime Now { get; }
+            public DateTime Today => Now.Date;
             public FakeClock(DateTime now) { Now = now; }
         }
 
@@ -761,7 +762,7 @@ namespace Vidly.Tests.Services
         {
             private readonly List<Customer> _data = new List<Customer>();
             public void Add(Customer entity) => _data.Add(entity);
-            public void Delete(int id) => _data.RemoveAll(c => c.Id == id);
+            public void Remove(int id) => _data.RemoveAll(c => c.Id == id);
             public IReadOnlyList<Customer> GetAll() => _data.AsReadOnly();
             public Customer GetById(int id) => _data.FirstOrDefault(c => c.Id == id);
             public void Update(Customer entity) { }
@@ -774,7 +775,7 @@ namespace Vidly.Tests.Services
         {
             private readonly List<Movie> _data = new List<Movie>();
             public void Add(Movie entity) => _data.Add(entity);
-            public void Delete(int id) => _data.RemoveAll(m => m.Id == id);
+            public void Remove(int id) => _data.RemoveAll(m => m.Id == id);
             public IReadOnlyList<Movie> GetAll() => _data.AsReadOnly();
             public Movie GetById(int id) => _data.FirstOrDefault(m => m.Id == id);
             public void Update(Movie entity) { }
@@ -787,7 +788,7 @@ namespace Vidly.Tests.Services
         {
             private readonly List<Rental> _data = new List<Rental>();
             public void Add(Rental entity) => _data.Add(entity);
-            public void Delete(int id) => _data.RemoveAll(r => r.Id == id);
+            public void Remove(int id) => _data.RemoveAll(r => r.Id == id);
             public IReadOnlyList<Rental> GetAll() => _data.AsReadOnly();
             public Rental GetById(int id) => _data.FirstOrDefault(r => r.Id == id);
             public void Update(Rental entity) { }

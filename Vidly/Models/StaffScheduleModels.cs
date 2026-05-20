@@ -1,7 +1,13 @@
 using System;
 using System.Collections.Generic;
 
-namespace Vidly.Models
+// NOTE: This file's types live in a nested namespace `Vidly.Models.Roster`
+// to avoid CS0101 duplicate-symbol collisions with the older scheduling
+// model in `SchedulingModels.cs`/`StaffModels.cs`. The two subsystems are
+// kept separate intentionally — `Vidly.Models.Roster` powers the simple
+// in-memory shift roster used by `StaffScheduleController`, while the
+// flat `Vidly.Models` types power the richer `StaffSchedulingService`.
+namespace Vidly.Models.Roster
 {
     /// <summary>
     /// Represents a staff member who can be scheduled for shifts.

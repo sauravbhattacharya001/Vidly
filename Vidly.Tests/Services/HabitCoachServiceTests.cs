@@ -495,27 +495,33 @@ namespace Vidly.Tests.Services
         {
             private readonly List<Customer> _data = new List<Customer>();
             public void Add(Customer entity) => _data.Add(entity);
-            public void Delete(int id) => _data.RemoveAll(c => c.Id == id);
+            public void Remove(int id) => _data.RemoveAll(c => c.Id == id);
             public IReadOnlyList<Customer> GetAll() => _data.AsReadOnly();
             public Customer GetById(int id) => _data.FirstOrDefault(c => c.Id == id);
             public void Update(Customer entity) { }
+            public IReadOnlyList<Customer> Search(string query, MembershipType? membershipType) => _data.AsReadOnly();
+            public IReadOnlyList<Customer> GetByMemberSince(int year, int month) => _data.AsReadOnly();
+            public CustomerStats GetStats() => new CustomerStats { TotalCustomers = _data.Count };
         }
 
         private class InMemoryTestMovieRepo : IMovieRepository
         {
             private readonly List<Movie> _data = new List<Movie>();
             public void Add(Movie entity) => _data.Add(entity);
-            public void Delete(int id) => _data.RemoveAll(m => m.Id == id);
+            public void Remove(int id) => _data.RemoveAll(m => m.Id == id);
             public IReadOnlyList<Movie> GetAll() => _data.AsReadOnly();
             public Movie GetById(int id) => _data.FirstOrDefault(m => m.Id == id);
             public void Update(Movie entity) { }
+            public IReadOnlyList<Movie> GetByReleaseDate(int year, int month) => _data.AsReadOnly();
+            public Movie GetRandom() => _data.FirstOrDefault();
+            public IReadOnlyList<Movie> Search(string query, Genre? genre, int? minRating) => _data.AsReadOnly();
         }
 
         private class InMemoryTestRentalRepo : IRentalRepository
         {
             private readonly List<Rental> _data = new List<Rental>();
             public void Add(Rental entity) => _data.Add(entity);
-            public void Delete(int id) => _data.RemoveAll(r => r.Id == id);
+            public void Remove(int id) => _data.RemoveAll(r => r.Id == id);
             public IReadOnlyList<Rental> GetAll() => _data.AsReadOnly();
             public Rental GetById(int id) => _data.FirstOrDefault(r => r.Id == id);
             public void Update(Rental entity) { }
