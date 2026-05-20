@@ -19,7 +19,7 @@ namespace Vidly.Services
 
     public enum RecommendationPriority { High, Medium, Low }
 
-    public enum RecommendationType { Move, Cluster, Rotate, Promote, Demote }
+    public enum ShelfRecommendationType { Move, Cluster, Rotate, Promote, Demote }
 
     public class ShelfAssignment
     {
@@ -43,7 +43,7 @@ namespace Vidly.Services
 
     public class ProactiveRecommendation
     {
-        public RecommendationType Type { get; set; }
+        public ShelfRecommendationType Type { get; set; }
         public string Message { get; set; }
         public RecommendationPriority Priority { get; set; }
         public string ImpactEstimate { get; set; }
@@ -404,7 +404,7 @@ namespace Vidly.Services
                 {
                     recs.Add(new ProactiveRecommendation
                     {
-                        Type = RecommendationType.Promote,
+                        Type = ShelfRecommendationType.Promote,
                         Message = $"Move \"{m.Name}\" to Prime Shelf — demand at {kv.Value:P0}",
                         Priority = kv.Value >= 0.8
                             ? RecommendationPriority.High
@@ -421,7 +421,7 @@ namespace Vidly.Services
                 {
                     recs.Add(new ProactiveRecommendation
                     {
-                        Type = RecommendationType.Move,
+                        Type = ShelfRecommendationType.Move,
                         Message = $"Surface \"{m.Name}\" (rated {m.Rating}/5) to Discovery Zone — underexposed gem",
                         Priority = RecommendationPriority.Medium,
                         ImpactEstimate = "Potential 30-50% rental increase"
@@ -445,7 +445,7 @@ namespace Vidly.Services
                 {
                     recs.Add(new ProactiveRecommendation
                     {
-                        Type = RecommendationType.Cluster,
+                        Type = ShelfRecommendationType.Cluster,
                         Message = $"Create cluster: \"{ma.Name}\" + \"{mb.Name}\" — {pair.Value:P0} co-rental rate",
                         Priority = RecommendationPriority.Medium,
                         ImpactEstimate = "Cross-selling opportunity"
@@ -462,7 +462,7 @@ namespace Vidly.Services
             {
                 recs.Add(new ProactiveRecommendation
                 {
-                    Type = RecommendationType.Rotate,
+                    Type = ShelfRecommendationType.Rotate,
                     Message = $"{hotGenre.Key} is trending — expand Prime Shelf allocation for this genre",
                     Priority = RecommendationPriority.High,
                     ImpactEstimate = $"Genre heat at {hotGenre.Value:P0}"
@@ -480,7 +480,7 @@ namespace Vidly.Services
                 {
                     recs.Add(new ProactiveRecommendation
                     {
-                        Type = RecommendationType.Demote,
+                        Type = ShelfRecommendationType.Demote,
                         Message = $"Move \"{m.Name}\" to Archive — near-zero demand",
                         Priority = RecommendationPriority.Low,
                         ImpactEstimate = "Free shelf space for higher-demand titles"

@@ -339,7 +339,7 @@ namespace Vidly.Services
 
         // ── Private Helpers ──────────────────────────────────────────
 
-        private List<GenreRevenue> BuildGenreBreakdown(
+        private List<GenreRevenueSummary> BuildGenreBreakdown(
             List<Rental> rentals,
             Dictionary<int, Movie> movies,
             decimal totalRevenue)
@@ -362,11 +362,11 @@ namespace Vidly.Services
                 list.Add(r);
             }
 
-            var result = new List<GenreRevenue>();
+            var result = new List<GenreRevenueSummary>();
             foreach (var kv in genreGroups.OrderByDescending(kv => kv.Value.Sum(r => r.TotalCost)))
             {
                 decimal genreRev = kv.Value.Sum(r => r.TotalCost);
-                result.Add(new GenreRevenue
+                result.Add(new GenreRevenueSummary
                 {
                     Genre = kv.Key,
                     Revenue = genreRev,

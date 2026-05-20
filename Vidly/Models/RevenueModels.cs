@@ -19,7 +19,7 @@ namespace Vidly.Models
         public int OverdueRentals { get; set; }
         public decimal AverageRevenuePerRental { get; set; }
         public decimal AverageRevenuePerDay { get; set; }
-        public List<GenreRevenue> RevenueByGenre { get; set; }
+        public List<GenreRevenueSummary> RevenueByGenre { get; set; }
         public List<MembershipRevenue> RevenueByMembership { get; set; }
         public List<MonthlyRevenue> MonthlyTrend { get; set; }
         public List<TopCustomerRevenue> TopCustomers { get; set; }
@@ -29,7 +29,7 @@ namespace Vidly.Models
     /// <summary>
     /// Revenue breakdown by movie genre.
     /// </summary>
-    public class GenreRevenue
+    public class GenreRevenueSummary
     {
         public Genre Genre { get; set; }
         public decimal Revenue { get; set; }

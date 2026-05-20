@@ -44,7 +44,7 @@ namespace Vidly.Models
         public RecommendationReason Reason { get; set; }
     }
 
-    public class DemandForecast
+    public class InventoryWeekForecast
     {
         public int WeekNumber { get; set; }
         public string WeekLabel { get; set; }
@@ -74,7 +74,7 @@ namespace Vidly.Models
     {
         public InventoryHealthScore HealthScore { get; set; }
         public List<TitleAnalysis> TitleAnalyses { get; set; }
-        public List<DemandForecast> Forecasts { get; set; }
+        public List<InventoryWeekForecast> Forecasts { get; set; }
         public List<OptimizationAction> Actions { get; set; }
         public DateTime GeneratedAt { get; set; }
         public bool AutoOptimizeEnabled { get; set; }

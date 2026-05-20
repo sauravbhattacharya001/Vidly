@@ -62,7 +62,7 @@ namespace Vidly.Models
     /// <summary>
     /// Revenue forecast for a future period.
     /// </summary>
-    public class RevenueForecast
+    public class WeatherRevenueForecast
     {
         public string Period { get; set; }
         public WeatherCondition ExpectedCondition { get; set; }
@@ -73,7 +73,7 @@ namespace Vidly.Models
         public List<string> Watches { get; set; }
         public List<string> Advisories { get; set; }
 
-        public RevenueForecast()
+        public WeatherRevenueForecast()
         {
             Watches = new List<string>();
             Advisories = new List<string>();
@@ -94,7 +94,7 @@ namespace Vidly.Models
         public List<RevenuePhenomenon> ActivePhenomena { get; set; }
         public List<RevenuePhenomenon> RecentPhenomena { get; set; }
         public List<GenreMicroclimate> Microclimates { get; set; }
-        public List<RevenueForecast> Forecasts { get; set; }
+        public List<WeatherRevenueForecast> Forecasts { get; set; }
         public List<string> AutonomousInsights { get; set; }
         public List<string> StormWarnings { get; set; }
 
@@ -103,7 +103,7 @@ namespace Vidly.Models
             ActivePhenomena = new List<RevenuePhenomenon>();
             RecentPhenomena = new List<RevenuePhenomenon>();
             Microclimates = new List<GenreMicroclimate>();
-            Forecasts = new List<RevenueForecast>();
+            Forecasts = new List<WeatherRevenueForecast>();
             AutonomousInsights = new List<string>();
             StormWarnings = new List<string>();
         }

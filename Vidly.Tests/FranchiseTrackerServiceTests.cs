@@ -420,7 +420,7 @@ namespace Vidly.Tests
 
             var recs = _service.GetRecommendations(1, _rentals, _movies);
             Assert.AreEqual(1, recs.Count);
-            Assert.AreEqual(RecommendationType.ContinueFranchise, recs[0].Type);
+            Assert.AreEqual(FranchiseRecommendationType.ContinueFranchise, recs[0].Type);
             Assert.AreEqual(2, recs[0].NextMovieId);
         }
 
@@ -433,7 +433,7 @@ namespace Vidly.Tests
 
             var recs = _service.GetRecommendations(1, _rentals, _movies);
             Assert.AreEqual(1, recs.Count);
-            Assert.AreEqual(RecommendationType.CompleteFranchise, recs[0].Type);
+            Assert.AreEqual(FranchiseRecommendationType.CompleteFranchise, recs[0].Type);
         }
 
         [TestMethod]

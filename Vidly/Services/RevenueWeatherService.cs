@@ -493,10 +493,10 @@ namespace Vidly.Services
 
         // ── Forecasting ───────────────────────────────────────────────
 
-        private List<RevenueForecast> BuildForecasts(
+        private List<WeatherRevenueForecast> BuildForecasts(
             Dictionary<DateTime, double> daily, DateTime now)
         {
-            var forecasts = new List<RevenueForecast>();
+            var forecasts = new List<WeatherRevenueForecast>();
             if (daily.Count < _config.MinDataPointsForForecast) return forecasts;
 
             // Use last 14 days for regression
@@ -527,7 +527,7 @@ namespace Vidly.Services
                 projected7 += Math.Max(0, intercept + slope * (recentDays.Count + d));
 
             double conf7 = recentDays.Count >= 10 ? 70 : 50;
-            forecasts.Add(new RevenueForecast
+            forecasts.Add(new WeatherRevenueForecast
             {
                 Period = "Next 7 days",
                 ExpectedCondition = ClassifyForecastCondition(slope, currentAvg),
@@ -545,7 +545,7 @@ namespace Vidly.Services
                 projected30 += Math.Max(0, intercept + slope * (recentDays.Count + d));
 
             double conf30 = recentDays.Count >= 10 ? 45 : 30;
-            forecasts.Add(new RevenueForecast
+            forecasts.Add(new WeatherRevenueForecast
             {
                 Period = "Next 30 days",
                 ExpectedCondition = ClassifyForecastCondition(slope, currentAvg),
@@ -711,7 +711,7 @@ namespace Vidly.Services
 
         private List<string> GenerateInsights(
             List<RevenuePhenomenon> phenomena, List<GenreMicroclimate> microclimates,
-            Dictionary<DateTime, double> daily, List<RevenueForecast> forecasts)
+            Dictionary<DateTime, double> daily, List<WeatherRevenueForecast> forecasts)
         {
             var insights = new List<string>();
 
@@ -775,7 +775,7 @@ namespace Vidly.Services
         }
 
         private List<string> GenerateWarnings(
-            List<RevenuePhenomenon> phenomena, List<RevenueForecast> forecasts,
+            List<RevenuePhenomenon> phenomena, List<WeatherRevenueForecast> forecasts,
             List<GenreMicroclimate> microclimates)
         {
             var warnings = new List<string>();

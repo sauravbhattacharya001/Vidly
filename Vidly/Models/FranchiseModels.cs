@@ -119,10 +119,10 @@ namespace Vidly.Models
         public double Score { get; set; }
         public int? NextMovieId { get; set; }
         public string NextMovieName { get; set; }
-        public RecommendationType Type { get; set; }
+        public FranchiseRecommendationType Type { get; set; }
     }
 
-    public enum RecommendationType
+    public enum FranchiseRecommendationType
     {
         ContinueFranchise,
         StartNewFranchise,

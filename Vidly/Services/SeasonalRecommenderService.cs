@@ -11,7 +11,7 @@ namespace Vidly.Services
         public string CurrentSeason { get; set; }
         public int CurrentMonth { get; set; }
         public List<GenreSeasonality> GenreTrends { get; set; }
-        public List<MovieRecommendation> Recommendations { get; set; }
+        public List<SeasonalMovieRecommendation> Recommendations { get; set; }
         public List<SeasonalInsight> Insights { get; set; }
         public Dictionary<string, double> SeasonalActivity { get; set; }
     }
@@ -24,7 +24,7 @@ namespace Vidly.Services
         public double Seasonality { get; set; }
     }
 
-    public class MovieRecommendation
+    public class SeasonalMovieRecommendation
     {
         public int MovieId { get; set; }
         public string MovieName { get; set; }
@@ -121,7 +121,7 @@ namespace Vidly.Services
             }
 
             // Build recommendations
-            var recs = new List<MovieRecommendation>();
+            var recs = new List<SeasonalMovieRecommendation>();
             foreach (var m in movies.Values)
             {
                 if (!m.Genre.HasValue) continue;
@@ -143,7 +143,7 @@ namespace Vidly.Services
                         score += ss * 30;
                 }
 
-                recs.Add(new MovieRecommendation
+                recs.Add(new SeasonalMovieRecommendation
                 {
                     MovieId = m.Id,
                     MovieName = m.Name,

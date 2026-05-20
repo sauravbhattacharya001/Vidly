@@ -231,7 +231,7 @@ namespace Vidly.Services
             var genreCounts = items
                 .Where(i => i.MovieGenre.HasValue)
                 .GroupBy(i => i.MovieGenre.Value)
-                .Select(g => new GenreCount { Genre = g.Key, Count = g.Count() })
+                .Select(g => new WatchlistGenreCount { Genre = g.Key, Count = g.Count() })
                 .OrderByDescending(g => g.Count)
                 .ToList();
 
@@ -406,7 +406,7 @@ namespace Vidly.Services
         public int MustWatchCount { get; set; }
         public int HighPriorityCount { get; set; }
         public int NormalCount { get; set; }
-        public IReadOnlyList<GenreCount> GenreBreakdown { get; set; }
+        public IReadOnlyList<WatchlistGenreCount> GenreBreakdown { get; set; }
         public Genre? TopGenre { get; set; }
         public IReadOnlyList<WatchlistItem> StaleItems { get; set; }
         public int StaleCount { get; set; }
@@ -415,7 +415,7 @@ namespace Vidly.Services
         public int AlreadyRentedCount { get; set; }
     }
 
-    public class GenreCount
+    public class WatchlistGenreCount
     {
         public Genre Genre { get; set; }
         public int Count { get; set; }

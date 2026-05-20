@@ -87,12 +87,12 @@ namespace Vidly.Controllers
                 });
             }
 
-            var forecasts = new List<DemandForecast>();
+            var forecasts = new List<InventoryWeekForecast>();
             var baseRentals = titles.Sum(t => t.AvgRentalsPerWeek);
             for (int w = 1; w <= 4; w++)
             {
                 var predicted = baseRentals * (1 + (rng.NextDouble() - 0.3) * 0.1);
-                forecasts.Add(new DemandForecast
+                forecasts.Add(new InventoryWeekForecast
                 {
                     WeekNumber = w,
                     WeekLabel = DateTime.Now.AddDays(w * 7).ToString("MMM dd"),

@@ -182,12 +182,12 @@ namespace Vidly.Services
         {
             var reports = AnalyzeAll(asOfDate);
 
-            var actions = new List<PlaybookAction>();
+            var actions = new List<ReviewPlaybookAction>();
             foreach (var r in reports)
             {
                 foreach (var a in r.Actions)
                 {
-                    actions.Add(new PlaybookAction
+                    actions.Add(new ReviewPlaybookAction
                     {
                         MovieId = r.MovieId,
                         MovieName = r.MovieName,
@@ -619,7 +619,7 @@ namespace Vidly.Services
         public string Rationale { get; set; }
     }
 
-    public class PlaybookAction
+    public class ReviewPlaybookAction
     {
         public int MovieId { get; set; }
         public string MovieName { get; set; }
@@ -653,6 +653,6 @@ namespace Vidly.Services
         public int MoviesAnalyzed { get; set; }
         public int AtRiskMovies { get; set; }
         public IReadOnlyList<MovieReputationReport> Reports { get; set; }
-        public IReadOnlyList<PlaybookAction> Actions { get; set; }
+        public IReadOnlyList<ReviewPlaybookAction> Actions { get; set; }
     }
 }

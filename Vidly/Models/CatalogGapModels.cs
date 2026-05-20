@@ -9,7 +9,7 @@ namespace Vidly.Models
         public string CoverageGrade { get; set; }
         public List<GenreGap> GenreGaps { get; set; }
         public List<AcquisitionRecommendation> Recommendations { get; set; }
-        public List<DemandSignal> UnmetDemand { get; set; }
+        public List<CatalogDemandSignal> UnmetDemand { get; set; }
         public CatalogHealthSummary Health { get; set; }
         public DateTime AnalyzedAt { get; set; }
     }
@@ -36,7 +36,7 @@ namespace Vidly.Models
         public int MinRating { get; set; }
     }
 
-    public class DemandSignal
+    public class CatalogDemandSignal
     {
         public string Pattern { get; set; }
         public string Category { get; set; }

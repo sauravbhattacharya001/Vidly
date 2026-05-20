@@ -83,11 +83,11 @@ namespace Vidly.Services
             return GetDashboard(null);
         }
 
-        public List<RevenueForecast> GetForecast(int days)
+        public List<AlertRevenueForecast> GetForecast(int days)
         {
             var snapshots = BuildSnapshots(14);
             if (snapshots.Count < 3)
-                return Enumerable.Range(1, days).Select(i => new RevenueForecast
+                return Enumerable.Range(1, days).Select(i => new AlertRevenueForecast
                 {
                     Date = _clock.Now.Date.AddDays(i),
                     PredictedRevenue = 0,
@@ -113,7 +113,7 @@ namespace Vidly.Services
 
             var trend = slope > 0.5 ? "Rising" : slope < -0.5 ? "Declining" : "Stable";
 
-            return Enumerable.Range(1, days).Select(i => new RevenueForecast
+            return Enumerable.Range(1, days).Select(i => new AlertRevenueForecast
             {
                 Date = _clock.Now.Date.AddDays(i),
                 PredictedRevenue = Math.Max(0, (decimal)(slope * (n - 1 + i) + intercept)),
@@ -253,7 +253,7 @@ namespace Vidly.Services
             }
         }
 
-        private void CheckForecastWarnings(List<RevenueForecast> forecast, List<RevenueSnapshot> snapshots)
+        private void CheckForecastWarnings(List<AlertRevenueForecast> forecast, List<RevenueSnapshot> snapshots)
         {
             if (forecast.Count == 0 || snapshots.Count == 0) return;
 
@@ -343,7 +343,7 @@ namespace Vidly.Services
     public enum AlertType { RevenueSpike, RevenueDrop, TrendShift, ForecastWarning, OpportunityDetected }
     public enum AlertSeverity { Info, Warning, Critical }
 
-    public class RevenueForecast
+    public class AlertRevenueForecast
     {
         public DateTime Date { get; set; }
         public decimal PredictedRevenue { get; set; }
@@ -377,7 +377,7 @@ namespace Vidly.Services
     {
         public List<RevenueSnapshot> Snapshots { get; set; } = new List<RevenueSnapshot>();
         public List<RevenueAlert> ActiveAlerts { get; set; } = new List<RevenueAlert>();
-        public List<RevenueForecast> Forecast { get; set; } = new List<RevenueForecast>();
+        public List<AlertRevenueForecast> Forecast { get; set; } = new List<AlertRevenueForecast>();
         public Dictionary<string, GenreRevenueInfo> GenreBreakdown { get; set; } = new Dictionary<string, GenreRevenueInfo>();
         public List<string> Recommendations { get; set; } = new List<string>();
     }

@@ -387,7 +387,7 @@ namespace Vidly.Controllers
         /// movie's pricing tier and the customer's membership benefits.
         /// Prevents price manipulation (CWE-915) and due-date extension attacks.
         /// </summary>
-        private static Services.PricingService.MembershipBenefits ApplyServerSidePricing(
+        private static Services.MembershipBenefits ApplyServerSidePricing(
             Rental rental, Movie movie, Customer customer)
         {
             var baseDailyRate = Services.PricingService.GetMovieDailyRate(movie, DateTime.Today);

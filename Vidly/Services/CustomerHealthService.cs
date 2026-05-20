@@ -7,7 +7,7 @@ namespace Vidly.Services
     #region Result Models
 
     public enum HealthTier { Thriving, Healthy, AtRisk, Critical, Churned }
-    public enum TrendDirection { Improving, Stable, Declining }
+    public enum HealthTrendDirection { Improving, Stable, Declining }
 
     public class DimensionScore
     {
@@ -23,7 +23,7 @@ namespace Vidly.Services
         public string CustomerName { get; set; }
         public double HealthScore { get; set; }
         public HealthTier Tier { get; set; }
-        public TrendDirection Trend { get; set; }
+        public HealthTrendDirection Trend { get; set; }
         public List<DimensionScore> Dimensions { get; set; }
         public List<string> Recommendations { get; set; }
         public List<SimulatedRental> RecentRentals { get; set; }
@@ -116,9 +116,9 @@ namespace Vidly.Services
                 OverallScore = results.Any() ? Math.Round(results.Average(r => r.HealthScore), 1) : 0,
                 TotalCustomers = results.Count,
                 TierDistribution = tierDist,
-                Improving = results.Count(r => r.Trend == TrendDirection.Improving),
-                Stable = results.Count(r => r.Trend == TrendDirection.Stable),
-                Declining = results.Count(r => r.Trend == TrendDirection.Declining),
+                Improving = results.Count(r => r.Trend == HealthTrendDirection.Improving),
+                Stable = results.Count(r => r.Trend == HealthTrendDirection.Stable),
+                Declining = results.Count(r => r.Trend == HealthTrendDirection.Declining),
                 AllCustomers = results.OrderByDescending(r => r.HealthScore).ToList()
             };
         }
@@ -156,17 +156,17 @@ namespace Vidly.Services
             return r?.Recommendations ?? new List<string>();
         }
 
-        public TrendDirection GetHealthTrend(int customerId)
+        public HealthTrendDirection GetHealthTrend(int customerId)
         {
             var c = _customers.FirstOrDefault(x => x.Id == customerId);
-            if (c == null) return TrendDirection.Stable;
+            if (c == null) return HealthTrendDirection.Stable;
             var score = ComputeScore(c);
             var currentTier = ClassifyTier(score.total);
-            if (!_previousTiers.ContainsKey(customerId)) return TrendDirection.Stable;
+            if (!_previousTiers.ContainsKey(customerId)) return HealthTrendDirection.Stable;
             var prev = _previousTiers[customerId];
-            if (currentTier < prev) return TrendDirection.Improving;
-            if (currentTier > prev) return TrendDirection.Declining;
-            return TrendDirection.Stable;
+            if (currentTier < prev) return HealthTrendDirection.Improving;
+            if (currentTier > prev) return HealthTrendDirection.Declining;
+            return HealthTrendDirection.Stable;
         }
 
         #region Private Helpers
@@ -175,12 +175,12 @@ namespace Vidly.Services
         {
             var (total, dims) = ComputeScore(c);
             var tier = ClassifyTier(total);
-            var trend = TrendDirection.Stable;
+            var trend = HealthTrendDirection.Stable;
             if (_previousTiers.ContainsKey(c.Id))
             {
                 var prev = _previousTiers[c.Id];
-                if (tier < prev) trend = TrendDirection.Improving;
-                else if (tier > prev) trend = TrendDirection.Declining;
+                if (tier < prev) trend = HealthTrendDirection.Improving;
+                else if (tier > prev) trend = HealthTrendDirection.Declining;
             }
 
             var genreDist = c.Rentals.GroupBy(r => r.Genre)

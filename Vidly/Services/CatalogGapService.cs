@@ -88,12 +88,12 @@ namespace Vidly.Services
                 .ToList();
 
             // Demand signals
-            var signals = new List<DemandSignal>();
+            var signals = new List<CatalogDemandSignal>();
 
             // Genre gaps
             foreach (var gap in genreGaps.Where(g => g.Verdict == "Underserved"))
             {
-                signals.Add(new DemandSignal
+                signals.Add(new CatalogDemandSignal
                 {
                     Pattern = $"{gap.Genre} demand exceeds supply by {gap.GapScore}%",
                     Category = "Genre Gap",
@@ -113,7 +113,7 @@ namespace Vidly.Services
                 ? (double)movies.Count(m => m.Rating >= 4) / totalMovies * 100 : 0;
             if (highRatedPct > highRatedMoviesPct + 10)
             {
-                signals.Add(new DemandSignal
+                signals.Add(new CatalogDemandSignal
                 {
                     Pattern = $"High-rated movies (4-5★) account for {highRatedPct:F0}% of rentals but only {highRatedMoviesPct:F0}% of catalog",
                     Category = "Rating Gap",
@@ -128,7 +128,7 @@ namespace Vidly.Services
             var freshnessPct = totalMovies > 0 ? (double)recentMovies / totalMovies * 100 : 0;
             if (freshnessPct < 30)
             {
-                signals.Add(new DemandSignal
+                signals.Add(new CatalogDemandSignal
                 {
                     Pattern = $"Only {freshnessPct:F0}% of catalog released in last 5 years",
                     Category = "Freshness Gap",

@@ -320,8 +320,8 @@ namespace Vidly.Services
                         NextMovieId = progress.NextMovieId,
                         NextMovieName = nextMovie?.Name ?? "Unknown",
                         Type = remaining <= 1
-                            ? RecommendationType.CompleteFranchise
-                            : RecommendationType.ContinueFranchise
+                            ? FranchiseRecommendationType.CompleteFranchise
+                            : FranchiseRecommendationType.ContinueFranchise
                     });
                 }
                 else if (progress.WatchedMovieIds.Count == 0)
@@ -357,7 +357,7 @@ namespace Vidly.Services
                             Score = genreOverlap * 25.0,
                             NextMovieId = franchise.MovieIds[0],
                             NextMovieName = firstMovie?.Name ?? "Unknown",
-                            Type = RecommendationType.StartNewFranchise
+                            Type = FranchiseRecommendationType.StartNewFranchise
                         });
                     }
                 }
