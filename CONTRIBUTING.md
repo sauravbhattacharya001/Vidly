@@ -182,6 +182,18 @@ Follow the naming and structure of existing features. The codebase is consistent
 - **Null checks:** Validate parameters with `?? throw new ArgumentNullException(nameof(...))` in constructors and public methods.
 - **No breaking changes** to core interfaces (`IRepository<T>`, `IMovieRepository`, `ICustomerRepository`, `IRentalRepository`) without discussion in an issue first.
 - **Service isolation:** Services should depend on repository interfaces, not on other services directly (prefer controller-level orchestration for cross-domain operations).
+- **Name file-local helper types defensively.** `Vidly.Tests` pulls every `.cs` file under `Vidly/` into a single assembly via glob `<Compile Include>` patterns (see `Vidly.Tests/Vidly.Tests.csproj`). That means any nested helper class or enum you declare next to a service or model lives in the same `Vidly.Services` / `Vidly.Models` namespace as every other helper in the test build. A second `GenreCount`, `TrendDirection`, `PlaybookAction`, or `RecommendationType` in a different file will compile fine inside the main MVC project but break the test build with `CS0101`. Prefix file-local helpers with the owning concept (e.g. `WatchlistGenreCount`, `HealthTrendDirection`, `ShelfRecommendationType`) instead of using bare, generic names. If a helper is genuinely shared, promote it to `Vidly/Models/` and reference it from both sides.
+
+### Verifying Your Change Before Pushing
+
+Always run the test-project build before pushing — it is the only build that exercises every `.cs` file under `Vidly/` on the .NET SDK and will catch namespace collisions, missing usings, and broken type references that the Visual-Studio-only main project build can hide:
+
+```bash
+dotnet build Vidly.Tests/Vidly.Tests.csproj -c Release
+dotnet test  Vidly.Tests/Vidly.Tests.csproj -c Release --no-build
+```
+
+The main `Vidly.csproj` requires `Microsoft.WebApplication.targets`, which only ships with a full Visual Studio installation, so CI is currently the canonical builder for the web app itself. Don't rely on "it built in VS" alone.
 
 ### Commit Messages
 
