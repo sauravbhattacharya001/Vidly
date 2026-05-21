@@ -127,6 +127,7 @@
     <Compile Include="Services\ReviewIntelligenceService.cs" />
     <Compile Include="Services\WaitlistConversionAdvisorService.cs" />
     <Compile Include="Services\PenaltyWaiverGovernanceAdvisorService.cs" />
+    <Compile Include="Services\GiftCardBreakageAdvisorService.cs" />
     <Compile Include="Controllers\CompareController.cs" />
     <Compile Include="Controllers\MoviesController.cs" />
     <Compile Include="Global.asax.cs">
