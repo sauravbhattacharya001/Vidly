@@ -1,0 +1,79 @@
+# Docker Compose for Vidly (ASP.NET MVC 5 on IIS / Windows containers)
+#
+# This compose file is for LOCAL DEVELOPMENT and SMOKE TESTS. The image
+# built by the multi-stage Dockerfile targets `mcr.microsoft.com/dotnet/
+# framework/aspnet:4.8`, which is a Windows-container image. Run this on
+# a Docker engine configured for Windows containers (Docker Desktop:
+# "Switch to Windows containers..."). On Linux engines the build will
+# fail because the base image is not multi-arch.
+#
+# Quick start:
+#   docker compose up --build
+#   # then open http://localhost:8080
+#
+# Pull the GHCR-published image instead of building locally:
+#   docker compose --profile ghcr up
+#
+# Stop and remove:
+#   docker compose down
+
+name: vidly
+
+services:
+  # ----------------------------------------------------------------------
+  # Local build: compiles the source tree on each `up --build` invocation.
+  # Useful while iterating on the application code.
+  # ----------------------------------------------------------------------
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: vidly:local
+    container_name: vidly-web
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      # ASP.NET 4.x reads its environment from web.config transforms, but
+      # ASPNETCORE_ENVIRONMENT is still useful for any side-by-side .NET
+      # Core tooling that runs inside the image.
+      ASPNETCORE_ENVIRONMENT: Development
+    healthcheck:
+      # Mirrors the HEALTHCHECK in the Dockerfile so `docker compose ps`
+      # surfaces health status to operators even when the inherited
+      # healthcheck is overridden by a downstream image.
+      test:
+        - "CMD"
+        - "powershell"
+        - "-Command"
+        - "try { $$r = Invoke-WebRequest -Uri http://localhost -UseBasicParsing -TimeoutSec 5; if ($$r.StatusCode -eq 200) { exit 0 } else { exit 1 } } catch { exit 1 }"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    # Windows containers benefit from a generous stop grace period so IIS
+    # can drain in-flight requests before the worker process is killed.
+    stop_grace_period: 30s
+
+  # ----------------------------------------------------------------------
+  # GHCR pull: skips the build and runs the image published by the
+  # docker.yml workflow. Activate with `--profile ghcr`.
+  # ----------------------------------------------------------------------
+  web-ghcr:
+    image: ghcr.io/sauravbhattacharya001/vidly:latest
+    container_name: vidly-web-ghcr
+    profiles: ["ghcr"]
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    healthcheck:
+      test:
+        - "CMD"
+        - "powershell"
+        - "-Command"
+        - "try { $$r = Invoke-WebRequest -Uri http://localhost -UseBasicParsing -TimeoutSec 5; if ($$r.StatusCode -eq 200) { exit 0 } else { exit 1 } } catch { exit 1 }"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    stop_grace_period: 30s

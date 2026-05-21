@@ -21,8 +21,27 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  # Lightweight gate: validate the Compose file on every push/PR so a
+  # broken docker-compose.yml is caught long before the multi-GB Windows
+  # image build job runs.
+  compose-validate:
+    name: Validate docker-compose.yml
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Lint docker-compose.yml
+        run: |
+          if [ ! -f docker-compose.yml ]; then
+            echo "docker-compose.yml not found at repo root" >&2
+            exit 1
+          fi
+          docker compose -f docker-compose.yml config --quiet
+
   docker:
     name: Build & Push Docker Image
+    needs: compose-validate
     runs-on: windows-latest
 
     steps:
