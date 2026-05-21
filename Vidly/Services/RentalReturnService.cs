@@ -490,7 +490,7 @@ namespace Vidly.Services
         /// Estimate the late fee a customer would pay if they returned today.
         /// Useful for self-service "what would I owe?" lookups.
         /// </summary>
-        public LateFeeEstimate EstimateCurrentLateFee(int rentalId)
+        public RentalLateFeeEstimate EstimateCurrentLateFee(int rentalId)
         {
             var rental = _rentalRepository.GetById(rentalId);
             if (rental == null)
@@ -506,7 +506,7 @@ namespace Vidly.Services
             var result = CalculateLateFee(
                 rental.DueDate, _clock.Today, rental.DailyRate, tier);
 
-            return new LateFeeEstimate
+            return new RentalLateFeeEstimate
             {
                 RentalId = rentalId,
                 MovieName = rental.MovieName ?? "Unknown",
@@ -650,8 +650,22 @@ namespace Vidly.Services
         public CustomerReliability Reliability { get; set; }
     }
 
-    /// <summary>Self-service late-fee estimate for an active rental.</summary>
-    public class LateFeeEstimate
+    /// <summary>
+    /// Self-service late-fee estimate for an active rental.
+    /// </summary>
+    /// <remarks>
+    /// Renamed from <c>LateFeeEstimate</c> on 2026-05-21 to resolve a CS0104
+    /// ambiguity with <see cref="Vidly.Models.LateFeeEstimate"/>, which is the
+    /// model used by <see cref="Vidly.Services.LateFeeService"/> and the
+    /// <c>LateFeesController</c> calculator UI. Keeping two unrelated
+    /// "LateFeeEstimate" types — one in <c>Vidly.Services</c> and one in
+    /// <c>Vidly.Models</c> — silently broke the test-assembly build (every
+    /// reference to <c>LateFeeEstimate</c> in <c>LateFeeServiceTests</c>,
+    /// <c>LateFeesController</c>, and <c>LateFeeViewModel</c> became
+    /// ambiguous). This type is rental-shaped (RentalId, MovieName, …) and
+    /// belongs to the return flow, so it now uses a distinct name.
+    /// </remarks>
+    public class RentalLateFeeEstimate
     {
         public int RentalId { get; set; }
         public string MovieName { get; set; }
