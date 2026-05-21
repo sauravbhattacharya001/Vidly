@@ -42,6 +42,8 @@ Thanks for considering contributing to Vidly! This guide covers everything you n
 
 The main project (`Vidly/`) targets .NET Framework 4.7.2 (ASP.NET MVC 5). The test project (`Vidly.Tests/`) is an SDK-style project that compiles source files from the main project directly:
 
+> **Heads-up:** `dotnet build Vidly.sln` will fail on machines without Visual Studio Build Tools because the legacy `Vidly.csproj` imports `Microsoft.WebApplication.targets`. **Always build via `Vidly.Tests/Vidly.Tests.csproj` instead** — it includes every source file from the main project. See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for the full rundown of build/test/CI sharp edges.
+
 ```bash
 # Restore and build the test project (includes all source)
 dotnet restore Vidly.Tests/Vidly.Tests.csproj

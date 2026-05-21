@@ -239,6 +239,7 @@ dotnet add package Vidly --source github
 - **[Testing Guide](docs/TESTING.md)** - Test architecture, conventions, and coverage
 - **[Security Policy](SECURITY.md)** - Security measures and vulnerability reporting
 - **[Contributing Guide](CONTRIBUTING.md)** - How to contribute
+- **[Troubleshooting](TROUBLESHOOTING.md)** - Build, test, and CI sharp edges (legacy MSBuild + SDK-style test project)
 
 ## 🤝 Contributing
 
