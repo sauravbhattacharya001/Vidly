@@ -157,6 +157,52 @@ namespace Vidly.Tests
             Assert.IsTrue(csv.StartsWith("Id,Name,Email,Phone,MemberSince,MembershipType"));
         }
 
+        // ─── CRLF Row Injection (CWE-93) ──────────────────────────────
+
+        [TestMethod]
+        public void CsvEscape_EmbeddedCr_ForcesQuoting()
+        {
+            // Regression test: a lone CR inside a value used to slip past
+            // the needsQuote check (which only tested for '\n'), letting
+            // attacker-controlled data inject an extra CSV record per
+            // RFC 4180 §2.6 / Excel's CR-as-record-separator behavior.
+            // After the fix, any embedded CR must force the field to be
+            // double-quoted so downstream parsers keep it as one cell.
+            var movie = new Movie
+            {
+                Name = "Real Movie\rINJECTED,evil,row",
+                Genre = Genre.Action
+            };
+            _movieRepo.Add(movie);
+
+            var result = _controller.Movies("csv") as FileContentResult;
+            var csv = Encoding.UTF8.GetString(result.FileContents);
+
+            // The dangerous field must be wrapped in double-quotes so
+            // the embedded CR is treated as data, not a record terminator.
+            Assert.IsTrue(
+                csv.Contains("\"Real Movie\rINJECTED,evil,row\""),
+                "CRLF injection: embedded CR must force the field to be quoted.");
+        }
+
+        [TestMethod]
+        public void CsvEscape_EmbeddedCrLf_ForcesQuoting()
+        {
+            var movie = new Movie
+            {
+                Name = "Header\r\nBody",
+                Genre = Genre.Drama
+            };
+            _movieRepo.Add(movie);
+
+            var result = _controller.Movies("csv") as FileContentResult;
+            var csv = Encoding.UTF8.GetString(result.FileContents);
+
+            Assert.IsTrue(
+                csv.Contains("\"Header\r\nBody\""),
+                "CRLF injection: embedded CRLF must force the field to be quoted.");
+        }
+
         // ─── CSV Structure ─────────────────────────────────────────────
 
         [TestMethod]

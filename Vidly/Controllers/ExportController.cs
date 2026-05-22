@@ -221,7 +221,14 @@ namespace Vidly.Controllers
             if (string.IsNullOrEmpty(value))
                 return "";
 
-            bool needsQuote = value.Contains(",") || value.Contains("\"") || value.Contains("\n");
+            // RFC 4180 §2.6: fields containing a comma, double-quote,
+            // LF, or CR must be enclosed in double-quotes. Missing CR from
+            // this check let a lone '\r' inside a value (e.g. data pasted
+            // from a legacy Mac source, or attacker-supplied) escape
+            // unquoted, which Excel and several CSV parsers treat as a
+            // record separator - effectively allowing CRLF row injection
+            // (CWE-93). Always check CR as well as LF.
+            bool needsQuote = value.IndexOfAny(new[] { ',', '"', '\n', '\r' }) >= 0;
             string escaped = value.Replace("\"", "\"\"");
 
             if (escaped.Length > 0 && "=+-@\t\r".IndexOf(escaped[0]) >= 0)
