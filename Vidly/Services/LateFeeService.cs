@@ -135,6 +135,26 @@ namespace Vidly.Services
                     });
                     remaining -= tierDays;
                 }
+
+                // Bug fix: when the last tier is bounded (ToDay set) but chargeable
+                // days exceed its upper bound, LateFeePolicy.CalculateTiered charges
+                // the overflow at the last tier's rate. The display loop above used
+                // to stop at the last tier, so Sum(TierBreakdowns.Subtotal) under-
+                // counted vs Fee, producing a misleading receipt where the breakdown
+                // total didn't match the headline fee. Mirror Calculate's overflow
+                // behavior with an explicit "overflow" row so the receipt reconciles.
+                if (remaining > 0)
+                {
+                    var last = sorted[sorted.Count - 1];
+                    int overflowStart = (last.ToDay ?? last.FromDay) + 1;
+                    estimate.TierBreakdowns.Add(new TierBreakdown
+                    {
+                        TierLabel = $"Days {overflowStart}+ (overflow)",
+                        Days = remaining,
+                        Rate = last.RatePerDay,
+                        Subtotal = remaining * last.RatePerDay
+                    });
+                }
             }
 
             return estimate;
