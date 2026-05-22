@@ -182,12 +182,9 @@ namespace Vidly.Controllers
                 return JsonFile(data, $"{filenameBase}.json");
             }
 
-            var csv = new StringBuilder();
-            csv.AppendLine(string.Join(",", csvHeaders));
-            foreach (var item in items)
-            {
-                csv.AppendLine(string.Join(",", csvRowValues(item)));
-            }
+            var csv = CsvFormatter.BuildDocument(
+                csvHeaders,
+                items.Select(csvRowValues));
             return CsvFile(csv, $"{filenameBase}.csv");
         }
 
@@ -203,44 +200,20 @@ namespace Vidly.Controllers
             return File(bytes, "application/json", filename);
         }
 
-        private ActionResult CsvFile(StringBuilder csv, string filename)
+        private ActionResult CsvFile(string csv, string filename)
         {
-            var bytes = Encoding.UTF8.GetBytes(csv.ToString());
+            var bytes = Encoding.UTF8.GetBytes(csv);
             return File(bytes, "text/csv", filename);
         }
 
         /// <summary>
-        /// Escapes a string value for safe CSV output, guarding against
-        /// CSV injection (formula injection). Values starting with
-        /// =, +, -, @, tab, or carriage-return are prefixed with a
-        /// single-quote and quoted to neutralize formula execution
-        /// in spreadsheet applications (CWE-1236).
+        /// Thin compatibility shim around
+        /// <see cref="CsvFormatter.Escape"/> so existing call sites and
+        /// tests that reference <c>ExportController.CsvEscape</c>
+        /// continue to compile. New code should use
+        /// <see cref="CsvFormatter.Escape"/> directly.
         /// </summary>
-        internal static string CsvEscape(string value)
-        {
-            if (string.IsNullOrEmpty(value))
-                return "";
-
-            // RFC 4180 §2.6: fields containing a comma, double-quote,
-            // LF, or CR must be enclosed in double-quotes. Missing CR from
-            // this check let a lone '\r' inside a value (e.g. data pasted
-            // from a legacy Mac source, or attacker-supplied) escape
-            // unquoted, which Excel and several CSV parsers treat as a
-            // record separator - effectively allowing CRLF row injection
-            // (CWE-93). Always check CR as well as LF.
-            bool needsQuote = value.IndexOfAny(new[] { ',', '"', '\n', '\r' }) >= 0;
-            string escaped = value.Replace("\"", "\"\"");
-
-            if (escaped.Length > 0 && "=+-@\t\r".IndexOf(escaped[0]) >= 0)
-            {
-                return "\"'" + escaped + "\"";
-            }
-
-            if (needsQuote)
-                return "\"" + escaped + "\"";
-
-            return value;
-        }
+        internal static string CsvEscape(string value) => CsvFormatter.Escape(value);
 
         #endregion
     }
