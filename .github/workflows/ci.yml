@@ -23,11 +23,20 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
+      # NOTE: We deliberately build Vidly.Tests/Vidly.Tests.csproj instead of
+      # Vidly.sln. The main Vidly project is a legacy non-SDK ASP.NET MVC 5
+      # csproj that imports `Microsoft.WebApplication.targets` via $(VSToolsPath).
+      # That import only resolves under MSBuild from a VS installation
+      # (or VS Build Tools) — not under the `dotnet` driver — so
+      # `dotnet build Vidly.sln` fails with MSB4019 on any SDK >= 7.
+      # Vidly.Tests is SDK-style (net472) and globs in `..\Vidly\**\*.cs`,
+      # so building it compiles every source file in the main project too.
+      # See issue #160 for the full incident write-up.
       - name: Restore
-        run: dotnet restore Vidly.sln
+        run: dotnet restore Vidly.Tests/Vidly.Tests.csproj
 
       - name: Check formatting
-        run: dotnet format Vidly.sln --verify-no-changes --verbosity diagnostic
+        run: dotnet format Vidly.Tests/Vidly.Tests.csproj --verify-no-changes --verbosity diagnostic
 
   test:
     name: Build & Test (.NET 8)
@@ -45,11 +54,16 @@ jobs:
         with:
           dotnet-version: ${{ matrix.dotnet-version }}
 
+      # See lint job for why we build Vidly.Tests.csproj instead of Vidly.sln.
+      # Building the test csproj pulls in every Vidly source file via
+      # <Compile Include="..\Vidly\**\*.cs" Link="..." />, so this still
+      # surfaces every compile error the main project would have surfaced —
+      # without needing VS Build Tools on the runner.
       - name: Restore solution
-        run: dotnet restore Vidly.sln
+        run: dotnet restore Vidly.Tests/Vidly.Tests.csproj
 
       - name: Build solution
-        run: dotnet build Vidly.sln --configuration Release --no-restore --warnaserror
+        run: dotnet build Vidly.Tests/Vidly.Tests.csproj --configuration Release --no-restore --warnaserror
 
       - name: Run tests with coverage
         run: |
