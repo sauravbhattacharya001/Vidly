@@ -4,6 +4,7 @@ using System.Linq;
 using System.Web.Mvc;
 using Vidly.Models;
 using Vidly.Services;
+using Vidly.Utilities;
 using Vidly.ViewModels;
 using Newtonsoft.Json;
 
@@ -16,6 +17,16 @@ namespace Vidly.Controllers
     /// </summary>
     public class EmojiStoryController : Controller
     {
+        /// <summary>
+        /// Purpose string for <see cref="SignedPayload"/>. Tokens minted
+        /// with this purpose can only be unprotected by EmojiStory — a
+        /// hidden-field session blob cannot be replayed against another
+        /// controller. Bump the version suffix when the
+        /// <see cref="EmojiGameSession"/> shape changes in an incompatible
+        /// way.
+        /// </summary>
+        internal const string SessionProtectionPurpose = "Vidly.EmojiStory.Session.v1";
+
         private readonly EmojiStoryService _service;
 
         public EmojiStoryController()
@@ -75,7 +86,9 @@ namespace Vidly.Controllers
                 IsPlaying = true,
                 Difficulty = difficulty,
                 GameQueue = queue,
-                SessionJson = JsonConvert.SerializeObject(session)
+                SessionJson = SignedPayload.Protect(
+                    JsonConvert.SerializeObject(session),
+                    SessionProtectionPurpose)
             };
 
             return View("Play", viewModel);
@@ -88,9 +101,22 @@ namespace Vidly.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult Answer(int puzzleId, string guess, string gameQueue, string sessionJson, bool hintUsed = false)
         {
-            var session = string.IsNullOrEmpty(sessionJson)
-                ? new EmojiGameSession()
-                : JsonConvert.DeserializeObject<EmojiGameSession>(sessionJson);
+            // Unprotect the hidden-field session blob. If the client tampered
+            // with it (CWE-565: edited Score / BestStreak in DevTools) the
+            // HMAC fails and we silently fall back to a fresh session rather
+            // than crediting the attacker's forged values. Likewise for
+            // missing tokens (first round, or attacker stripping the field).
+            EmojiGameSession session;
+            if (string.IsNullOrEmpty(sessionJson)
+                || !SignedPayload.TryUnprotect(sessionJson, SessionProtectionPurpose, out var json))
+            {
+                session = new EmojiGameSession();
+            }
+            else
+            {
+                session = JsonConvert.DeserializeObject<EmojiGameSession>(json)
+                    ?? new EmojiGameSession();
+            }
 
             var puzzle = _service.GetById(puzzleId);
             if (puzzle == null)
@@ -157,7 +183,9 @@ namespace Vidly.Controllers
                 LastResult = roundResult,
                 IsPlaying = true,
                 GameQueue = nextQueue,
-                SessionJson = JsonConvert.SerializeObject(session)
+                SessionJson = SignedPayload.Protect(
+                    JsonConvert.SerializeObject(session),
+                    SessionProtectionPurpose)
             };
 
             return View("Play", vm);

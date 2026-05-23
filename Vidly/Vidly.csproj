@@ -184,6 +184,7 @@
     <Compile Include="Utilities\JsonSerializer.cs" />
     <Compile Include="Utilities\SortHelper.cs" />
     <Compile Include="Utilities\JsonForScript.cs" />
+    <Compile Include="Utilities\SignedPayload.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Content\bootstrap-lumen.css" />

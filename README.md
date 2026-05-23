@@ -36,6 +36,7 @@ A full-featured video rental store web application built with **ASP.NET MVC 5**,
 - [API / Routes](#-api--routes)
 - [Testing](#-testing)
 - [Tech Stack](#️-tech-stack)
+- [Security](#-security)
 - [Docker](#-docker)
 - [Packages](#-packages)
 - [Documentation](#-documentation)
@@ -200,6 +201,51 @@ Coverage reports are generated in Cobertura format and uploaded as CI artifacts 
 | **CI/CD** | GitHub Actions |
 | **Container** | Docker (Windows/IIS) |
 | **Security** | CodeQL, Dependabot |
+
+## 🔒 Security
+
+Vidly treats hostile clients as the default threat model. The defenses are layered:
+
+| Concern | Defense | Where |
+|---|---|---|
+| **CSRF** | `[ValidateAntiForgeryToken]` on every state-changing `[HttpPost]` action | All controllers |
+| **XSS** | Razor auto-encoding; `JavaScriptStringEncode` for JS interpolation; explicit `HtmlEncode` before any `Html.Raw` | Views |
+| **CSV / formula injection** | RFC 4180 quoting + leading `'` on cells starting with `= + - @ \t \r` (CWE-1236) | [`Utilities/CsvFormatter.cs`](Vidly/Utilities/CsvFormatter.cs) |
+| **CRLF injection in CSV** | Newlines stripped from header rows (CWE-93) | [`Utilities/CsvFormatter.cs`](Vidly/Utilities/CsvFormatter.cs) |
+| **JSON-in-HTML breakout** | `StringEscapeHandling.EscapeHtml` for any JSON embedded in `<script>` blocks | [`Utilities/JsonForScript.cs`](Vidly/Utilities/JsonForScript.cs) |
+| **Hidden-field tampering** | Encrypt + HMAC server-side state with `MachineKey.Protect` and a per-call-site purpose string (CWE-565 / CWE-345) | [`Utilities/SignedPayload.cs`](Vidly/Utilities/SignedPayload.cs) |
+| **Brute force / scraping** | `[RateLimit]` attribute with per-IP sliding window (CWE-307) on exports, PIN entry, and other sensitive endpoints | [`Filters/RateLimitAttribute.cs`](Vidly/Filters/RateLimitAttribute.cs) |
+| **PIN verification** | `CryptographicOperations.FixedTimeEquals` to defeat timing oracles | `Services/ParentalControlService.cs` |
+| **Transport / headers** | HSTS, `X-Content-Type-Options`, `X-Frame-Options`, CSP, referrer policy | [`Filters/SecurityHeadersAttribute.cs`](Vidly/Filters/SecurityHeadersAttribute.cs) |
+| **Randomness for tokens** | `RandomNumberGenerator` (CSPRNG) for gift card codes, referral codes, etc. | `Services/GiftCardService.cs`, `Services/ReferralService.cs` |
+
+### Round-tripping server state safely
+
+Several mini-games (EmojiStory, Negotiator, ...) keep session state on the
+client between requests. **Never put raw JSON in a hidden field** — a player
+will open DevTools and edit their score. Use [`SignedPayload`](Vidly/Utilities/SignedPayload.cs):
+
+```csharp
+using Vidly.Utilities;
+
+// Outbound — sign before rendering into the hidden input.
+viewModel.SessionJson = SignedPayload.Protect(
+    JsonConvert.SerializeObject(session),
+    "Vidly.EmojiStory.Session.v1");
+
+// Inbound — verify HMAC, decrypt, then deserialize. Tampered
+// payloads silently restart the session instead of crashing.
+EmojiGameSession session;
+if (!SignedPayload.TryUnprotect(sessionJson, "Vidly.EmojiStory.Session.v1", out var json))
+    session = new EmojiGameSession();
+else
+    session = JsonConvert.DeserializeObject<EmojiGameSession>(json) ?? new EmojiGameSession();
+```
+
+The `purpose` string scopes tokens to their endpoint — a session blob minted
+for EmojiStory cannot be replayed against another controller.
+
+Report vulnerabilities privately per [SECURITY.md](SECURITY.md).
 
 ## 🐳 Docker
 
