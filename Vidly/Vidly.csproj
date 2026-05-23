@@ -130,6 +130,7 @@
     <Compile Include="Services\GiftCardBreakageAdvisorService.cs" />
     <Compile Include="Services\LostAndFoundDispositionAdvisorService.cs" />
     <Compile Include="Services\SubscriptionDunningAdvisorService.cs" />
+    <Compile Include="Services\TradeInValuationAdvisorService.cs" />
     <Compile Include="Controllers\CompareController.cs" />
     <Compile Include="Controllers\MoviesController.cs" />
     <Compile Include="Global.asax.cs">
