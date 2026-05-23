@@ -1,5 +1,26 @@
 # Troubleshooting Vidly Builds, Tests & CI
 
+> ## 🔴 Heads-up: `master` is currently red (as of 2026-05-23)
+>
+> A clean `dotnet build Vidly.Tests/Vidly.Tests.csproj -c Release` against
+> the current `master` HEAD produces **~1,484 compile errors**. The
+> "CI — Build, Lint & Test with Coverage" workflow has been failing on every
+> push for at least the last 5 commits, which means **no tests have actually
+> executed on master in days** and coverage numbers in Codecov are stale.
+>
+> If your local build is exploding with hundreds of errors, **it is not your
+> change** — you cloned into a broken tree. See [#161][i161] for the current
+> error-bucket triage (LangVersion gap, duplicate enums in `Models` vs
+> `Services`, missing `using System.Collections.Generic;`, test stubs out of
+> sync with new `IClock` ctor params, mixed xUnit/MSTest assertions, and
+> general API drift in controllers).
+>
+> **Until #161 is resolved, do not assume `--warnaserror` build success is
+> achievable.** New PRs should focus on fixing buckets in #161 rather than
+> adding features on top of a red base.
+>
+> [i161]: https://github.com/sauravbhattacharya001/Vidly/issues/161
+
 This document captures the recurring sharp edges of the Vidly codebase. If your
 build is failing in a way that looks weird, **read this first** — chances are
 the root cause is one of the dual-project-layout footguns below, not your code.
@@ -224,14 +245,40 @@ when you haven't run them.
 
 ## Tracked Build-Health Issues
 
-- **#159** — `Vidly.Tests` does not compile (xUnit packages, stale stub repos,
-  `CS1737`). This is the umbrella issue for the current test-suite breakage.
-  Sub-PRs should reference it and chip away at the buckets.
-- **CI workflow** (`.github/workflows/ci.yml`) — uses `dotnet build Vidly.sln`,
-  which fails immediately on `windows-latest` runners since SDK 10.x removed
-  the `v18.0` WebApplication targets shim. Tracked as the recurring CI failure
-  streak; the fix is to switch the workflow to build/test/format
-  `Vidly.Tests/Vidly.Tests.csproj` (see Symptom 1 + Symptom 6 above).
+- **#161** — [Master is red: Vidly.Tests has 1,484 compile errors][i161]
+  (follow-up to #159). Current umbrella for the test-suite breakage as of
+  2026-05-23. Sub-PRs should reference it and chip away at the buckets in
+  this recommended order:
+  1. **Bucket B (LangVersion)** — add `<LangVersion>latest</LangVersion>` to
+     both csprojs (eliminates ~66 CS8370 errors immediately).
+  2. **Bucket C (`using System.Collections.Generic;`)** — mechanical add to
+     ~half-a-dozen controllers (eliminates ~56 CS0246 errors).
+  3. **Bucket A (duplicate enums)** — `ShelfZone`, `CustomerSegment`,
+     `InterventionType`, `TrendDirection`, `CalendarEventType` all exist in
+     **both** `Vidly.Models` and `Vidly.Services` (~236 CS0104 ambiguities,
+     plus cascading CS0266/CS0029/CS1503 conversion errors). Pick one home
+     per enum — convention is Models. The `ShelfZone` pair has disjoint
+     members, so this needs a real product decision (probably rename the
+     Services-layer one to `ShelfOptimizerZone`).
+  4. **Bucket D (test ctor drift)** — services grew an `IClock` parameter
+     but a lot of test fixtures still call the old 3-arg ctor. Either make
+     `IClock` optional with `new SystemClock()` default, or build a shared
+     `TestSupport` factory.
+  5. **Bucket E (mixed xUnit/MSTest)** — each test file should pick one
+     framework and use its `Assert` consistently.
+  6. **Bucket F (API drift)** — `_movieRepo.GetMovies()` etc. need updating
+     to `GetAll()`; `List<T>.TakeLast` isn't available pre-Core; etc.
+- **#159** — Original `Vidly.Tests` does-not-compile umbrella. Most of its
+  three original buckets have been addressed; superseded in practice by
+  #161 but still open as historical context.
+- **CI workflow** (`.github/workflows/ci.yml`) — now correctly builds
+  `Vidly.Tests/Vidly.Tests.csproj` instead of `Vidly.sln` (see Symptom 1).
+  The remaining red-master signal is purely from #161's compile errors, not
+  from MSB4019.
+- **Suggested guardrail:** split CI into two required checks — `compile`
+  (just `dotnet build`) and `test` (`dotnet test`) — so a green-CI badge
+  can never coexist with an uncompilable codebase the way it nearly did
+  during the #159 → #161 stretch.
 
 ---
 
