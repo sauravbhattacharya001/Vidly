@@ -17,11 +17,18 @@
 [![Controllers](https://img.shields.io/badge/controllers-99-informational.svg)](#-architecture)
 [![Services](https://img.shields.io/badge/services-96-informational.svg)](#-architecture)
 
+<!-- Release & Dependabot -->
+[![Latest Release](https://img.shields.io/github/v/release/sauravbhattacharya001/Vidly?include_prereleases&sort=semver)](https://github.com/sauravbhattacharya001/Vidly/releases/latest)
+[![Dependabot](https://img.shields.io/badge/Dependabot-enabled-brightgreen?logo=dependabot)](https://github.com/sauravbhattacharya001/Vidly/network/updates)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/sauravbhattacharya001/Vidly/pulls)
+
 <!-- Repo -->
 [![GitHub last commit](https://img.shields.io/github/last-commit/sauravbhattacharya001/Vidly)](https://github.com/sauravbhattacharya001/Vidly/commits/master)
 [![GitHub repo size](https://img.shields.io/github/repo-size/sauravbhattacharya001/Vidly)](https://github.com/sauravbhattacharya001/Vidly)
 [![GitHub issues](https://img.shields.io/github/issues/sauravbhattacharya001/Vidly)](https://github.com/sauravbhattacharya001/Vidly/issues)
 [![GitHub stars](https://img.shields.io/github/stars/sauravbhattacharya001/Vidly?style=social)](https://github.com/sauravbhattacharya001/Vidly)
+[![GitHub forks](https://img.shields.io/github/forks/sauravbhattacharya001/Vidly?style=social)](https://github.com/sauravbhattacharya001/Vidly/network/members)
+[![GitHub contributors](https://img.shields.io/github/contributors/sauravbhattacharya001/Vidly)](https://github.com/sauravbhattacharya001/Vidly/graphs/contributors)
 
 A full-featured video rental store web application built with **ASP.NET MVC 5**, featuring **99 controllers**, **96 services**, **88 domain models**, and **3,690+ unit tests** across **100 test files**. Demonstrates enterprise-scale MVC patterns including layered architecture, repository pattern, service layer, dependency injection, rate limiting, security headers, and comprehensive validation.
 
