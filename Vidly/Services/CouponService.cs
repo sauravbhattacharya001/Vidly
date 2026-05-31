@@ -21,6 +21,9 @@ namespace Vidly.Services
 
         public CouponService() : this(new InMemoryCouponRepository(), new SystemClock()) { }
 
+        public CouponService(ICouponRepository couponRepository)
+            : this(couponRepository, new SystemClock()) { }
+
         public CouponService(ICouponRepository couponRepository, IClock clock)
         {
             _clock = clock ?? throw new ArgumentNullException(nameof(clock));

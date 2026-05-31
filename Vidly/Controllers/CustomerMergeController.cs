@@ -23,13 +23,11 @@ namespace Vidly.Controllers
         private readonly ICustomerRepository _customers;
 
         public CustomerMergeController()
-            : this(
-                new CustomerMergeService(
-                    new InMemoryCustomerRepository(),
-                    new InMemoryRentalRepository(),
-                    new SystemClock()),
-                new InMemoryCustomerRepository())
         {
+            var customerRepo = new InMemoryCustomerRepository();
+            var rentalRepo = new InMemoryRentalRepository();
+            _mergeService = new CustomerMergeService(customerRepo, rentalRepo, new SystemClock());
+            _customers = customerRepo;
         }
 
         public CustomerMergeController(
